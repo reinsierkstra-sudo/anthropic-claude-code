@@ -1,6 +1,6 @@
 import pyodbc
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date, time as dt_time
 import json
 from collections import defaultdict
 import time
@@ -11,6 +11,10 @@ from requests.auth import HTTPBasicAuth
 from bs4 import BeautifulSoup
 import warnings
 import re
+import statistics
+import hashlib
+import stat
+import traceback
 
 warnings.filterwarnings('ignore')
 
@@ -350,7 +354,6 @@ class IsotopeDashboardGenerator:
     
     def calculate_file_hash(self, filepath):
         """Calculate SHA256 hash of a file"""
-        import hashlib
         try:
             with open(filepath, 'rb') as f:
                 return hashlib.sha256(f.read()).hexdigest()
@@ -360,7 +363,6 @@ class IsotopeDashboardGenerator:
     def set_readonly(self, filepath):
         """Set file to read-only"""
         try:
-            import stat
             # Remove write permissions for everyone
             current_permissions = os.stat(filepath).st_mode
             os.chmod(filepath, current_permissions & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH)
@@ -372,7 +374,6 @@ class IsotopeDashboardGenerator:
     def remove_readonly(self, filepath):
         """Remove read-only protection temporarily"""
         try:
-            import stat
             current_permissions = os.stat(filepath).st_mode
             os.chmod(filepath, current_permissions | stat.S_IWUSR)
             return True
@@ -4750,28 +4751,26 @@ class IsotopeDashboardGenerator:
         
         Night shift belongs to the date it STARTS (e.g., "2025-12-11 nachtdienst" = starts Dec 11 23:00).
         """
-        from datetime import datetime, time, timedelta
-        
         overlaps = []
-        
+
         # Start from ONE DAY BEFORE production start to catch night shifts that cross midnight
         # e.g., production at 03:00 on Dec 15 is during the night shift that started Dec 14 23:00
         current_date = start_dt.date() - timedelta(days=1)
         end_date = end_dt.date()
-        
+
         while current_date <= end_date + timedelta(days=1):  # +1 to catch overlaps into next day
             # Define shift boundaries for this date
             # Ochtenddienst: 07:00-15:00 on current_date
-            ochtend_start = datetime.combine(current_date, time(7, 0))
-            ochtend_end = datetime.combine(current_date, time(15, 0))
-            
+            ochtend_start = datetime.combine(current_date, dt_time(7, 0))
+            ochtend_end = datetime.combine(current_date, dt_time(15, 0))
+
             # Middagdienst: 15:00-23:00 on current_date
-            middag_start = datetime.combine(current_date, time(15, 0))
-            middag_end = datetime.combine(current_date, time(23, 0))
-            
+            middag_start = datetime.combine(current_date, dt_time(15, 0))
+            middag_end = datetime.combine(current_date, dt_time(23, 0))
+
             # Nachtdienst: 23:00 on current_date to 07:00 next day (but belongs to current_date)
-            nacht_start = datetime.combine(current_date, time(23, 0))
-            nacht_end = datetime.combine(current_date + timedelta(days=1), time(7, 0))
+            nacht_start = datetime.combine(current_date, dt_time(23, 0))
+            nacht_end = datetime.combine(current_date + timedelta(days=1), dt_time(7, 0))
             
             # Calculate overlaps
             for shift_name, shift_start, shift_end in [
@@ -6119,8 +6118,6 @@ class IsotopeDashboardGenerator:
     
     def _add_production_to_ploeg(self, ploeg_productions, production, isotope_type, start_dt, end_dt):
         """Helper function to add production to ploeg with proportional calculation"""
-        from datetime import datetime as dt_class
-        
         # Calculate total duration
         total_duration_hours = (end_dt - start_dt).total_seconds() / 3600
         if total_duration_hours <= 0:
@@ -6181,7 +6178,7 @@ class IsotopeDashboardGenerator:
                     'nachtdienst': 23
                 }
                 shift_hour = shift_start_hours.get(shift_name, 7)
-                display_time = dt_class.combine(date, dt_class.min.time()).replace(hour=shift_hour)
+                display_time = datetime.combine(date, datetime.min.time()).replace(hour=shift_hour)
             
             # Build production detail dict
             prod_detail = {
@@ -8254,8 +8251,7 @@ class IsotopeDashboardGenerator:
                 # and fill any gaps between first and last week
                 if all_otif_weeks:
                     def _next_iso_week(yr, wn):
-                        from datetime import date as _date
-                        d = _date.fromisocalendar(yr, wn, 1) + timedelta(weeks=1)
+                        d = date.fromisocalendar(yr, wn, 1) + timedelta(weeks=1)
                         iso = d.isocalendar()
                         return iso[0], iso[1]
 
