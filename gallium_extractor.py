@@ -335,6 +335,58 @@ class IsotopeDashboardGenerator:
     # is created each time.  Keys: file path → (mtime, cached_data_or_dict).
     _excel_cache = {}
 
+    # ---- SQLite table schemas (IMPROVE-19) ----
+    # Each entry maps a table name to a list of (column, sql_type) tuples.
+    # 'alter_add' lists columns that may be missing on older databases.
+    # 'str_cols' lists columns whose values should be coerced to str before storing.
+    _TABLE_SCHEMAS = {
+        'iodine_data': {
+            'columns': [
+                ('date', 'TEXT'), ('value1', 'REAL'), ('value2', 'REAL'),
+                ('efficiency', 'REAL'), ('efficiency_raw', 'REAL'),
+                ('identifier', 'TEXT'), ('bo_targetstroom', 'REAL'),
+                ('targetstroom', 'REAL'), ('yield_percent', 'REAL'),
+                ('output_percent', 'REAL'), ('cyclotron', 'TEXT'),
+                ('totale_dosis', 'REAL'), ('meting_d1', 'REAL'),
+                ('meting_waste', 'REAL'), ('verwacht', 'REAL'),
+                ('stop_datum', 'TEXT'), ('stop_tijd', 'TEXT'),
+                ('start_tijd', 'TEXT'), ('totale_bestralingstijd', 'REAL'),
+                ('totale_storingstijd', 'REAL'), ('opmerking', 'TEXT'),
+                ('extracted_at', 'TEXT'),
+            ],
+            'alter_add': [
+                ('yield_percent', 'REAL'), ('output_percent', 'REAL'), ('cyclotron', 'TEXT'),
+                ('totale_dosis', 'REAL'), ('meting_d1', 'REAL'), ('meting_waste', 'REAL'),
+                ('verwacht', 'REAL'), ('stop_datum', 'TEXT'), ('stop_tijd', 'TEXT'),
+                ('start_tijd', 'TEXT'), ('totale_bestralingstijd', 'REAL'),
+                ('totale_storingstijd', 'REAL'), ('opmerking', 'TEXT'),
+            ],
+            'str_cols': {'stop_datum', 'stop_tijd', 'start_tijd'},
+        },
+        'rubidium_data': {
+            'columns': [
+                ('date', 'TEXT'), ('value1', 'REAL'), ('value2', 'REAL'),
+                ('efficiency', 'REAL'), ('identifier', 'TEXT'),
+                ('stroom', 'REAL'), ('extracted_at', 'TEXT'),
+            ],
+        },
+        'gallium_data': {
+            'columns': [
+                ('date', 'TEXT'), ('targetstroom', 'REAL'),
+                ('identifier', 'TEXT'), ('extracted_at', 'TEXT'),
+            ],
+        },
+        '__default__': {
+            'columns': [
+                ('date', 'TEXT'), ('value1', 'REAL'), ('value2', 'REAL'),
+                ('efficiency', 'REAL'), ('identifier', 'TEXT'), ('extracted_at', 'TEXT'),
+            ],
+        },
+    }
+    # indium and thallium share the gallium schema
+    _TABLE_SCHEMAS['indium_data']   = _TABLE_SCHEMAS['gallium_data']
+    _TABLE_SCHEMAS['thallium_data'] = _TABLE_SCHEMAS['gallium_data']
+
     def __init__(self, access_db_path,
                  sqlite_db_path=None,
                  proces_db_path=None,
@@ -2096,9 +2148,9 @@ class IsotopeDashboardGenerator:
         return sf_counts, sf_productions
     
     def store_in_sqlite(self, table_name, data, col1, col2):
-        """Store only new data in SQLite"""
+        """Store only new data in SQLite (schema-driven via _TABLE_SCHEMAS, IMPROVE-19)."""
         cursor = self.sqlite_conn.cursor()
-        
+
         # Create comments table if it doesn't exist
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS production_comments (
@@ -2111,219 +2163,87 @@ class IsotopeDashboardGenerator:
                 UNIQUE(isotope_type, production_date, bo_number)
             )
         ''')
-        
-        # Determine which extra columns we need based on table name.
-        # UNIQUE(identifier, date) ensures each BO appears only once per date.
-        # INSERT OR REPLACE overwrites the old row when values have changed,
-        # preventing duplicates even when measurements are updated in the source DB.
-        if table_name == 'iodine_data':
-            cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {table_name} (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    date TEXT,
-                    value1 REAL,
-                    value2 REAL,
-                    efficiency REAL,
-                    efficiency_raw REAL,
-                    identifier TEXT,
-                    bo_targetstroom REAL,
-                    targetstroom REAL,
-                    yield_percent REAL,
-                    output_percent REAL,
-                    cyclotron TEXT,
-                    totale_dosis REAL,
-                    meting_d1 REAL,
-                    meting_waste REAL,
-                    verwacht REAL,
-                    stop_datum TEXT,
-                    stop_tijd TEXT,
-                    start_tijd TEXT,
-                    totale_bestralingstijd REAL,
-                    totale_storingstijd REAL,
-                    opmerking TEXT,
-                    extracted_at TEXT,
-                    UNIQUE(identifier, date)
-                )
-            ''')
-            # Add new columns to existing databases that predate this schema
-            for _col, _typ in [
-                ('yield_percent', 'REAL'), ('output_percent', 'REAL'), ('cyclotron', 'TEXT'),
-                ('totale_dosis', 'REAL'), ('meting_d1', 'REAL'), ('meting_waste', 'REAL'),
-                ('verwacht', 'REAL'), ('stop_datum', 'TEXT'), ('stop_tijd', 'TEXT'),
-                ('start_tijd', 'TEXT'), ('totale_bestralingstijd', 'REAL'),
-                ('totale_storingstijd', 'REAL'), ('opmerking', 'TEXT'),
-            ]:
-                try:
-                    cursor.execute(f'ALTER TABLE {table_name} ADD COLUMN {_col} {_typ}')
-                except Exception:
-                    pass  # Column already exists
-        elif table_name == 'rubidium_data':
-            cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {table_name} (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    date TEXT,
-                    value1 REAL,
-                    value2 REAL,
-                    efficiency REAL,
-                    identifier TEXT,
-                    stroom REAL,
-                    extracted_at TEXT,
-                    UNIQUE(identifier, date)
-                )
-            ''')
-        elif table_name in ['gallium_data', 'indium_data', 'thallium_data']:
-            cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {table_name} (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    date TEXT,
-                    targetstroom REAL,
-                    identifier TEXT,
-                    extracted_at TEXT,
-                    UNIQUE(identifier, date)
-                )
-            ''')
-        else:
-            cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {table_name} (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    date TEXT,
-                    value1 REAL,
-                    value2 REAL,
-                    efficiency REAL,
-                    identifier TEXT,
-                    extracted_at TEXT,
-                    UNIQUE(identifier, date)
-                )
-            ''')
 
-        # Rebuild the table with a proper UNIQUE constraint if it doesn't have one yet.
-        # This handles databases created before the constraint was introduced.
+        schema = self._TABLE_SCHEMAS.get(table_name, self._TABLE_SCHEMAS['__default__'])
+        col_defs = schema['columns']
+        col_names = [c[0] for c in col_defs]
+        str_cols = schema.get('str_cols', set())
+
+        # CREATE TABLE from schema
+        col_sql = ',\n                    '.join(f'{name} {typ}' for name, typ in col_defs)
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS {table_name} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                {col_sql},
+                UNIQUE(identifier, date)
+            )
+        ''')
+
+        # ALTER TABLE for any columns added after original schema
+        for _col, _typ in schema.get('alter_add', []):
+            try:
+                cursor.execute(f'ALTER TABLE {table_name} ADD COLUMN {_col} {_typ}')
+            except Exception:
+                pass  # column already exists
+
+        # Rebuild with UNIQUE constraint if missing (handles pre-constraint databases)
         try:
             idx_info = cursor.execute(f"PRAGMA index_list({table_name})").fetchall()
-            has_unique = any('uq_' in str(row) for row in idx_info)
-            if not has_unique:
-                # Deduplicate into a temp table, then swap
+            if not any('uq_' in str(row) for row in idx_info):
                 cursor.execute(f'''
                     CREATE TABLE IF NOT EXISTS {table_name}_dedup AS
                     SELECT * FROM {table_name}
-                    WHERE id IN (
-                        SELECT MIN(id) FROM {table_name}
-                        GROUP BY identifier, date
-                    )
+                    WHERE id IN (SELECT MIN(id) FROM {table_name} GROUP BY identifier, date)
                 ''')
                 cursor.execute(f'DROP TABLE {table_name}')
                 cursor.execute(f'ALTER TABLE {table_name}_dedup RENAME TO {table_name}')
-                # Re-create primary key index (SQLite doesn't carry it over)
                 cursor.execute(f'''
                     CREATE UNIQUE INDEX IF NOT EXISTS uq_{table_name}_identifier_date
                     ON {table_name} (identifier, date)
                 ''')
                 self.sqlite_conn.commit()
-        except Exception as e:
-            pass  # Non-critical — just means dedup couldn't run this session
+        except Exception:
+            pass  # Non-critical
 
         extracted_at = datetime.now().isoformat()
         new_count = 0
 
+        def _val(record, col, date_str, identifier):
+            if col == 'date':        return date_str
+            if col == 'identifier':  return identifier
+            if col == 'extracted_at': return extracted_at
+            v = record.get(col)
+            if col in str_cols:
+                return str(v) if v is not None else None
+            return v
+
+        update_cols = [c for c in col_names if c not in ('date', 'identifier')]
+        set_sql     = ', '.join(f'{c}=?' for c in update_cols)
+        insert_sql  = (f"INSERT INTO {table_name} ({', '.join(col_names)}) "
+                       f"VALUES ({', '.join('?' * len(col_names))})")
+
         for record in data:
-            date_str = record['date'].strftime('%Y-%m-%d') if isinstance(record['date'], datetime) else str(record['date']) if record['date'] else None
+            raw_date = record.get('date')
+            date_str = (raw_date.strftime('%Y-%m-%d') if isinstance(raw_date, datetime)
+                        else str(raw_date) if raw_date else None)
             if date_str is None:
                 continue
+            identifier = str(record['identifier']) if record.get('identifier') is not None else None
 
-            identifier = str(record.get('identifier')) if record.get('identifier') is not None else None
-
-            # Check if this (identifier, date) already exists — avoids duplicates even
-            # when the unique constraint or index is missing on older databases.
             existing = cursor.execute(
                 f'SELECT id FROM {table_name} WHERE identifier=? AND date=?',
                 (identifier, date_str)
             ).fetchone()
 
             if existing:
-                # Update the existing row so changed values (e.g. measurements added later) are kept current
-                if table_name == 'iodine_data':
-                    cursor.execute(f'''
-                        UPDATE {table_name} SET
-                            value1=?, value2=?, efficiency=?, efficiency_raw=?,
-                            bo_targetstroom=?, targetstroom=?, yield_percent=?, output_percent=?, cyclotron=?,
-                            totale_dosis=?, meting_d1=?, meting_waste=?, verwacht=?,
-                            stop_datum=?, stop_tijd=?, start_tijd=?,
-                            totale_bestralingstijd=?, totale_storingstijd=?, opmerking=?,
-                            extracted_at=?
-                        WHERE identifier=? AND date=?
-                    ''', (
-                        record['value1'], record['value2'], record['efficiency'],
-                        record.get('efficiency_raw'),
-                        record.get('bo_targetstroom'), record.get('targetstroom'),
-                        record.get('yield_percent'), record.get('output_percent'), record.get('cyclotron'),
-                        record.get('totale_dosis'), record.get('meting_d1'), record.get('meting_waste'),
-                        record.get('verwacht'),
-                        str(record['stop_datum']) if record.get('stop_datum') else None,
-                        str(record['stop_tijd']) if record.get('stop_tijd') else None,
-                        str(record['start_tijd']) if record.get('start_tijd') else None,
-                        record.get('totale_bestralingstijd'), record.get('totale_storingstijd'),
-                        record.get('opmerking'), extracted_at,
-                        identifier, date_str
-                    ))
-                elif table_name == 'rubidium_data':
-                    cursor.execute(f'''
-                        UPDATE {table_name} SET value1=?, value2=?, efficiency=?, stroom=?, extracted_at=?
-                        WHERE identifier=? AND date=?
-                    ''', (record['value1'], record['value2'], record['efficiency'],
-                           record.get('stroom'), extracted_at, identifier, date_str))
-                elif table_name in ['gallium_data', 'indium_data', 'thallium_data']:
-                    cursor.execute(f'''
-                        UPDATE {table_name} SET targetstroom=?, extracted_at=?
-                        WHERE identifier=? AND date=?
-                    ''', (record.get('targetstroom'), extracted_at, identifier, date_str))
-                else:
-                    cursor.execute(f'''
-                        UPDATE {table_name} SET value1=?, value2=?, efficiency=?, extracted_at=?
-                        WHERE identifier=? AND date=?
-                    ''', (record['value1'], record['value2'], record['efficiency'],
-                           extracted_at, identifier, date_str))
+                update_vals = tuple(_val(record, c, date_str, identifier) for c in update_cols)
+                cursor.execute(
+                    f'UPDATE {table_name} SET {set_sql} WHERE identifier=? AND date=?',
+                    update_vals + (identifier, date_str)
+                )
             else:
-                # New record — insert it
-                if table_name == 'iodine_data':
-                    cursor.execute(f'''
-                        INSERT INTO {table_name} (
-                            date, value1, value2, efficiency, efficiency_raw, identifier,
-                            bo_targetstroom, targetstroom, yield_percent, output_percent, cyclotron,
-                            totale_dosis, meting_d1, meting_waste, verwacht,
-                            stop_datum, stop_tijd, start_tijd,
-                            totale_bestralingstijd, totale_storingstijd, opmerking,
-                            extracted_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                        date_str, record['value1'], record['value2'], record['efficiency'],
-                        record.get('efficiency_raw'), identifier,
-                        record.get('bo_targetstroom'), record.get('targetstroom'),
-                        record.get('yield_percent'), record.get('output_percent'), record.get('cyclotron'),
-                        record.get('totale_dosis'), record.get('meting_d1'), record.get('meting_waste'),
-                        record.get('verwacht'),
-                        str(record['stop_datum']) if record.get('stop_datum') else None,
-                        str(record['stop_tijd']) if record.get('stop_tijd') else None,
-                        str(record['start_tijd']) if record.get('start_tijd') else None,
-                        record.get('totale_bestralingstijd'), record.get('totale_storingstijd'),
-                        record.get('opmerking'), extracted_at
-                    ))
-                elif table_name == 'rubidium_data':
-                    cursor.execute(f'''
-                        INSERT INTO {table_name} (date, value1, value2, efficiency, identifier, stroom, extracted_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', (date_str, record['value1'], record['value2'], record['efficiency'],
-                           identifier, record.get('stroom'), extracted_at))
-                elif table_name in ['gallium_data', 'indium_data', 'thallium_data']:
-                    cursor.execute(f'''
-                        INSERT INTO {table_name} (date, targetstroom, identifier, extracted_at)
-                        VALUES (?, ?, ?, ?)
-                    ''', (date_str, record.get('targetstroom'), identifier, extracted_at))
-                else:
-                    cursor.execute(f'''
-                        INSERT INTO {table_name} (date, value1, value2, efficiency, identifier, extracted_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (date_str, record['value1'], record['value2'], record['efficiency'],
-                           identifier, extracted_at))
+                insert_vals = tuple(_val(record, c, date_str, identifier) for c in col_names)
+                cursor.execute(insert_sql, insert_vals)
                 new_count += 1
 
         self.sqlite_conn.commit()
