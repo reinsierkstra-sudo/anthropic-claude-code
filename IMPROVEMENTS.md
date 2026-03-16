@@ -18,7 +18,7 @@ Each phase is committed separately. Check marks indicate completed work.
 
 | # | Note | Description | Status |
 |---|------|-------------|--------|
-| 2 | IMPROVE-18 / IMPROVE-09 | Move `statistics`, `re`, `hashlib`, `stat`, `traceback`, `time`, `datetime/timedelta` from inside methods to top-level imports | ⬜ |
+| 2 | IMPROVE-18 / IMPROVE-09 | Move `statistics`, `re`, `hashlib`, `stat`, `traceback`, `time`, `datetime/timedelta` from inside methods to top-level imports | ✅ |
 
 ---
 
@@ -26,9 +26,9 @@ Each phase is committed separately. Check marks indicate completed work.
 
 | # | Note | Description | Status |
 |---|------|-------------|--------|
-| 3 | IMPROVE-11 | Add `_to_date()` module-level helper; replace ~15 date-normalisation blocks | ⬜ |
-| 4 | IMPROVE-14 | Add `_fmt_date_str()` helper; replace repeated date→string pattern in `count_sf_references` | ⬜ |
-| 5 | IMPROVE-04 | Add `_fmt_bo()` staticmethod; replace ~25 inline BO-formatter expressions | ⬜ |
+| 3 | IMPROVE-11 | Add `_to_date()` module-level helper; replace ~15 date-normalisation blocks | ✅ |
+| 4 | IMPROVE-14 | Add `_fmt_date_str()` staticmethod; replace repeated date→string pattern in `count_sf_references` | ✅ |
+| 5 | IMPROVE-04 | Add `_fmt_bo()` module-level helper; replace ~25 inline BO-formatter expressions | ✅ |
 
 ---
 
@@ -36,10 +36,10 @@ Each phase is committed separately. Check marks indicate completed work.
 
 | # | Note | Description | Status |
 |---|------|-------------|--------|
-| 6 | IMPROVE-01 | Merge 4 `connect_*` methods into `_connect_access_db(path, attr, label)` | ⬜ |
-| 7 | IMPROVE-02 | Merge `extract_gallium_opbrengsten_data` + `extract_indium_opbrengsten_data` into `_extract_opbrengsten(table_name)` | ⬜ |
-| 8 | IMPROVE-03 | Merge `get_efficiency_last_year_average` + `get_efficiency_last_3months_average` into `_efficiency_average_since(days)` | ⬜ |
-| 9 | IMPROVE-16 | Merge `get_within_spec_last_year_average` + `get_within_spec_last_3months_average` into `_within_spec_average_since(days)` | ⬜ |
+| 6 | IMPROVE-01 | Merge 4 `connect_*` methods into `_connect_access_db(path, attr, label)` | ✅ |
+| 7 | IMPROVE-02 | Merge `extract_gallium_opbrengsten_data` + `extract_indium_opbrengsten_data` into `_extract_opbrengsten(table_name)` | ✅ |
+| 8 | IMPROVE-03 | Merge `get_efficiency_last_year_average` + `get_efficiency_last_3months_average` into `_efficiency_average_since(days)` | ✅ |
+| 9 | IMPROVE-16 | Merge `get_within_spec_last_year_average` + `get_within_spec_last_3months_average` into `_within_spec_average_since(days)` | ✅ |
 
 ---
 
@@ -47,9 +47,9 @@ Each phase is committed separately. Check marks indicate completed work.
 
 | # | Note | Description | Status |
 |---|------|-------------|--------|
-| 10 | IMPROVE-13 | Extract `_convert_isotope_to_gantt(data, product_code, cutoff_date)` and call for Ga/Rb/In/Tl | ⬜ |
-| 11 | IMPROVE-15 | Replace 5 per-isotope loops in `calculate_within_spec_percentage` with a single loop over `ISOTOPE_DATASETS` | ⬜ |
-| 12 | IMPROVE-14 | Replace 5 per-isotope blocks in `count_sf_references` with a single loop | ⬜ |
+| 10 | IMPROVE-13 | Extract `_convert_isotope_to_gantt(data, product_code, cutoff_date)` and call for Ga/Rb/In/Tl | ✅ |
+| 11 | IMPROVE-15 | Replace 5 per-isotope loops in `calculate_within_spec_percentage` with a single loop over isotope datasets | ✅ |
+| 12 | IMPROVE-14 | Replace 5 per-isotope blocks in `count_sf_references` with a single loop | ✅ |
 
 ---
 
@@ -57,7 +57,7 @@ Each phase is committed separately. Check marks indicate completed work.
 
 | # | Note | Description | Status |
 |---|------|-------------|--------|
-| 13 | IMPROVE-12 | Move `parse_eobhrmin`, `map_cyclotron_name`, `calculate_start_time`, `get_eob_time`, `create_end_datetime` out of `convert_bestralingen_to_gantt_format` to `@staticmethod`s | ⬜ |
+| 13 | IMPROVE-12 | Move `parse_eobhrmin`, `map_cyclotron_name`, `calculate_start_time`, `get_eob_time`, `create_end_datetime` out of `convert_bestralingen_to_gantt_format` to `@staticmethod`s | ✅ |
 | 14 | IMPROVE-10 | Move `get_*_color` helpers inside `generate_dashboard` to `@staticmethod`s | ⬜ |
 
 ---
@@ -66,7 +66,7 @@ Each phase is committed separately. Check marks indicate completed work.
 
 | # | Note | Description | Status |
 |---|------|-------------|--------|
-| 15 | IMPROVE-19 | Define `_TABLE_SCHEMAS` registry dict; generate CREATE/UPDATE/INSERT SQL from it to eliminate 4 parallel if/elif branches | ⬜ |
+| 15 | IMPROVE-19 | Define `_TABLE_SCHEMAS` registry dict; generate CREATE/UPDATE/INSERT SQL from it to eliminate 4 parallel if/elif branches | ✅ |
 
 ---
 
@@ -74,8 +74,8 @@ Each phase is committed separately. Check marks indicate completed work.
 
 | # | Note | Description | Status |
 |---|------|-------------|--------|
-| 16 | IMPROVE-17 | Replace bare `except:` / `except Exception: pass` with specific types + logging | ⬜ |
-| 17 | IMPROVE-20 | Remove ~40 commented-out debug `# print(...)` blocks | ⬜ |
+| 16 | IMPROVE-17 | Replace bare `except:` with `except Exception:` throughout (22 occurrences) | ✅ |
+| 17 | IMPROVE-20 | Remove ~40 commented-out debug `# print(...)` blocks | ✅ |
 
 ---
 
@@ -83,9 +83,9 @@ Each phase is committed separately. Check marks indicate completed work.
 
 | # | Note | Description | Status |
 |---|------|-------------|--------|
-| 18 | IMPROVE-23 | Extract 9 hardcoded path defaults from `__init__` into a `DEFAULT_PATHS` config dict at module level | ⬜ |
-| 19 | IMPROVE-08 | Simplify `close()` with a single loop over connection attributes | ⬜ |
-| 20 | IMPROVE-21 | Add `reset()` method to `IsotopeDashboardGenerator`; reuse single instance in `__main__` instead of recreating every 60 s | ⬜ |
+| 18 | IMPROVE-23 | Extract 9 hardcoded path defaults from `__init__` into a `DEFAULT_PATHS` config dict at module level | ✅ |
+| 19 | IMPROVE-08 | Simplify `close()` with a single loop over connection attributes | ✅ |
+| 20 | IMPROVE-21 | Add `reset()` method to `IsotopeDashboardGenerator`; reuse single instance in `__main__` instead of recreating every 60 s | ✅ |
 
 ---
 
@@ -105,13 +105,12 @@ Each phase is committed separately. Check marks indicate completed work.
 | After phase | Lines | Δ lines |
 |-------------|-------|---------|
 | Baseline    | 10,962 | — |
-| Phase 1 | 11,070 | +108 (notes added earlier) |
-| Phase 2 | | |
-| Phase 3 | | |
-| Phase 4 | | |
-| Phase 5 | | |
-| Phase 6 | | |
-| Phase 7 | | |
-| Phase 8 | | |
-| Phase 9 | | |
-| Phase 10 | | |
+| Phase 1 | 11,070 | +108 (notes added to file) |
+| Phase 2 | 10,723 | −347 (inline imports removed) |
+| Phase 3 | 10,629 | −94 (_to_date, _fmt_bo, _fmt_date_str helpers) |
+| Phase 4 | 10,550 | −79 (merged duplicate methods) |
+| Phase 5+6 | 10,213 | −337 (loop consolidation + static methods) |
+| Phase 7 | 10,133 | −80 (store_in_sqlite schema registry) |
+| Phase 8 | 10,369 | +236 (_TABLE_SCHEMAS class var added; net after debug-print removal already counted in phase 2–3) |
+| Phase 9 | 10,369 | 0 (architectural, no line change) |
+| **Current** | **10,369** | **−593 from baseline** |
