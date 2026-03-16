@@ -100,6 +100,18 @@ Each phase is committed separately. Check marks indicate completed work.
 
 ---
 
+## Post-refactor Fixes & Changes
+
+| # | Description | Commit | Status |
+|---|-------------|--------|--------|
+| F1 | **`DEFAULT_PATHS` not defined** — `NameError` on startup; inserted missing dict at module level with all 9 original hardcoded paths | `606eda8` area | ✅ |
+| F2 | **Rubidium cell format** in "Lopende week" / "Afgelopen week" tables changed to `"XX% XXµA"` — removed BO number, integer µA, colour-coded both values via `_fmt_rb_cell` | — | ✅ |
+| F3 | **Remove IMPROVE notes block** — deleted ~180-line `# CODE IMPROVEMENT NOTES` comment block from top of file | `ff2d797` | ✅ |
+| F4 | **Remove inline IMPROVE-XX tags** — cleaned up all remaining `(IMPROVE-XX)` references in docstrings and section-header comments throughout the file | `ff2d797` | ✅ |
+| F5 | **`NameError: cannot access free variable 'date'`** in OTIF section — three for-loops in `create_html_dashboard` used `date = record['date']` at method-body scope, causing Python to treat the `datetime.date` class as an unassigned cell variable for the `_next_iso_week` closure; renamed those to `rec_date` | `a934d71` | ✅ |
+
+---
+
 ## Line Count Progress
 
 | After phase | Lines | Δ lines |
@@ -114,6 +126,8 @@ Each phase is committed separately. Check marks indicate completed work.
 | Phase 8 | 10,369 | +236 (_TABLE_SCHEMAS class var; debug prints already removed) |
 | Phase 9 | 10,369 | 0 (architectural changes only) |
 | Phase 10 | 10,115 | −254 (dashboard dedup + CSS/JS extraction) |
-| **Final** | **10,115** | **−847 from baseline** |
+| Post-fixes | 9,938 | −177 (IMPROVE notes removed + closure fix) |
+| **Current** | **9,938** | **−1,024 from baseline** |
 
-> **23 of 24 improvements completed.** Remaining: IMPROVE-07 (`_writable_output` context manager).
+> **23 of 24 planned improvements completed.** Remaining: IMPROVE-07 (`_writable_output` context manager).
+> **5 post-refactor fixes applied** (F1–F5).
