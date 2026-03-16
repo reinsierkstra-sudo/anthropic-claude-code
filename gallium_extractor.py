@@ -1396,10 +1396,50 @@ class IsotopeDashboardGenerator:
         """Connect to SQLite database"""
         try:
             self.sqlite_conn = sqlite3.connect(self.sqlite_db_path)
+            self._excel_cache_create_table()
             return True
         except Exception as e:
             print(f"✗ Error connecting to SQLite database: {e}")
             return False
+
+    def _excel_cache_create_table(self):
+        """Create the excel_cache table for persisting Excel data between process restarts."""
+        try:
+            self.sqlite_conn.execute('''
+                CREATE TABLE IF NOT EXISTS excel_cache (
+                    cache_key TEXT PRIMARY KEY,
+                    mtime     REAL NOT NULL,
+                    data_json TEXT NOT NULL,
+                    saved_at  TEXT NOT NULL
+                )
+            ''')
+            self.sqlite_conn.commit()
+        except Exception:
+            pass
+
+    def _excel_cache_load_sqlite(self, cache_key, current_mtime):
+        """Return deserialized data dict if SQLite has a matching mtime entry, else None."""
+        try:
+            row = self.sqlite_conn.execute(
+                'SELECT mtime, data_json FROM excel_cache WHERE cache_key = ?',
+                (cache_key,)
+            ).fetchone()
+            if row and abs(row[0] - current_mtime) < 0.001:
+                return json.loads(row[1])
+        except Exception:
+            pass
+        return None
+
+    def _excel_cache_save_sqlite(self, cache_key, mtime, data):
+        """Serialize data as JSON and upsert into excel_cache table."""
+        try:
+            self.sqlite_conn.execute(
+                'INSERT OR REPLACE INTO excel_cache (cache_key, mtime, data_json, saved_at) VALUES (?, ?, ?, ?)',
+                (cache_key, mtime, json.dumps(data), datetime.now().isoformat())
+            )
+            self.sqlite_conn.commit()
+        except Exception:
+            pass
     
     def extract_gallium_data(self):
         """Extract Gallium data from Access - using Targetstroom from Galliumbestralingen"""
@@ -4064,6 +4104,19 @@ class IsotopeDashboardGenerator:
                 self.ploegenwissel_date = cached['ploegenwissel_date']
                 print("  (ploegen excel unchanged — using cache)")
                 return True
+            # Not in memory; try SQLite persistent cache
+            sq = self._excel_cache_load_sqlite('ploegen', current_mtime)
+            if sq:
+                self.ploegen_data = sq['ploegen_data']
+                pwd = sq.get('ploegenwissel_date')
+                self.ploegenwissel_date = date.fromisoformat(pwd) if pwd else None
+                IsotopeDashboardGenerator._excel_cache['ploegen'] = {
+                    'mtime': current_mtime,
+                    'ploegen_data': self.ploegen_data,
+                    'ploegenwissel_date': self.ploegenwissel_date,
+                }
+                print("  (ploegen excel unchanged — using SQLite cache)")
+                return True
         except Exception:
             pass  # If mtime check fails, proceed with normal load
 
@@ -4129,13 +4182,18 @@ class IsotopeDashboardGenerator:
             
             wb.close()
             self.ploegen_data = ploegen
-            # Update cache
+            # Update in-process cache and persist to SQLite
             try:
+                mtime_now = os.path.getmtime(self.ploegen_excel)
                 IsotopeDashboardGenerator._excel_cache['ploegen'] = {
-                    'mtime': os.path.getmtime(self.ploegen_excel),
+                    'mtime': mtime_now,
                     'ploegen_data': ploegen,
-                    'ploegenwissel_date': self.ploegenwissel_date
+                    'ploegenwissel_date': self.ploegenwissel_date,
                 }
+                self._excel_cache_save_sqlite('ploegen', mtime_now, {
+                    'ploegen_data': ploegen,
+                    'ploegenwissel_date': self.ploegenwissel_date.isoformat() if self.ploegenwissel_date else None,
+                })
             except Exception:
                 pass
             return True
@@ -4202,6 +4260,16 @@ class IsotopeDashboardGenerator:
             if cached and cached['mtime'] == current_mtime:
                 self.vsm_data = cached['vsm_data']
                 print("  (VSM excel unchanged — using cache)")
+                return True
+            # Not in memory; try SQLite persistent cache
+            sq = self._excel_cache_load_sqlite('vsm', current_mtime)
+            if sq:
+                self.vsm_data = sq['vsm_data']
+                IsotopeDashboardGenerator._excel_cache['vsm'] = {
+                    'mtime': current_mtime,
+                    'vsm_data': self.vsm_data,
+                }
+                print("  (VSM excel unchanged — using SQLite cache)")
                 return True
         except Exception:
             pass
@@ -4315,10 +4383,12 @@ class IsotopeDashboardGenerator:
             wb.close()
 
             try:
+                mtime_now = os.path.getmtime(self.vsm_excel)
                 IsotopeDashboardGenerator._excel_cache['vsm'] = {
-                    'mtime': os.path.getmtime(self.vsm_excel),
+                    'mtime': mtime_now,
                     'vsm_data': self.vsm_data,
                 }
+                self._excel_cache_save_sqlite('vsm', mtime_now, {'vsm_data': self.vsm_data})
             except Exception:
                 pass
 
@@ -4349,6 +4419,19 @@ class IsotopeDashboardGenerator:
             if cached and cached['mtime'] == current_mtime:
                 self.planning_data = cached['planning_data']
                 print("  (planning excel unchanged — using cache)")
+                return True
+            # Not in memory; try SQLite persistent cache
+            sq = self._excel_cache_load_sqlite('planning', current_mtime)
+            if sq:
+                # Keys were stored as ISO date strings; convert back to date objects
+                self.planning_data = {
+                    date.fromisoformat(k): v for k, v in sq['planning_data'].items()
+                }
+                IsotopeDashboardGenerator._excel_cache['planning'] = {
+                    'mtime': current_mtime,
+                    'planning_data': self.planning_data,
+                }
+                print("  (planning excel unchanged — using SQLite cache)")
                 return True
         except Exception:
             pass  # If mtime check fails, proceed with normal load
@@ -4420,12 +4503,17 @@ class IsotopeDashboardGenerator:
             
             wb.close()
             self.planning_data = planning
-            # Update cache
+            # Update in-process cache and persist to SQLite
             try:
+                mtime_now = os.path.getmtime(self.planning_excel)
                 IsotopeDashboardGenerator._excel_cache['planning'] = {
-                    'mtime': os.path.getmtime(self.planning_excel),
-                    'planning_data': planning
+                    'mtime': mtime_now,
+                    'planning_data': planning,
                 }
+                # date keys must be serialized as ISO strings for JSON
+                self._excel_cache_save_sqlite('planning', mtime_now, {
+                    'planning_data': {k.isoformat(): v for k, v in planning.items()},
+                })
             except Exception:
                 pass
             return True
@@ -4467,6 +4555,18 @@ class IsotopeDashboardGenerator:
                 self.otif_kpi_data = cached['otif_kpi_data']
                 self.otif_table_data = cached['otif_table_data']
                 print("  (OTIF excel unchanged — using cache)")
+                return True
+            # Not in memory; try SQLite persistent cache
+            sq = self._excel_cache_load_sqlite('otif', current_mtime)
+            if sq:
+                self.otif_kpi_data   = sq['otif_kpi_data']
+                self.otif_table_data = sq['otif_table_data']
+                IsotopeDashboardGenerator._excel_cache['otif'] = {
+                    'mtime': current_mtime,
+                    'otif_kpi_data':   self.otif_kpi_data,
+                    'otif_table_data': self.otif_table_data,
+                }
+                print("  (OTIF excel unchanged — using SQLite cache)")
                 return True
         except Exception:
             pass  # If mtime check fails, proceed with normal load
@@ -4564,13 +4664,18 @@ class IsotopeDashboardGenerator:
             self.otif_table_data = {k: dict(v) for k, v in otif_table.items()}
             wb.close()
 
-            # Update cache
+            # Update in-process cache and persist to SQLite
             try:
+                mtime_now = os.path.getmtime(otif_path)
                 IsotopeDashboardGenerator._excel_cache['otif'] = {
-                    'mtime': os.path.getmtime(otif_path),
-                    'otif_kpi_data': kpi_data,
-                    'otif_table_data': self.otif_table_data
+                    'mtime': mtime_now,
+                    'otif_kpi_data':   kpi_data,
+                    'otif_table_data': self.otif_table_data,
                 }
+                self._excel_cache_save_sqlite('otif', mtime_now, {
+                    'otif_kpi_data':   kpi_data,
+                    'otif_table_data': self.otif_table_data,
+                })
             except Exception:
                 pass
 
@@ -6259,14 +6364,24 @@ class IsotopeDashboardGenerator:
         return f"{bo_span} <span style='color: {color}; font-weight: bold; font-size: 25px;'>{val}</span>"
 
     def _fmt_rb_cell(self, record, with_onclick=False):
-        """Format a Rubidium table cell as HTML: 'XX% XXµA'."""
+        """Format a Rubidium table cell as HTML: 'BO XX% XXµA'."""
         if record is None or record.get('efficiency') is None:
             return ''
+        bo = record.get('identifier', '')
+        rec_date = record.get('date', '')
+        bo_fmt = _fmt_bo(bo)
         eff_color = self._get_efficiency_color(record['efficiency'])
         stroom = record.get('stroom')
         stroom_color = self._get_rb_stroom_color(stroom)
         stroom_str = f"{round(stroom)}µA" if stroom is not None else 'N/A'
-        return (f"<span style='color: {eff_color}; font-weight: bold; font-size: 25px;'>"
+        if with_onclick:
+            bo_span = (f"<span onclick=\"showProductionHistory('{bo}', '{rec_date}', 'Rubidium')\" "
+                       f"style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; "
+                       f"text-decoration: underline;'>{bo_fmt}</span>")
+        else:
+            bo_span = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{bo_fmt}</span>"
+        return (f"{bo_span} "
+                f"<span style='color: {eff_color}; font-weight: bold; font-size: 25px;'>"
                 f"{round(record['efficiency'])}%</span> "
                 f"<span style='color: {stroom_color}; font-weight: bold; font-size: 25px;'>{stroom_str}</span>")
 
