@@ -439,7 +439,7 @@ class IsotopeDashboardGenerator:
         try:
             with open(filepath, 'rb') as f:
                 return hashlib.sha256(f.read()).hexdigest()
-        except:
+        except Exception:
             return None
     
     def set_readonly(self, filepath):
@@ -459,7 +459,7 @@ class IsotopeDashboardGenerator:
             current_permissions = os.stat(filepath).st_mode
             os.chmod(filepath, current_permissions | stat.S_IWUSR)
             return True
-        except:
+        except Exception:
             return False
     
     def check_file_integrity(self, html_path, hash_path):
@@ -2444,7 +2444,7 @@ class IsotopeDashboardGenerator:
             elif isinstance(d, str):
                 try:
                     d = datetime.strptime(d, '%Y-%m-%d').date()
-                except:
+                except Exception:
                     continue
             iso_year, iso_week, _ = d.isocalendar()
             key = (iso_year, iso_week)
@@ -2786,7 +2786,7 @@ class IsotopeDashboardGenerator:
                 week_date = datetime.strptime(f"{w['year']}-W{w['week']:02d}-1", '%Y-W%W-%w')
                 if week_date >= one_year_ago:
                     past_year.append(w)
-            except:
+            except Exception:
                 continue
         
         return sorted(past_year, key=lambda x: (x['year'], x['week']))
@@ -2865,7 +2865,7 @@ class IsotopeDashboardGenerator:
             if isinstance(d, str):
                 try:
                     return datetime.strptime(d, '%Y-%m-%d').date()
-                except:
+                except Exception:
                     return None
             return None
 
@@ -2895,7 +2895,7 @@ class IsotopeDashboardGenerator:
                         'type': entry.get('type'),
                         'isotope': isotope,
                     })
-                except:
+                except Exception:
                     continue
             events.sort(key=lambda e: e['ts'])
 
@@ -3103,7 +3103,7 @@ class IsotopeDashboardGenerator:
                 week_date = datetime.strptime(f"{w['year']}-W{w['week']:02d}-1", '%Y-W%W-%w')
                 if week_date >= one_year_ago:
                     pcts.append(w['percentage'])
-            except:
+            except Exception:
                 continue
         return statistics.mean(pcts) if pcts else 0
 
@@ -3121,7 +3121,7 @@ class IsotopeDashboardGenerator:
                 week_date = datetime.strptime(f"{w['year']}-W{w['week']:02d}-1", '%Y-W%W-%w')
                 if week_date >= three_months_ago:
                     pcts.append(w['percentage'])
-            except:
+            except Exception:
                 continue
         return statistics.mean(pcts) if pcts else 0
 
@@ -3208,7 +3208,7 @@ class IsotopeDashboardGenerator:
             elif isinstance(eob_date, str):
                 try:
                     eob_date = datetime.strptime(eob_date, '%Y-%m-%d').date()
-                except:
+                except Exception:
                     continue
             
             # Find first opbrengst date after EOB date
@@ -3220,7 +3220,7 @@ class IsotopeDashboardGenerator:
                 elif isinstance(opbrengst_date, str):
                     try:
                         opbrengst_date = datetime.strptime(opbrengst_date, '%Y-%m-%d').date()
-                    except:
+                    except Exception:
                         continue
                 
                 if opbrengst_date > eob_date:
@@ -3246,7 +3246,7 @@ class IsotopeDashboardGenerator:
                     hours = float(hours_part) + float(minutes_part) / 60.0
                 else:
                     hours = float(duur_str)
-            except:
+            except Exception:
                 continue
             
             # Calculate µAh
@@ -3385,7 +3385,7 @@ class IsotopeDashboardGenerator:
             elif isinstance(eob_date, str):
                 try:
                     eob_date = datetime.strptime(eob_date, '%Y-%m-%d').date()
-                except:
+                except Exception:
                     continue
             
             # Find first opbrengst date after EOB date
@@ -3397,7 +3397,7 @@ class IsotopeDashboardGenerator:
                 elif isinstance(opbrengst_date, str):
                     try:
                         opbrengst_date = datetime.strptime(opbrengst_date, '%Y-%m-%d').date()
-                    except:
+                    except Exception:
                         continue
                 
                 if opbrengst_date > eob_date:
@@ -3423,7 +3423,7 @@ class IsotopeDashboardGenerator:
                     hours = float(hours_part) + float(minutes_part) / 60.0
                 else:
                     hours = float(duur_str)
-            except:
+            except Exception:
                 continue
             
             # Calculate µAh
@@ -3546,7 +3546,7 @@ class IsotopeDashboardGenerator:
             elif isinstance(date, str):
                 try:
                     date = datetime.strptime(date, '%Y-%m-%d').date()
-                except:
+                except Exception:
                     continue
             
             stroom = record.get('stroom')
@@ -3564,7 +3564,7 @@ class IsotopeDashboardGenerator:
                     hours = float(hours_part) + float(minutes_part) / 60.0
                 else:
                     hours = float(duur_str)
-            except:
+            except Exception:
                 continue
             
             # Filter: Only include productions between 3 and 6 hours
@@ -3690,7 +3690,7 @@ class IsotopeDashboardGenerator:
             elif isinstance(date, str):
                 try:
                     date = datetime.strptime(date, '%Y-%m-%d').date()
-                except:
+                except Exception:
                     continue
             
             totale_dosis = record.get('totale_dosis')
@@ -4031,7 +4031,7 @@ class IsotopeDashboardGenerator:
                 elif isinstance(stop_date, str):
                     try:
                         stop_date = datetime.strptime(stop_date, '%Y-%m-%d').date()
-                    except:
+                    except Exception:
                         return None, None
                 
                 # Parse stop time using improved parser
@@ -4254,7 +4254,7 @@ class IsotopeDashboardGenerator:
                     # Try to parse as string
                     try:
                         self.ploegenwissel_date = datetime.strptime(str(ploegenwissel_cell), '%Y-%m-%d').date()
-                    except:
+                    except Exception:
                         self.ploegenwissel_date = None
                         print(f"⚠ Warning: Could not parse ploegenwissel date from Q1: {ploegenwissel_cell}")
             else:
@@ -4308,7 +4308,7 @@ class IsotopeDashboardGenerator:
             if temp_file and os.path.exists(temp_file):
                 try:
                     os.remove(temp_file)
-                except:
+                except Exception:
                     pass
     
     def load_productieschema_html(self):
@@ -4541,7 +4541,7 @@ class IsotopeDashboardGenerator:
                 elif isinstance(date_val, str):
                     try:
                         date = datetime.strptime(date_val, '%Y-%m-%d').date()
-                    except:
+                    except Exception:
                         continue
                 else:
                     continue
@@ -4599,7 +4599,7 @@ class IsotopeDashboardGenerator:
             if temp_file and os.path.exists(temp_file):
                 try:
                     os.remove(temp_file)
-                except:
+                except Exception:
                     pass
     
     def load_otif_data(self):
