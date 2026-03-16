@@ -6441,23 +6441,14 @@ class IsotopeDashboardGenerator:
         return f"{bo_span} <span style='color: {color}; font-weight: bold; font-size: 25px;'>{val}</span>"
 
     def _fmt_rb_cell(self, record, with_onclick=False):
-        """Format a Rubidium table cell as HTML (IMPROVE-06)."""
+        """Format a Rubidium table cell as HTML: 'XX% XXµA' (IMPROVE-06)."""
         if record is None or record.get('efficiency') is None:
             return ''
-        bo = record.get('identifier', '')
-        date = record.get('date', '')
-        bo_fmt = _fmt_bo(bo)
         eff_color = self._get_efficiency_color(record['efficiency'])
         stroom = record.get('stroom')
         stroom_color = self._get_rb_stroom_color(stroom)
-        stroom_str = f"{stroom:.1f}µA" if stroom is not None else 'N/A'
-        if with_onclick:
-            bo_span = (f"<span onclick=\"showProductionHistory('{bo}', '{date}', 'Rubidium')\" "
-                       f"style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; "
-                       f"text-decoration: underline;'>{bo_fmt}</span>")
-        else:
-            bo_span = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{bo_fmt}</span>"
-        return (f"{bo_span} <span style='color: {eff_color}; font-weight: bold; font-size: 25px;'>"
+        stroom_str = f"{round(stroom)}µA" if stroom is not None else 'N/A'
+        return (f"<span style='color: {eff_color}; font-weight: bold; font-size: 25px;'>"
                 f"{round(record['efficiency'])}%</span> "
                 f"<span style='color: {stroom_color}; font-weight: bold; font-size: 25px;'>{stroom_str}</span>")
 
