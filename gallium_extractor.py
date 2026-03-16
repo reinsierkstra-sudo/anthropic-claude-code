@@ -116,6 +116,7 @@ SPEC_SETTINGS = {
 # ============================================================================
 # Database configuration
 PRODUCTIONS_DATABASE = r"\\pett-fs01p\nucleair\Isotopen productie\Cyclotron formulieren\productions_database.json"
+_PRODUCTIONS_DATABASE_FALLBACK = r"C:\Users\Reinder.sierkstra\OneDrive - CURIUM\Niet onedrive spullen\Desktop\productions_database.json"
 CYCLOTRON_URL = "http://pett-webw02p/procdashboard/cyclotron.asp"
 
 # ============================================================================
@@ -5954,11 +5955,15 @@ class IsotopeDashboardGenerator:
         # Load productions changelog for OTIF missed production padding
         planning_changelog = []
         try:
-            if os.path.exists(PRODUCTIONS_DATABASE):
-                with open(PRODUCTIONS_DATABASE, 'r', encoding='utf-8') as f:
+            _prod_db_path = next(
+                (p for p in (PRODUCTIONS_DATABASE, _PRODUCTIONS_DATABASE_FALLBACK) if os.path.exists(p)),
+                None,
+            )
+            if _prod_db_path:
+                with open(_prod_db_path, 'r', encoding='utf-8') as f:
                     _db = json.load(f)
                     planning_changelog = _db.get('changelog', [])
-                print(f"✓ Loaded planning changelog ({len(planning_changelog)} entries)")
+                print(f"✓ Loaded planning changelog ({len(planning_changelog)} entries) from {_prod_db_path}")
             else:
                 print("⚠ Warning: productions_database.json not found, OTIF will use actuals only")
         except Exception as e:
