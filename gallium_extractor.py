@@ -2040,14 +2040,6 @@ class IsotopeDashboardGenerator:
                 totale_storingstijd = row[12]
                 opmerking = row[13]
                 
-                # DEBUG: Log BO 52478 or first 2
-                # if not hasattr(self, '_iodine_extract_debug'):
-                #     self._iodine_extract_debug = 0
-                # if bo_nummer == 52478 or self._iodine_extract_debug < 2:
-                #     print(f"\n  [IODINE] BO {bo_nummer}: totale_bestralingstijd={totale_bestralingstijd} (type={type(totale_bestralingstijd).__name__})")
-                #     if bo_nummer != 52478:
-                #         self._iodine_extract_debug += 1
-                
                 # Calculate Yield% = Meting D1 / (Meting D1 + Meting waste) × 100
                 if meting_d1 is not None and meting_waste is not None and (meting_d1 + meting_waste) != 0:
                     yield_percent = (meting_d1 / (meting_d1 + meting_waste)) * 100
@@ -2088,11 +2080,6 @@ class IsotopeDashboardGenerator:
                     'totale_storingstijd': totale_storingstijd,
                     'opmerking': opmerking
                 })
-            
-            # Debug first 3 records
-            # print(f">>> FIRST 3 RECORDS:")
-            # for i, rec in enumerate(self.iodine_data[:3]):
-            #     print(f"  {i}: BO={rec.get('identifier')}, BO_T={rec.get('bo_targetstroom')}, T={rec.get('targetstroom')}")
             
             return True
             
@@ -3093,12 +3080,6 @@ class IsotopeDashboardGenerator:
         
         if not weekly_data:
             return [], 0
-        
-        # DEBUG: Print first 15 weeks to see if there are duplicates
-        # print("\n=== DEBUG: Last 15 weeks ===")
-        # for i, record in enumerate(weekly_data[:15]):
-        #     print(f"{i+1}. Week {record['week']} ({record['year']}): {record['percentage']:.1f}% - Friday: {record['friday']}")
-        # print("=" * 50 + "\n")
         
         # Calculate all-time average, excluding percentages below 10%
         valid_percentages = [w['percentage'] for w in weekly_data if w['percentage'] >= 10.0]
@@ -5533,11 +5514,7 @@ class IsotopeDashboardGenerator:
                 debug_this = self._gallium_bob_debug < 2
                 
                 duur_hours = self.parse_time_duration(duur, debug_bo=debug_this) if duur else 0
-                
-                # if debug_this and duur:
-                #     print(f"  [GALLIUM BOB] BO {bo_num}: EOB={eob_dt.strftime('%H:%M')} - {duur_hours}h = BOB={( eob_dt - timedelta(hours=duur_hours)).strftime('%H:%M')}")
-                #     self._gallium_bob_debug += 1
-                
+
                 # CORRECT: BOB = EOB - duration
                 start_dt = eob_dt - timedelta(hours=duur_hours)
                 end_dt = eob_dt
@@ -5598,7 +5575,6 @@ class IsotopeDashboardGenerator:
                 duur_hours = self.parse_time_duration(duur, debug_bo=debug_this) if duur else 0
                 
                 if debug_this and duur:
-                    # print(f"  [RUBIDIUM BOB] BO {bo_num}: EOB={eob_dt.strftime('%H:%M')} - {duur_hours}h = BOB={(eob_dt - timedelta(hours=duur_hours)).strftime('%H:%M')}")
                     self._rubidium_bob_debug += 1
                 
                 # CORRECT: BOB = EOB - duration
@@ -5658,7 +5634,6 @@ class IsotopeDashboardGenerator:
                 duur_hours = self.parse_time_duration(duur, debug_bo=debug_this) if duur else 0
                 
                 if debug_this and duur:
-                    # print(f"  [INDIUM BOB] BO {bo_num}: EOB={eob_dt.strftime('%H:%M')} - {duur_hours}h = BOB={(eob_dt - timedelta(hours=duur_hours)).strftime('%H:%M')}")
                     self._indium_bob_debug += 1
                 
                 # CORRECT: BOB = EOB - duration
@@ -5721,7 +5696,6 @@ class IsotopeDashboardGenerator:
                 duur_hours = self.parse_time_duration(duur, debug_bo=debug_this) if duur else 0
                 
                 if debug_this and duur:
-                    # print(f"  [THALLIUM BOB] BO {bo_num}: EOB={eob_dt.strftime('%H:%M')} - {duur_hours}h = BOB={(eob_dt - timedelta(hours=duur_hours)).strftime('%H:%M')}")
                     self._thallium_bob_debug += 1
                 
                 # CORRECT: BOB = EOB - duration
@@ -5788,7 +5762,6 @@ class IsotopeDashboardGenerator:
                     duur_hours = 12  # fallback
                 
                 if debug_this:
-                    # print(f"  [IODINE BOB] BO {bo_num}: EOB={eob_dt.strftime('%H:%M')} - {duur_hours}h = BOB={(eob_dt - timedelta(hours=duur_hours)).strftime('%H:%M')}")
                     if bo_num != 52478:
                         self._iodine_bob_debug += 1
                 
@@ -6588,7 +6561,6 @@ class IsotopeDashboardGenerator:
             cyclotron_data = []
         
         # Convert bestralingen data to gantt format (6 months history)
-        # print("[DEBUG] ===== STARTING BESTRALINGEN TO GANTT CONVERSION =====")
         try:
             bestralingen_gantt_data = _t('convert_bestralingen_gantt', self.convert_bestralingen_to_gantt_format)
             print(f"✓ Converted bestralingen data to gantt format ({len(bestralingen_gantt_data)} entries)")
@@ -6596,8 +6568,7 @@ class IsotopeDashboardGenerator:
             print(f"⚠ Warning: Could not convert bestralingen data: {e}")
             traceback.print_exc()
             bestralingen_gantt_data = []
-        # print("[DEBUG] ===== FINISHED BESTRALINGEN TO GANTT CONVERSION =====")
-        
+
         # Combine cyclotron data with bestralingen data
         # Deduplicate: if same BO number exists in both, prefer HISTORICAL (actual) data over planning
         historical_bonrs = {item['bonr']: item['startDate'] for item in bestralingen_gantt_data if item.get('bonr')}
