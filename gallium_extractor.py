@@ -1837,11 +1837,6 @@ class IsotopeDashboardGenerator:
                 eobhrmin = row[5]
                 opmerking = row[6]
                 
-                # DEBUG: First 2 only
-                # if debug_count < 2:
-                #     print(f"\n  [INDIUM] BO {bo_nummer}: duur={duur} (type={type(duur).__name__})")
-                #     debug_count += 1
-                
                 # Keep the full bestralingspositie value (e.g., "IBA 2.1", "IBA 1.2", "Philips")
                 # This will be parsed by map_cyclotron_name() during gantt conversion
                 cyclotron = bestralingspositie
@@ -1927,11 +1922,6 @@ class IsotopeDashboardGenerator:
                 eob_tijd = row[4]
                 opmerking = row[5]
                 
-                # DEBUG: First 2 only
-                # if debug_count < 2:
-                #     print(f"\n  [THALLIUM] BO {bo_nummer}: duur={duur} (type={type(duur).__name__})")
-                #     debug_count += 1
-                
                 # Determine kant from first digit of BO number (Thallium only)
                 # 1 → Kant 1 (P1)
                 # 2 → Kant 2 (P2)
@@ -2007,9 +1997,7 @@ class IsotopeDashboardGenerator:
     def extract_iodine_data(self):
         """Extract Iodine 123 data from Access"""
         cursor = self.access_conn.cursor()
-        
-        # print(">>> STARTING IODINE EXTRACTION <<<")
-        
+
         try:
             query = """
                 SELECT 
