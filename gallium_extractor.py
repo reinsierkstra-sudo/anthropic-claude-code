@@ -7404,12 +7404,12 @@ class IsotopeDashboardGenerator:
         tl_rows = ""
         for record in tl_running:
             targetstroom = record.get('targetstroom')
-            date = record['date']
+            rec_date = record['date']
             identifier = record.get('identifier', 'N/A') if record.get('identifier') else 'N/A'
             kant = record.get('kant', '')
             kant_display = '' if kant == 'Unknown' else kant
             opmerking = record.get('opmerking', '-') if record.get('opmerking') else '-'
-            
+
             if targetstroom is not None:
                 val = f"{targetstroom:.2f} µA"
                 color = self._get_targetstroom_color(targetstroom, 'thallium')
@@ -7417,16 +7417,16 @@ class IsotopeDashboardGenerator:
             else:
                 val = "N/A"
                 should_show_dropdown = False
-            
+
             # Create unique ID for dropdown
-            dropdown_id = f"Thallium_{date}_{identifier}".replace('.', '_').replace('-', '_').replace(' ', '_')
-            
+            dropdown_id = f"Thallium_{rec_date}_{identifier}".replace('.', '_').replace('-', '_').replace(' ', '_')
+
             # Get saved comment from database
-            selected_value = self.get_saved_comment('Thallium', date, identifier)
-            
+            selected_value = self.get_saved_comment('Thallium', rec_date, identifier)
+
             dropdown_html = ""
             if should_show_dropdown or selected_value:
-                dropdown_html = f"""<select id="{dropdown_id}" onchange="saveComment('Thallium', '{date}', '{identifier}', this.value)" style="width: 100%; padding: 5px;">
+                dropdown_html = f"""<select id="{dropdown_id}" onchange="saveComment('Thallium', '{rec_date}', '{identifier}', this.value)" style="width: 100%; padding: 5px;">
                         <option value="">Selecteer reden...</option>
                         <option value="Targetinstallatie storing" {'selected' if selected_value == 'Targetinstallatie storing' else ''}>Targetinstallatie storing</option>
                         <option value="Cyclotron storing" {'selected' if selected_value == 'Cyclotron storing' else ''}>Cyclotron storing</option>
@@ -7434,9 +7434,9 @@ class IsotopeDashboardGenerator:
                         <option value="Verstoring RPP" {'selected' if selected_value == 'Verstoring RPP' else ''}>Verstoring RPP</option>
                         <option value="Verstoring onbekend" {'selected' if selected_value == 'Verstoring onbekend' else ''}>Verstoring onbekend</option>
                     </select>"""
-            
+
             tl_rows += f"""<tr>
-                <td>{date}</td>
+                <td>{rec_date}</td>
                 <td>{identifier}</td>
                 <td>{val}</td>
                 <td>{kant_display}</td>
@@ -7449,27 +7449,27 @@ class IsotopeDashboardGenerator:
         # Rubidium with stroom column
         rb_rows = ""
         for record in rb_running:
-            date = record['date']
+            rec_date = record['date']
             eff = f"{record['efficiency']:.2f}%" if record['efficiency'] is not None else "Missing"
             val1 = f"{record['value1']:.2f}" if record['value1'] is not None else "N/A"
             val2 = f"{record['value2']:.2f}" if record['value2'] is not None else "N/A"
             identifier = str(int(record.get('identifier'))) if record.get('identifier') is not None else 'N/A'
             stroom = f"{record.get('stroom'):.2f}" if record.get('stroom') is not None else "N/A"
             opmerking = record.get('opmerking', '-') if record.get('opmerking') else '-'
-            
+
             # Determine if dropdown should be shown
             color = self._get_efficiency_color(record.get('efficiency'))
             should_show_dropdown = (color == "#FF2400")
 
             # Create unique ID for dropdown
-            dropdown_id = f"Rubidium_{date}_{identifier}".replace('.', '_').replace('-', '_').replace(' ', '_')
-            
+            dropdown_id = f"Rubidium_{rec_date}_{identifier}".replace('.', '_').replace('-', '_').replace(' ', '_')
+
             # Get saved comment from database
-            selected_value = self.get_saved_comment('Rubidium', date, identifier)
-            
+            selected_value = self.get_saved_comment('Rubidium', rec_date, identifier)
+
             dropdown_html = ""
             if should_show_dropdown or selected_value:
-                dropdown_html = f"""<select id="{dropdown_id}" onchange="saveComment('Rubidium', '{date}', '{identifier}', this.value)" style="width: 100%; padding: 5px;">
+                dropdown_html = f"""<select id="{dropdown_id}" onchange="saveComment('Rubidium', '{rec_date}', '{identifier}', this.value)" style="width: 100%; padding: 5px;">
                         <option value="">Selecteer reden...</option>
                         <option value="Targetinstallatie storing" {'selected' if selected_value == 'Targetinstallatie storing' else ''}>Targetinstallatie storing</option>
                         <option value="Cyclotron storing" {'selected' if selected_value == 'Cyclotron storing' else ''}>Cyclotron storing</option>
@@ -7477,9 +7477,9 @@ class IsotopeDashboardGenerator:
                         <option value="Verstoring RPP" {'selected' if selected_value == 'Verstoring RPP' else ''}>Verstoring RPP</option>
                         <option value="Verstoring onbekend" {'selected' if selected_value == 'Verstoring onbekend' else ''}>Verstoring onbekend</option>
                     </select>"""
-            
+
             rb_rows += f"""<tr>
-                <td>{date}</td>
+                <td>{rec_date}</td>
                 <td>{identifier}</td>
                 <td>{val1}</td>
                 <td>{val2}</td>
@@ -7494,7 +7494,7 @@ class IsotopeDashboardGenerator:
         # Iodine with BO Targetstroom and targetstroom columns
         io_rows = ""
         for record in io_running:
-            date = record['date']
+            rec_date = record['date']
             yield_pct = f"{record['yield_percent']:.1f}%" if record.get('yield_percent') is not None else "Missing"
             output_pct = f"{record['output_percent']:.1f}%" if record.get('output_percent') is not None else "Missing"
             val1 = f"{record['value1']:.2f}" if record['value1'] is not None else "N/A"
@@ -7503,22 +7503,22 @@ class IsotopeDashboardGenerator:
             bo_target = f"{record.get('bo_targetstroom'):.2f}" if record.get('bo_targetstroom') is not None and record.get('bo_targetstroom') != -999 else "N/A"
             target = f"{record.get('targetstroom'):.2f}" if record.get('targetstroom') is not None and record.get('targetstroom') != -999 else "N/A"
             opmerking = record.get('opmerking', '-') if record.get('opmerking') else '-'
-            
+
             # Determine if dropdown should be shown (using Iodine-specific logic)
             yield_color = self._get_iodine_yield_color(record.get('yield_percent'))
             output_color = self._get_iodine_output_color(record.get('output_percent'))
             target_color = self._get_iodine_targetstroom_color(record.get('targetstroom'))
             should_show_dropdown = (yield_color == "#FF2400" or output_color == "#FF2400" or target_color == "#FF2400")
-            
+
             # Create unique ID for dropdown
-            dropdown_id = f"Iodine_{date}_{identifier}".replace('.', '_').replace('-', '_').replace(' ', '_')
-            
+            dropdown_id = f"Iodine_{rec_date}_{identifier}".replace('.', '_').replace('-', '_').replace(' ', '_')
+
             # Get saved comment from database
-            selected_value = self.get_saved_comment('Iodine', date, identifier)
-            
+            selected_value = self.get_saved_comment('Iodine', rec_date, identifier)
+
             dropdown_html = ""
             if should_show_dropdown or selected_value:
-                dropdown_html = f"""<select id="{dropdown_id}" onchange="saveComment('Iodine', '{date}', '{identifier}', this.value)" style="width: 100%; padding: 5px;">
+                dropdown_html = f"""<select id="{dropdown_id}" onchange="saveComment('Iodine', '{rec_date}', '{identifier}', this.value)" style="width: 100%; padding: 5px;">
                         <option value="">Selecteer reden...</option>
                         <option value="Targetinstallatie storing" {'selected' if selected_value == 'Targetinstallatie storing' else ''}>Targetinstallatie storing</option>
                         <option value="Cyclotron storing" {'selected' if selected_value == 'Cyclotron storing' else ''}>Cyclotron storing</option>
@@ -7526,9 +7526,9 @@ class IsotopeDashboardGenerator:
                         <option value="Verstoring RPP" {'selected' if selected_value == 'Verstoring RPP' else ''}>Verstoring RPP</option>
                         <option value="Verstoring onbekend" {'selected' if selected_value == 'Verstoring onbekend' else ''}>Verstoring onbekend</option>
                     </select>"""
-            
+
             io_rows += f"""<tr>
-                <td>{date}</td>
+                <td>{rec_date}</td>
                 <td>{identifier}</td>
                 <td>{val1}</td>
                 <td>{val2}</td>
