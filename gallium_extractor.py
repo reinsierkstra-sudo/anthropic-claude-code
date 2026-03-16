@@ -562,8 +562,7 @@ class IsotopeDashboardGenerator:
         
         # Cutoff date - 6 months ago
         cutoff_date = datetime.now() - timedelta(days=180)
-        # print(f"[DEBUG] Cutoff date for gantt: {cutoff_date.strftime('%Y-%m-%d')}")
-        
+
         # Helper function to map cyclotron names to P1/P2/P0 format
         def map_cyclotron_name(cyclotron, bonr):
             """Map cyclotron name and BO number to standard P1/P2/P0 format"""
@@ -679,9 +678,6 @@ class IsotopeDashboardGenerator:
             return None
         
         # Convert Gallium data
-        # print(f"[DEBUG] Processing {len(self.gallium_data)} Gallium records...")
-        # if len(self.gallium_data) > 0:
-        #     print(f"[DEBUG] First Gallium item structure: {self.gallium_data[0]}")
         gallium_converted = 0
         for item in self.gallium_data:
             item_date = _to_date(item['date'])
@@ -696,7 +692,6 @@ class IsotopeDashboardGenerator:
             
             eob_time = get_eob_time(item)
             if not eob_time:
-                # print(f"[DEBUG] Skipping Gallium BO {item.get('identifier')} - could not parse eobhrmin: {item.get('eobhrmin')}")
                 continue
             
             end_datetime = create_end_datetime(item_date, eob_time)
@@ -720,11 +715,8 @@ class IsotopeDashboardGenerator:
                     'type': 'Data'
                 })
                 gallium_converted += 1
-        
-        # print(f"[DEBUG] Converted {gallium_converted} Gallium records")
-        
+
         # Convert Rubidium data
-        # print(f"[DEBUG] Processing {len(self.rubidium_data)} Rubidium records...")
         rubidium_converted = 0
         for item in self.rubidium_data:
             item_date = _to_date(item['date'])
@@ -761,11 +753,8 @@ class IsotopeDashboardGenerator:
                     'type': 'Data'
                 })
                 rubidium_converted += 1
-        
-        # print(f"[DEBUG] Converted {rubidium_converted} Rubidium records")
-        
+
         # Convert Indium data
-        # print(f"[DEBUG] Processing {len(self.indium_data)} Indium records...")
         indium_converted = 0
         for item in self.indium_data:
             item_date = _to_date(item['date'])
@@ -802,11 +791,8 @@ class IsotopeDashboardGenerator:
                     'type': 'Data'
                 })
                 indium_converted += 1
-        
-        # print(f"[DEBUG] Converted {indium_converted} Indium records")
-        
+
         # Convert Thallium data
-        # print(f"[DEBUG] Processing {len(self.thallium_data)} Thallium records...")
         thallium_converted = 0
         for item in self.thallium_data:
             item_date = _to_date(item['date'])
@@ -843,11 +829,8 @@ class IsotopeDashboardGenerator:
                     'type': 'Data'
                 })
                 thallium_converted += 1
-        
-        # print(f"[DEBUG] Converted {thallium_converted} Thallium records")
-        
+
         # Convert Iodine data
-        # print(f"[DEBUG] Processing {len(self.iodine_data)} Iodine records...")
         iodine_converted = 0
         for item in self.iodine_data:
             # For Iodine, prefer stop_datum over date (stop_datum is actual EOB date)
@@ -899,10 +882,7 @@ class IsotopeDashboardGenerator:
                 'type': 'Data'
             })
             iodine_converted += 1
-        
-        # print(f"[DEBUG] Converted {iodine_converted} Iodine records")
-        # print(f"[DEBUG] Total gantt entries: {len(gantt_data)}")
-        
+
         return gantt_data
     
     def generate_gantt_chart_html(self, cyclotron_data):
@@ -1566,10 +1546,8 @@ class IsotopeDashboardGenerator:
                     hours = float(parts[0])
                     minutes = float(parts[1])
                     result = hours + (minutes / 60.0)
-                    # if debug_bo:
-                    #     print(f"    [PARSE] '{original_value}' (type={original_type.__name__}) → {result}h (colon: {hours}h + {minutes}m)")
                     return result
-            
+
             # Handle dot separator (HH.MM format)
             if '.' in duration_str:
                 parts = duration_str.split('.')
@@ -1580,14 +1558,10 @@ class IsotopeDashboardGenerator:
                     minute_str = parts[1].ljust(2, '0')  # Left-justify and pad with '0' on right
                     minutes = float(minute_str)
                     result = hours + (minutes / 60.0)
-                    # if debug_bo:
-                    #     print(f"    [PARSE] '{original_value}' (type={original_type.__name__}) → {result}h (dot: {hours}h + {minutes}m)")
                     return result
-            
+
             # No separator - just hours
             result = float(duration_str)
-            # if debug_bo:
-            #     print(f"    [PARSE] '{original_value}' (type={original_type.__name__}) → {result}h (no separator)")
             return result
             
         except Exception as e:
@@ -1717,20 +1691,13 @@ class IsotopeDashboardGenerator:
                 opmerking = row[6]
                 iba_positie = row[7] if len(row) > 7 else None  # Column 9: IBA Bestralingspositie
                 
-                # DEBUG: Log first 5 Gallium BOs
-                # if debug_count < 5:
-                #     print(f"[GALLIUM DEBUG] BO {bo_nummer}: Cyclotron={cyclotron_col!r}, IBA_Positie={iba_positie!r}")
-                #     debug_count += 1
-                
                 # Combine Cyclotron (col 7) and IBA Bestralingspositie (col 9)
                 if cyclotron_col == "Philips" or not iba_positie:
                     cyclotron = "Philips"
                 else:
                     # IBA production - use the full position string (e.g., "IBA 2.1", "IBA 1.2")
                     cyclotron = iba_positie
-                
-                # print(f"[GALLIUM DEBUG] BO {bo_nummer}: Final cyclotron={cyclotron!r}")
-                
+
                 # Targetstroom is already in µA
                 self.gallium_data.append({
                     'date': datum,
@@ -1809,11 +1776,6 @@ class IsotopeDashboardGenerator:
                 duur = row[5]
                 eob_tijd = row[6]
                 opmerking = row[7]
-                
-                # DEBUG: First 2 only
-                # if debug_count < 2:
-                #     print(f"\n  [RUBIDIUM] BO {bo_nummer}: duur={duur} (type={type(duur).__name__})")
-                #     debug_count += 1
                 
                 if benodigde_mci is not None and benodigde_mci != 0 and activiteit_mbq is not None:
                     benodigde_mbq = benodigde_mci * 37
