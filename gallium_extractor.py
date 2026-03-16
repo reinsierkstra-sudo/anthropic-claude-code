@@ -557,333 +557,181 @@ class IsotopeDashboardGenerator:
         return deduplicated
     
     # ==================== END CYCLOTRON PRODUCTION DATA ====================
-    
-    def convert_bestralingen_to_gantt_format(self):
-        """Convert bestralingen database data to gantt chart format"""
-        gantt_data = []
-        
-        # Cutoff date - 6 months ago
-        cutoff_date = datetime.now() - timedelta(days=180)
 
-        # Helper function to map cyclotron names to P1/P2/P0 format
-        def map_cyclotron_name(cyclotron, bonr):
-            """Map cyclotron name and BO number to standard P1/P2/P0 format"""
-            bonr_str = str(bonr) if bonr else ''
-            cyclotron_str = str(cyclotron) if cyclotron else ''
-            
-            # Check for IBA X.X format (e.g., "IBA 2.1", "IBA 1.1")
-            if cyclotron_str.startswith('IBA'):
-                # Try to extract the FIRST number after "IBA " (the kant number)
-                # "IBA 1.2" → kant 1, "IBA 2.1" → kant 2
-                if 'IBA 2' in cyclotron_str or cyclotron_str == 'IBA 2':
-                    return 'P2'  # IBA 2.x → Kant 2
-                elif 'IBA 1' in cyclotron_str or cyclotron_str == 'IBA 1':
-                    return 'P1'  # IBA 1.x → Kant 1
-                
-                # Fallback: If just "IBA" with no number, use Thallium BO mapping
-                # (This should only happen for Thallium productions)
-                if bonr_str:
-                    first_digit = bonr_str[0] if len(bonr_str) > 0 else '0'
-                    if first_digit == '1':
-                        return 'P1'  # Thallium BO 1xxxx → Kant 1
-                    elif first_digit == '2':
-                        return 'P2'  # Thallium BO 2xxxx → Kant 2
-                    else:
-                        return 'P1'  # Default
-            
-            # Direct format mapping
-            if cyclotron_str == 'Philips':
-                return 'P0'
-            elif cyclotron_str in ['P1', 'P2', 'P0']:
-                return cyclotron_str
-            
-            # Default
+    # ---- Gantt conversion static helpers (IMPROVE-12) ----
+
+    @staticmethod
+    def map_cyclotron_name(cyclotron, bonr):
+        """Map cyclotron name and BO number to standard P1/P2/P0 format."""
+        bonr_str = str(bonr) if bonr else ''
+        cyclotron_str = str(cyclotron) if cyclotron else ''
+
+        if cyclotron_str.startswith('IBA'):
+            if 'IBA 2' in cyclotron_str or cyclotron_str == 'IBA 2':
+                return 'P2'
+            elif 'IBA 1' in cyclotron_str or cyclotron_str == 'IBA 1':
+                return 'P1'
+            if bonr_str:
+                first_digit = bonr_str[0] if bonr_str else '0'
+                if first_digit == '1':
+                    return 'P1'
+                elif first_digit == '2':
+                    return 'P2'
+                else:
+                    return 'P1'
+        if cyclotron_str == 'Philips':
             return 'P0'
-        
-        # Helper function to calculate start time from end time and duration
-        def calculate_start_time(end_datetime, duration_hours):
-            if not end_datetime or not duration_hours:
+        elif cyclotron_str in ['P1', 'P2', 'P0']:
+            return cyclotron_str
+        return 'P0'
+
+    @staticmethod
+    def parse_eobhrmin(eobhrmin_str):
+        """Parse eobhrmin value to (hours, minutes) tuple."""
+        if not eobhrmin_str and eobhrmin_str != 0:
+            return None
+        if hasattr(eobhrmin_str, 'hour') and hasattr(eobhrmin_str, 'minute'):
+            return (eobhrmin_str.hour, eobhrmin_str.minute)
+        if isinstance(eobhrmin_str, (int, float)):
+            hours = int(eobhrmin_str)
+            if hours < 0 or hours > 23:
                 return None
-            try:
-                duration_td = timedelta(hours=float(duration_hours))
-                return end_datetime - duration_td
-            except:
+            decimal_part = eobhrmin_str - int(eobhrmin_str)
+            minutes = round(decimal_part * 100)
+            if minutes < 0 or minutes > 59:
                 return None
-        
-        # Helper function to get EOB time from item (handles multiple field names)
-        def get_eob_time(item):
-            """Get EOB time from item, checking all possible field names"""
-            # Try different field names used across databases
-            eob_value = item.get('eobhrmin') or item.get('eob_tijd') or item.get('eob_time') or item.get('stop_tijd') or item.get('start_tijd')
-            if not eob_value and eob_value != 0:
-                return None
-            return parse_eobhrmin(eob_value)
-        
-        # Helper function to create end datetime from parsed time and date
-        def create_end_datetime(item_date, eob_time):
-            """Create end datetime from parsed (hours, minutes) tuple"""
-            if not eob_time:
-                return None
-            
-            try:
-                hours, minutes = eob_time
-                return datetime.combine(item_date, datetime.min.time()).replace(hour=hours, minute=minutes)
-            except (ValueError, OverflowError, TypeError) as e:
-                # Skip invalid time values
-                return None
-        
-        # Helper function to parse eobhrmin (format: "HH:MM" or "HHMM" or time object or decimal hours)
-        def parse_eobhrmin(eobhrmin_str):
-            if not eobhrmin_str and eobhrmin_str != 0:
-                return None
-            
-            # Handle datetime.time objects directly
-            if hasattr(eobhrmin_str, 'hour') and hasattr(eobhrmin_str, 'minute'):
-                return (eobhrmin_str.hour, eobhrmin_str.minute)
-            
-            # Handle floats/integers as decimal hours (e.g., 4.3 = 4:30, 21.0 = 21:00)
-            if isinstance(eobhrmin_str, (int, float)):
-                hours = int(eobhrmin_str)
-                # Skip invalid hours
-                if hours < 0 or hours > 23:
-                    return None
-                # Get decimal part and convert to minutes
-                decimal_part = eobhrmin_str - int(eobhrmin_str)
-                minutes = round(decimal_part * 100)  # 0.3 → 30, 0.45 → 45
-                if minutes < 0 or minutes > 59:
+            return (hours, minutes)
+        try:
+            eobhrmin_str = str(eobhrmin_str).strip()
+            if ':' in eobhrmin_str:
+                parts = eobhrmin_str.split(':')
+                hours, minutes = int(parts[0]), int(parts[1])
+                if hours < 0 or hours > 23 or minutes < 0 or minutes > 59:
                     return None
                 return (hours, minutes)
-            
-            # Handle string formats
-            try:
-                eobhrmin_str = str(eobhrmin_str).strip()
-                if ':' in eobhrmin_str:
-                    parts = eobhrmin_str.split(':')
-                    hours = int(parts[0])
-                    minutes = int(parts[1])
-                    if hours < 0 or hours > 23 or minutes < 0 or minutes > 59:
-                        return None
-                    return (hours, minutes)
-                elif len(eobhrmin_str) >= 3:
-                    # Format like "1030" or "930"
-                    if len(eobhrmin_str) == 3:
-                        hours = int(eobhrmin_str[0])
-                        minutes = int(eobhrmin_str[1:])
-                    else:
-                        hours = int(eobhrmin_str[:2])
-                        minutes = int(eobhrmin_str[2:4])
-                    if hours < 0 or hours > 23 or minutes < 0 or minutes > 59:
-                        return None
-                    return (hours, minutes)
-            except:
-                pass
+            elif len(eobhrmin_str) >= 3:
+                if len(eobhrmin_str) == 3:
+                    hours, minutes = int(eobhrmin_str[0]), int(eobhrmin_str[1:])
+                else:
+                    hours, minutes = int(eobhrmin_str[:2]), int(eobhrmin_str[2:4])
+                if hours < 0 or hours > 23 or minutes < 0 or minutes > 59:
+                    return None
+                return (hours, minutes)
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def calculate_start_time(end_datetime, duration_hours):
+        """Return start datetime by subtracting duration from end."""
+        if not end_datetime or not duration_hours:
             return None
-        
-        # Convert Gallium data
-        gallium_converted = 0
-        for item in self.gallium_data:
+        try:
+            return end_datetime - timedelta(hours=float(duration_hours))
+        except Exception:
+            return None
+
+    @staticmethod
+    def get_eob_time(item):
+        """Return parsed (hours, minutes) EOB time from an item dict."""
+        eob_value = (item.get('eobhrmin') or item.get('eob_tijd') or
+                     item.get('eob_time') or item.get('stop_tijd') or
+                     item.get('start_tijd'))
+        if not eob_value and eob_value != 0:
+            return None
+        return IsotopeDashboardGenerator.parse_eobhrmin(eob_value)
+
+    @staticmethod
+    def create_end_datetime(item_date, eob_time):
+        """Build a datetime from a date and a (hours, minutes) tuple."""
+        if not eob_time:
+            return None
+        try:
+            hours, minutes = eob_time
+            return datetime.combine(item_date, datetime.min.time()).replace(
+                hour=hours, minute=minutes)
+        except (ValueError, OverflowError, TypeError):
+            return None
+
+    def _convert_isotope_to_gantt(self, data, product_code, cutoff_date_only):
+        """Convert a list of bestraling records to gantt-chart dicts (IMPROVE-13)."""
+        entries = []
+        for item in data:
             item_date = _to_date(item['date'])
-            if item_date is None:
+            if item_date is None or item_date < cutoff_date_only:
                 continue
-
-            # Convert cutoff_date to date for comparison
-            cutoff_date_only = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
-
-            if item_date < cutoff_date_only:
-                continue
-            
-            eob_time = get_eob_time(item)
+            eob_time = self.get_eob_time(item)
             if not eob_time:
                 continue
-            
-            end_datetime = create_end_datetime(item_date, eob_time)
-            if not end_datetime:
+            end_dt = self.create_end_datetime(item_date, eob_time)
+            if not end_dt:
                 continue
-            start_datetime = calculate_start_time(end_datetime, item.get('duur'))
-            
-            if start_datetime:
-                gantt_data.append({
-                    'cyclotron': map_cyclotron_name(item.get('cyclotron', 'Philips'), item.get('identifier')),
+            start_dt = self.calculate_start_time(end_dt, item.get('duur'))
+            if start_dt:
+                entries.append({
+                    'cyclotron': self.map_cyclotron_name(
+                        item.get('cyclotron', 'Philips'), item.get('identifier')),
                     'bonr': str(item.get('identifier', '')),
                     'order': '',
-                    'product': 'GA067',
-                    'startDate': start_datetime.strftime('%Y-%m-%d'),
-                    'startTime': start_datetime.strftime('%H:%M'),
-                    'endDate': end_datetime.strftime('%Y-%m-%d'),
-                    'endTime': end_datetime.strftime('%H:%M'),
+                    'product': product_code,
+                    'startDate': start_dt.strftime('%Y-%m-%d'),
+                    'startTime': start_dt.strftime('%H:%M'),
+                    'endDate': end_dt.strftime('%Y-%m-%d'),
+                    'endTime': end_dt.strftime('%H:%M'),
                     'duration': str(item.get('duur', '')),
                     'activity': '',
                     'totalActivity': '',
-                    'type': 'Data'
+                    'type': 'Data',
                 })
-                gallium_converted += 1
+        return entries
 
-        # Convert Rubidium data
-        rubidium_converted = 0
-        for item in self.rubidium_data:
-            item_date = _to_date(item['date'])
-            if item_date is None:
-                continue
+    def convert_bestralingen_to_gantt_format(self):
+        """Convert bestralingen database data to gantt chart format."""
+        cutoff_date = datetime.now() - timedelta(days=180)
+        cutoff_date_only = cutoff_date.date()
 
-            cutoff_date_only = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
+        gantt_data = []
+        for data, product in [
+            (self.gallium_data,  'GA067'),
+            (self.rubidium_data, 'RB081'),
+            (self.indium_data,   'IN111'),
+            (self.thallium_data, 'TL201'),
+        ]:
+            gantt_data.extend(self._convert_isotope_to_gantt(data, product, cutoff_date_only))
 
-            if item_date < cutoff_date_only:
-                continue
-            
-            eob_time = get_eob_time(item)
-            if not eob_time:
-                continue
-            
-            end_datetime = create_end_datetime(item_date, eob_time)
-            if not end_datetime:
-                continue
-            start_datetime = calculate_start_time(end_datetime, item.get('duur'))
-            
-            if start_datetime:
-                gantt_data.append({
-                    'cyclotron': map_cyclotron_name(item.get('cyclotron', 'Philips'), item.get('identifier')),
-                    'bonr': str(item.get('identifier', '')),
-                    'order': '',
-                    'product': 'RB081',
-                    'startDate': start_datetime.strftime('%Y-%m-%d'),
-                    'startTime': start_datetime.strftime('%H:%M'),
-                    'endDate': end_datetime.strftime('%Y-%m-%d'),
-                    'endTime': end_datetime.strftime('%H:%M'),
-                    'duration': str(item.get('duur', '')),
-                    'activity': '',
-                    'totalActivity': '',
-                    'type': 'Data'
-                })
-                rubidium_converted += 1
-
-        # Convert Indium data
-        indium_converted = 0
-        for item in self.indium_data:
-            item_date = _to_date(item['date'])
-            if item_date is None:
-                continue
-
-            cutoff_date_only = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
-
-            if item_date < cutoff_date_only:
-                continue
-            
-            eob_time = get_eob_time(item)
-            if not eob_time:
-                continue
-            
-            end_datetime = create_end_datetime(item_date, eob_time)
-            if not end_datetime:
-                continue
-            start_datetime = calculate_start_time(end_datetime, item.get('duur'))
-            
-            if start_datetime:
-                gantt_data.append({
-                    'cyclotron': map_cyclotron_name(item.get('cyclotron', 'Philips'), item.get('identifier')),
-                    'bonr': str(item.get('identifier', '')),
-                    'order': '',
-                    'product': 'IN111',
-                    'startDate': start_datetime.strftime('%Y-%m-%d'),
-                    'startTime': start_datetime.strftime('%H:%M'),
-                    'endDate': end_datetime.strftime('%Y-%m-%d'),
-                    'endTime': end_datetime.strftime('%H:%M'),
-                    'duration': str(item.get('duur', '')),
-                    'activity': '',
-                    'totalActivity': '',
-                    'type': 'Data'
-                })
-                indium_converted += 1
-
-        # Convert Thallium data
-        thallium_converted = 0
-        for item in self.thallium_data:
-            item_date = _to_date(item['date'])
-            if item_date is None:
-                continue
-
-            cutoff_date_only = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
-
-            if item_date < cutoff_date_only:
-                continue
-            
-            eob_time = get_eob_time(item)
-            if not eob_time:
-                continue
-            
-            end_datetime = create_end_datetime(item_date, eob_time)
-            if not end_datetime:
-                continue
-            start_datetime = calculate_start_time(end_datetime, item.get('duur'))
-            
-            if start_datetime:
-                gantt_data.append({
-                    'cyclotron': map_cyclotron_name(item.get('cyclotron', 'Philips'), item.get('identifier')),
-                    'bonr': str(item.get('identifier', '')),
-                    'order': '',
-                    'product': 'TL201',
-                    'startDate': start_datetime.strftime('%Y-%m-%d'),
-                    'startTime': start_datetime.strftime('%H:%M'),
-                    'endDate': end_datetime.strftime('%Y-%m-%d'),
-                    'endTime': end_datetime.strftime('%H:%M'),
-                    'duration': str(item.get('duur', '')),
-                    'activity': '',
-                    'totalActivity': '',
-                    'type': 'Data'
-                })
-                thallium_converted += 1
-
-        # Convert Iodine data
-        iodine_converted = 0
+        # Convert Iodine data (different field layout: start_tijd / stop_tijd)
         for item in self.iodine_data:
-            # For Iodine, prefer stop_datum over date (stop_datum is actual EOB date)
             item_date = _to_date(item.get('stop_datum') or item.get('date'))
-            if item_date is None:
+            if item_date is None or item_date < cutoff_date_only:
                 continue
-
-            cutoff_date_only = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
-            
-            if item_date < cutoff_date_only:
-                continue
-            
-            # For Iodine, use actual start and stop times from database
             start_time_value = item.get('start_tijd')
             stop_time_value = item.get('stop_tijd')
-            
             if not start_time_value or not stop_time_value:
                 continue
-            
-            # Parse start and stop times
-            start_time = parse_eobhrmin(start_time_value)
-            stop_time = parse_eobhrmin(stop_time_value)
-            
+            start_time = self.parse_eobhrmin(start_time_value)
+            stop_time = self.parse_eobhrmin(stop_time_value)
             if not start_time or not stop_time:
                 continue
-            
-            # Create start and end datetime objects
-            start_datetime = create_end_datetime(item_date, start_time)
-            end_datetime = create_end_datetime(item_date, stop_time)
-            
-            if not start_datetime or not end_datetime:
+            start_dt = self.create_end_datetime(item_date, start_time)
+            end_dt = self.create_end_datetime(item_date, stop_time)
+            if not start_dt or not end_dt:
                 continue
-            
-            # Calculate duration in hours
             duration = item.get('totale_bestralingstijd') or ''
-            
             gantt_data.append({
-                'cyclotron': map_cyclotron_name(item.get('cyclotron', 'P1'), item.get('identifier')),
+                'cyclotron': self.map_cyclotron_name(
+                    item.get('cyclotron', 'P1'), item.get('identifier')),
                 'bonr': str(item.get('identifier', '')),
                 'order': '',
                 'product': 'I123',
-                'startDate': start_datetime.strftime('%Y-%m-%d'),
-                'startTime': start_datetime.strftime('%H:%M'),
-                'endDate': end_datetime.strftime('%Y-%m-%d'),
-                'endTime': end_datetime.strftime('%H:%M'),
-                'duration': str(duration if duration else ''),
+                'startDate': start_dt.strftime('%Y-%m-%d'),
+                'startTime': start_dt.strftime('%H:%M'),
+                'endDate': end_dt.strftime('%Y-%m-%d'),
+                'endTime': end_dt.strftime('%H:%M'),
+                'duration': str(duration),
                 'activity': '',
                 'totalActivity': '',
-                'type': 'Data'
+                'type': 'Data',
             })
-            iodine_converted += 1
 
         return gantt_data
     
