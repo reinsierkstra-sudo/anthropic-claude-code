@@ -12,8 +12,8 @@ Usage::
 
 The script:
 1. Loads configuration to discover output paths.
-2. Calls ``run_calculator.main()`` to obtain all derived data.
-3. Fetches cyclotron / gantt data.
+2. Reads all calculated KPIs from ``data/derived.db`` (written by run_calculator).
+3. Fetches live cyclotron / gantt data.
 4. Renders both the full dashboard and the truncated dashboard.
 5. Writes the HTML files to their respective output paths.
 6. Applies file-protection (read-only + SHA-256 hash) to each output.
@@ -42,12 +42,20 @@ def main() -> bool:
     print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] run_renderer — HTML generation")
     print("=" * 60)
 
-    # ── Phase 1: collect all calculated data ─────────────────────────────
-    from run_calculator import main as calculate
-    data = calculate()
-    if not data:
-        print("✗ No calculated data — aborting renderer.")
+    # ── Phase 1: load calculated data from derived.db ────────────────────
+    from collector.derived_db import connect as connect_derived, load_kpis
+    derived_db_path = paths.get("derived_db", "data/derived.db")
+    try:
+        derived_conn = connect_derived(derived_db_path)
+        data = load_kpis(derived_conn)
+        derived_conn.close()
+    except Exception as e:
+        print(f"✗ Could not open derived.db: {e}")
         return False
+    if not data:
+        print("✗ derived.db is empty — run run_calculator.py first.")
+        return False
+    print(f"✓ Loaded {len(data)} KPIs from derived.db")
 
     # ── Phase 2: fetch cyclotron / gantt data ─────────────────────────────
     try:

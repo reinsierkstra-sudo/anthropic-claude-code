@@ -235,6 +235,18 @@ def main() -> dict:
     results["otif_table_data"] = generator.otif_table_data
 
     generator.close()
+
+    # ── Persist to derived.db ─────────────────────────────────────────────
+    try:
+        from collector.derived_db import connect as connect_derived, save_kpis
+        derived_db_path = paths.get("derived_db", "data/derived.db")
+        derived_conn = connect_derived(derived_db_path)
+        save_kpis(derived_conn, results)
+        derived_conn.close()
+        print(f"✓ Results written to derived.db ({len(results)} keys)")
+    except Exception as e:
+        print(f"⚠ Could not write to derived.db: {e}")
+
     print("✓ All calculations complete")
     return results
 

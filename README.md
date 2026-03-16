@@ -20,7 +20,8 @@ isotope-dashboard/
 │   ├── excel_reader.py        # Excel files (ploegen, planning, VSM, OTIF) with SQLite cache
 │   ├── http_reader.py         # Cyclotron planning page (HTTP)
 │   ├── html_reader.py         # Local HTML files embedded in the dashboard
-│   └── raw_db.py              # SQLite schema and read/write helpers for raw.db
+│   ├── raw_db.py              # SQLite schema and read/write helpers for raw.db
+│   └── derived_db.py          # SQLite schema and read/write helpers for derived.db
 │
 ├── calculator/                # Reads from data/raw.db, computes KPIs
 │   ├── efficiency.py          # Production efficiency (mCi/µAh) per week
@@ -40,7 +41,7 @@ isotope-dashboard/
 │
 ├── data/
 │   ├── raw.db                 # Raw isotope data as collected from sources (auto-created)
-│   └── derived.db             # (reserved for future use)
+│   └── derived.db             # Calculated KPIs written by run_calculator, read by run_renderer (auto-created)
 │
 ├── output/                    # Generated HTML files land here locally
 │
@@ -94,13 +95,15 @@ This is useful during development: you can re-render the dashboard without waiti
 
 ```
 MS Access DBs  ─┐
-Excel files    ─┼─▶  collector/  ─▶  data/raw.db  ─▶  calculator/  ─▶  renderer/  ─▶  HTML files
+Excel files    ─┼─▶  collector/  ─▶  data/raw.db  ─▶  calculator/  ─▶  data/derived.db  ─▶  renderer/  ─▶  HTML files
 HTTP endpoint  ─┘
 ```
 
 1. **Collector** reads from all external sources and appends new records to `data/raw.db`. Raw data is never recalculated — it is the source of truth.
-2. **Calculator** reads `raw.db` and computes all KPIs (efficiency, within-spec %, OTIF, shift stats, leaderboard).
-3. **Renderer** takes the calculated values and produces two HTML files: a full dashboard and a truncated summary. Both are written to the paths defined in `settings.yaml`.
+2. **Calculator** reads `raw.db`, computes all KPIs (efficiency, within-spec %, OTIF, shift stats, leaderboard), and writes the results to `data/derived.db`.
+3. **Renderer** reads all KPIs from `derived.db` and produces two HTML files: a full dashboard and a truncated summary. Both are written to the paths defined in `settings.yaml`.
+
+Because every calculated value is persisted in `derived.db`, you can re-render the dashboard at any time without re-running the calculator, and you can inspect or debug the derived values directly in the database.
 
 ---
 
