@@ -619,7 +619,7 @@ class IsotopeDashboardGenerator:
                     return None
                 # Get decimal part and convert to minutes
                 decimal_part = eobhrmin_str - int(eobhrmin_str)
-                minutes = int(decimal_part * 100)  # 0.3 → 30, 0.45 → 45
+                minutes = round(decimal_part * 100)  # 0.3 → 30, 0.45 → 45
                 if minutes < 0 or minutes > 59:
                     return None
                 return (hours, minutes)

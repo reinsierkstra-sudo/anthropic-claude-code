@@ -10,7 +10,7 @@ Each phase is committed separately. Check marks indicate completed work.
 
 | # | Note | Description | Status |
 |---|------|-------------|--------|
-| 1 | IMPROVE-24 | Fix float-to-minutes rounding in `parse_eobhrmin` (use `round()` not `int()`) | ⬜ |
+| 1 | IMPROVE-24 | Fix float-to-minutes rounding in `parse_eobhrmin` (use `round()` not `int()`) | ✅ |
 
 ---
 
@@ -105,7 +105,7 @@ Each phase is committed separately. Check marks indicate completed work.
 | After phase | Lines | Δ lines |
 |-------------|-------|---------|
 | Baseline    | 10,962 | — |
-| Phase 1 | | |
+| Phase 1 | 11,070 | +108 (notes added earlier) |
 | Phase 2 | | |
 | Phase 3 | | |
 | Phase 4 | | |
