@@ -2044,151 +2044,54 @@ class IsotopeDashboardGenerator:
             traceback.print_exc()
             return False
     
+    @staticmethod
+    def _fmt_date_str(date_val):
+        """Format a date value as a YYYY-MM-DD string (IMPROVE-14)."""
+        if not date_val:
+            return ''
+        if isinstance(date_val, str):
+            return date_val.split(' ')[0] if ' ' in date_val else date_val
+        return date_val.strftime('%Y-%m-%d')
+
     def count_sf_references(self):
         """Count how many times each SF code appears in all production opmerkingen fields
-        and track which productions reference each SF code"""
-        
+        and track which productions reference each SF code (IMPROVE-14)."""
         sf_counts = {}
-        sf_productions = {}  # Will store list of productions for each SF code
-        
-        # Helper function to extract SF codes from text
-        def extract_sf_codes(text):
-            if not text or not isinstance(text, str):
-                return []
-            # Match SF followed by digits (SF0001, SF0042, etc.)
-            matches = re.findall(r'SF(\d+)', text.upper())
-            return matches
-        
-        # Helper function to add production to SF tracking
-        def add_production_to_sf(sf_code, production_data):
-            if sf_code not in sf_productions:
-                sf_productions[sf_code] = []
-            sf_productions[sf_code].append(production_data)
-        
-        # Search through all isotope data
-        # Gallium
-        for record in self.gallium_data:
-            opmerking = record.get('opmerking', '')
-            sf_codes = extract_sf_codes(opmerking)
-            for sf_code in sf_codes:
-                sf_counts[sf_code] = sf_counts.get(sf_code, 0) + 1
-                # Format date as YYYY-MM-DD string
-                date_val = record.get('date', '')
-                if date_val:
-                    if isinstance(date_val, str):
-                        date_str = date_val.split(' ')[0] if ' ' in date_val else date_val
-                    else:
-                        date_str = date_val.strftime('%Y-%m-%d')
-                else:
-                    date_str = ''
-                add_production_to_sf(sf_code, {
-                    'isotope': 'Gallium',
-                    'bo_nummer': record.get('identifier', 'N/A'),
-                    'date': date_str,
-                    'value': record.get('targetstroom', 0),
-                    'unit': 'µA'
-                })
-        
-        # Rubidium
-        for record in self.rubidium_data:
-            opmerking = record.get('opmerking', '')
-            sf_codes = extract_sf_codes(opmerking)
-            for sf_code in sf_codes:
-                sf_counts[sf_code] = sf_counts.get(sf_code, 0) + 1
-                efficiency = record.get('efficiency')
-                if efficiency is not None and efficiency != 0:
-                    value = round(efficiency)
-                else:
-                    value = 0
-                # Format date as YYYY-MM-DD string
-                date_val = record.get('date', '')
-                if date_val:
-                    if isinstance(date_val, str):
-                        date_str = date_val.split(' ')[0] if ' ' in date_val else date_val
-                    else:
-                        date_str = date_val.strftime('%Y-%m-%d')
-                else:
-                    date_str = ''
-                add_production_to_sf(sf_code, {
-                    'isotope': 'Rubidium',
-                    'bo_nummer': record.get('identifier', 'N/A'),
-                    'date': date_str,
-                    'value': value,
-                    'unit': '%'
-                })
-        
-        # Indium
-        for record in self.indium_data:
-            opmerking = record.get('opmerking', '')
-            sf_codes = extract_sf_codes(opmerking)
-            for sf_code in sf_codes:
-                sf_counts[sf_code] = sf_counts.get(sf_code, 0) + 1
-                # Format date as YYYY-MM-DD string
-                date_val = record.get('date', '')
-                if date_val:
-                    if isinstance(date_val, str):
-                        date_str = date_val.split(' ')[0] if ' ' in date_val else date_val
-                    else:
-                        date_str = date_val.strftime('%Y-%m-%d')
-                else:
-                    date_str = ''
-                add_production_to_sf(sf_code, {
-                    'isotope': 'Indium',
-                    'bo_nummer': record.get('identifier', 'N/A'),
-                    'date': date_str,
-                    'value': record.get('targetstroom', 0),
-                    'unit': 'µA'
-                })
-        
-        # Thallium
-        for record in self.thallium_data:
-            opmerking = record.get('opmerking', '')
-            sf_codes = extract_sf_codes(opmerking)
-            for sf_code in sf_codes:
-                sf_counts[sf_code] = sf_counts.get(sf_code, 0) + 1
-                # Format date as YYYY-MM-DD string
-                date_val = record.get('date', '')
-                if date_val:
-                    if isinstance(date_val, str):
-                        date_str = date_val.split(' ')[0] if ' ' in date_val else date_val
-                    else:
-                        date_str = date_val.strftime('%Y-%m-%d')
-                else:
-                    date_str = ''
-                add_production_to_sf(sf_code, {
-                    'isotope': 'Thallium',
-                    'bo_nummer': record.get('identifier', 'N/A'),
-                    'date': date_str,
-                    'value': record.get('targetstroom', 0),
-                    'unit': 'µA'
-                })
-        
-        # Iodine
-        for record in self.iodine_data:
-            opmerking = record.get('opmerking', '')
-            sf_codes = extract_sf_codes(opmerking)
-            for sf_code in sf_codes:
-                sf_counts[sf_code] = sf_counts.get(sf_code, 0) + 1
-                yield_val = round(record.get('yield_percent', 0)) if record.get('yield_percent') is not None else 0
-                output_val = round(record.get('output_percent', 0)) if record.get('output_percent') is not None else 0
-                target_val = round(record.get('targetstroom', 0)) if record.get('targetstroom') is not None and record.get('targetstroom') != -999 else 0
-                # Format date as YYYY-MM-DD string
-                date_val = record.get('date', '')
-                if date_val:
-                    if isinstance(date_val, str):
-                        date_str = date_val.split(' ')[0] if ' ' in date_val else date_val
-                    else:
-                        date_str = date_val.strftime('%Y-%m-%d')
-                else:
-                    date_str = ''
-                add_production_to_sf(sf_code, {
-                    'isotope': 'Iodine',
-                    'bo_nummer': record.get('identifier', 'N/A'),
-                    'date': date_str,
-                    'value': f"{yield_val}%/{output_val}% + {target_val}µA",
-                    'unit': ''
-                })
-        
+        sf_productions = {}
+
+        def _value_unit(record, spec_key):
+            if spec_key == 'rubidium':
+                eff = record.get('efficiency')
+                return round(eff) if eff is not None and eff != 0 else 0, '%'
+            if spec_key == 'iodine':
+                y = round(record.get('yield_percent', 0)) if record.get('yield_percent') is not None else 0
+                o = round(record.get('output_percent', 0)) if record.get('output_percent') is not None else 0
+                t_raw = record.get('targetstroom')
+                t = round(t_raw) if t_raw is not None and t_raw != -999 else 0
+                return f"{y}%/{o}% + {t}µA", ''
+            return record.get('targetstroom', 0), 'µA'
+
+        isotope_datasets = [
+            (self.gallium_data,  'Gallium',  'gallium'),
+            (self.rubidium_data, 'Rubidium', 'rubidium'),
+            (self.indium_data,   'Indium',   'indium'),
+            (self.thallium_data, 'Thallium', 'thallium'),
+            (self.iodine_data,   'Iodine',   'iodine'),
+        ]
+        for data, label, spec_key in isotope_datasets:
+            for record in data:
+                sf_codes = re.findall(r'SF(\d+)', (record.get('opmerking') or '').upper())
+                for sf_code in sf_codes:
+                    sf_counts[sf_code] = sf_counts.get(sf_code, 0) + 1
+                    value, unit = _value_unit(record, spec_key)
+                    sf_productions.setdefault(sf_code, []).append({
+                        'isotope': label,
+                        'bo_nummer': record.get('identifier', 'N/A'),
+                        'date': self._fmt_date_str(record.get('date', '')),
+                        'value': value,
+                        'unit': unit,
+                    })
+
         print(f"✓ Counted SF references: {len(sf_counts)} unique SF codes found")
         return sf_counts, sf_productions
     
@@ -2798,78 +2701,26 @@ class IsotopeDashboardGenerator:
     def calculate_within_spec_percentage(self):
         """Calculate percentage of productions within spec for each week"""
         
-        # Get all productions from last 52 weeks
+        # Get all productions from last 52 weeks (IMPROVE-15)
         all_productions = []
-        
-        # Gallium
-        for record in self.gallium_data:
-            date = _to_date(record['date'])
-            if date is None:
-                continue
-
-            # Use centralized is_production_in_spec function
-            within_spec = self.is_production_in_spec(record, 'gallium')
-            all_productions.append({
-                'date': date,
-                'isotope': 'Gallium',
-                'within_spec': within_spec
-            })
-
-        # Rubidium
-        for record in self.rubidium_data:
-            date = _to_date(record['date'])
-            if date is None:
-                continue
-
-            # Use centralized is_production_in_spec function
-            within_spec = self.is_production_in_spec(record, 'rubidium')
-            all_productions.append({
-                'date': date,
-                'isotope': 'Rubidium',
-                'within_spec': within_spec
-            })
-
-        # Indium
-        for record in self.indium_data:
-            date = _to_date(record['date'])
-            if date is None:
-                continue
-
-            # Use centralized is_production_in_spec function
-            within_spec = self.is_production_in_spec(record, 'indium')
-            all_productions.append({
-                'date': date,
-                'isotope': 'Indium',
-                'within_spec': within_spec
-            })
-
-        # Thallium
-        for record in self.thallium_data:
-            date = _to_date(record['date'])
-            if date is None:
-                continue
-
-            # Use centralized is_production_in_spec function
-            within_spec = self.is_production_in_spec(record, 'thallium')
-            all_productions.append({
-                'date': date,
-                'isotope': 'Thallium',
-                'within_spec': within_spec
-            })
-
-        # Iodine
-        for record in self.iodine_data:
-            date = _to_date(record['date'])
-            if date is None:
-                continue
-
-            # Use centralized is_production_in_spec function
-            within_spec = self.is_production_in_spec(record, 'iodine')
-            all_productions.append({
-                'date': date,
-                'isotope': 'Iodine',
-                'within_spec': within_spec
-            })
+        isotope_datasets = [
+            (self.gallium_data,  'gallium',  'Gallium'),
+            (self.rubidium_data, 'rubidium', 'Rubidium'),
+            (self.indium_data,   'indium',   'Indium'),
+            (self.thallium_data, 'thallium', 'Thallium'),
+            (self.iodine_data,   'iodine',   'Iodine'),
+        ]
+        for data, spec_key, label in isotope_datasets:
+            for record in data:
+                date = _to_date(record['date'])
+                if date is None:
+                    continue
+                within_spec = self.is_production_in_spec(record, spec_key)
+                all_productions.append({
+                    'date': date,
+                    'isotope': label,
+                    'within_spec': within_spec,
+                })
         
         # Group by week (Friday-Thursday, matching get_last_friday logic)
         weekly_data = defaultdict(lambda: {'total': 0, 'within_spec': 0, 'dates': [], 'friday': None})
