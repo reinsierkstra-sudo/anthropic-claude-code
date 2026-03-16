@@ -405,6 +405,11 @@ _GANTT_CSS = """\
 # ============================================================================
 
 class IsotopeDashboardGenerator:
+    # Class-level cache: intentionally shared across instances so it survives the
+    # 60-second loop (a new instance is created each iteration).
+    # Keys: cache_key → {mtime, ...}
+    _excel_cache: dict = {}
+
     # ---- SQLite table schemas ----
     # Each entry maps a table name to a list of (column, sql_type) tuples.
     # 'alter_add' lists columns that may be missing on older databases.
@@ -498,7 +503,6 @@ class IsotopeDashboardGenerator:
         self.philips_storingen_data = []
         self.otif_kpi_data = []      # [{week, gallium, i123, indium, thallium, rubidium_krypton}, ...]
         self.otif_table_data = {}    # {product: {week: missed_count}}
-        self._excel_cache = {}       # Instance-level file cache: key → {mtime, ...}
         self.ploegen_data = {}  # Will store ploeg definitions
         self.planning_data = {}  # Will store who worked when
         self.ploegenwissel_date = None  # Date of last ploegen change (from P1 in Ploegen.xlsx)
@@ -1419,6 +1423,8 @@ class IsotopeDashboardGenerator:
 
     def _excel_cache_load_sqlite(self, cache_key, current_mtime):
         """Return deserialized data dict if SQLite has a matching mtime entry, else None."""
+        if not self.sqlite_conn:
+            return None
         try:
             row = self.sqlite_conn.execute(
                 'SELECT mtime, data_json FROM excel_cache WHERE cache_key = ?',
@@ -1432,6 +1438,8 @@ class IsotopeDashboardGenerator:
 
     def _excel_cache_save_sqlite(self, cache_key, mtime, data):
         """Serialize data as JSON and upsert into excel_cache table."""
+        if not self.sqlite_conn:
+            return
         try:
             self.sqlite_conn.execute(
                 'INSERT OR REPLACE INTO excel_cache (cache_key, mtime, data_json, saved_at) VALUES (?, ?, ?, ?)',
@@ -2520,10 +2528,14 @@ class IsotopeDashboardGenerator:
             (self.thallium_data, 'thallium', 'Thallium'),
             (self.iodine_data,   'iodine',   'Iodine'),
         ]
+        bad_years = set()
         for data, spec_key, label in isotope_datasets:
             for record in data:
                 date = _to_date(record['date'])
                 if date is None:
+                    continue
+                if not (1900 <= date.year <= 3000):
+                    bad_years.add(date.year)
                     continue
                 within_spec = self.is_production_in_spec(record, spec_key)
                 all_productions.append({
@@ -2531,6 +2543,8 @@ class IsotopeDashboardGenerator:
                     'isotope': label,
                     'within_spec': within_spec,
                 })
+        if bad_years:
+            print(f"[WARNING] Skipped {len(bad_years)} production record(s) with unrealistic year(s): {sorted(bad_years)} — fix source data")
         
         # Group by week (Friday-Thursday, matching get_last_friday logic)
         weekly_data = defaultdict(lambda: {'total': 0, 'within_spec': 0, 'dates': [], 'friday': None})
@@ -2545,9 +2559,13 @@ class IsotopeDashboardGenerator:
             days_since_friday = (prod['date'].weekday() - 4) % 7
             week_start_friday = prod['date'] - timedelta(days=days_since_friday)
             
+            # Filter out records with unrealistic years (data entry errors in source)
+            if not (1900 <= week_start_friday.year <= 3000):
+                continue
+
             # Use the actual Friday date as the key
             week_key = week_start_friday
-            
+
             if weekly_data[week_key]['friday'] is None:
                 weekly_data[week_key]['friday'] = week_start_friday
             
@@ -2565,9 +2583,8 @@ class IsotopeDashboardGenerator:
                 # Use the ISO week that contains this Thursday for display
                 iso_year, iso_week, _ = thursday.isocalendar()
                 
-                # Filter out unrealistic years
+                # Guard: skip any residual records with unrealistic years
                 if iso_year < 1900 or iso_year > 3000:
-                    print(f"[WARNING] Skipping within-spec record with unrealistic year {iso_year}")
                     continue
                 
                 percentage = (data['within_spec'] / data['total']) * 100
@@ -2724,10 +2741,9 @@ class IsotopeDashboardGenerator:
                 })
         
         return result
-    
-    def calculate_otif_gedraaide_producties(self, changelog=None):
-        """Calculate OTIF percentage per week based on actual vs nominal targetstroom for all isotopes.
-        If changelog is provided, weeks with planning data are padded with 0% entries for missed productions."""
+
+    def calculate_otif_gedraaide_producties(self):
+        """Calculate OTIF percentage per week based on actual vs nominal targetstroom for all isotopes."""
 
         # Nominals derived from SPEC_SETTINGS min/max midpoints
         ga_philips_nominal = (SPEC_SETTINGS['gallium']['philips']['min'] + SPEC_SETTINGS['gallium']['philips']['max']) / 2  # 80
@@ -2736,15 +2752,6 @@ class IsotopeDashboardGenerator:
         in_iba_nominal     = (SPEC_SETTINGS['indium']['iba']['min']     + SPEC_SETTINGS['indium']['iba']['max'])     / 2  # 135
         tl_nominal         = (SPEC_SETTINGS['thallium']['min']          + SPEC_SETTINGS['thallium']['max'])          / 2  # 170
         rb_nominal         = 70.0  # µA
-
-        # Map changelog product codes to isotope keys
-        product_to_isotope = {
-            'GA067': 'gallium',
-            'RB081': 'rubidium',
-            'IN111': 'indium',
-            'TL201': 'thallium',
-            'I123':  'iodine',
-        }
 
         def parse_date(d):
             if d is None:
@@ -2762,69 +2769,7 @@ class IsotopeDashboardGenerator:
 
         week_friday = self._get_friday_week
 
-        # ── Step 1: Build planned counts per (friday_week, isotope) from changelog snapshot ──
-        # For each week, replay all changelog events up to Friday 18:00 of that week's start.
-        # Live BOs at that moment = NEW entries not yet DELETED by Friday 18:00.
-        planned_counts = {}  # {friday_date: {isotope: count}}
-
-        if changelog:
-            # Parse and sort all events chronologically
-            events = []
-            for entry in changelog:
-                try:
-                    ts = datetime.fromisoformat(entry['timestamp'])
-                    product = entry.get('product', '')
-                    isotope = product_to_isotope.get(product)
-                    if isotope is None:
-                        continue
-                    events.append({
-                        'ts': ts,
-                        'bonr': str(entry.get('bonr', '')),
-                        'type': entry.get('type'),
-                        'isotope': isotope,
-                    })
-                except Exception:
-                    continue
-            events.sort(key=lambda e: e['ts'])
-
-            if events:
-                # Determine all Friday snapshots we need to compute
-                # Range: from the first event's week up to the current week
-                first_event_friday = week_friday(events[0]['ts'].date())
-                today_friday = week_friday(datetime.now().date())
-
-                fridays = []
-                f = first_event_friday
-                while f <= today_friday:
-                    fridays.append(f)
-                    f += timedelta(weeks=1)
-
-                for friday in fridays:
-                    # Snapshot moment: Friday 18:00
-                    snapshot_dt = datetime(friday.year, friday.month, friday.day, 18, 0, 0)
-
-                    # Replay events up to snapshot moment to find live BOs
-                    live_bos = {}  # bonr -> isotope
-                    for ev in events:
-                        if ev['ts'] > snapshot_dt:
-                            break
-                        if ev['type'] == 'NEW':
-                            live_bos[ev['bonr']] = ev['isotope']
-                        elif ev['type'] == 'DELETED':
-                            live_bos.pop(ev['bonr'], None)
-
-                    if not live_bos:
-                        continue
-
-                    # Count per isotope
-                    counts = defaultdict(int)
-                    for isotope in live_bos.values():
-                        counts[isotope] += 1
-
-                    planned_counts[friday] = dict(counts)
-
-        # ── Step 2: Collect actual productions per (friday_week, isotope) ──
-        # Each dict maps friday_date -> {isotope: [pct, pct, ...]}
+        # ── Collect actual productions per (friday_week, isotope) ──
         weekly_actuals = defaultdict(lambda: defaultdict(list))
 
         # Gallium
@@ -2890,25 +2835,12 @@ class IsotopeDashboardGenerator:
                 pct = (stroom / rb_nominal) * 100.0
             weekly_actuals[week_friday(d)]['rubidium'].append(pct)
 
-        # ── Step 3: Combine actuals + missed zeros, compute weekly average ──
+        # ── Compute weekly average from actuals only ──
         result = []
-        all_fridays = set(weekly_actuals.keys()) | set(planned_counts.keys())
-
-        for friday in sorted(all_fridays, reverse=True):
-            actuals_this_week = weekly_actuals.get(friday, {})
-
-            # Flatten all actual pcts into one list
+        for friday in sorted(weekly_actuals.keys(), reverse=True):
             all_pcts = []
-            for isotope_pcts in actuals_this_week.values():
+            for isotope_pcts in weekly_actuals[friday].values():
                 all_pcts.extend(isotope_pcts)
-
-            # If we have planning data for this week, pad with zeros for missed productions
-            if friday in planned_counts:
-                for isotope, planned_n in planned_counts[friday].items():
-                    actual_n = len(actuals_this_week.get(isotope, []))
-                    missed = planned_n - actual_n
-                    if missed > 0:
-                        all_pcts.extend([0.0] * missed)
 
             if not all_pcts:
                 continue
@@ -2927,10 +2859,10 @@ class IsotopeDashboardGenerator:
 
         return result
 
-    def get_otif_gedraaide_weeks(self, changelog=None):
+    def get_otif_gedraaide_weeks(self):
         """Get last 10 weeks of OTIF gedraaide producties with green/red coloring vs all-time average."""
 
-        weekly_data = self.calculate_otif_gedraaide_producties(changelog)
+        weekly_data = self.calculate_otif_gedraaide_producties()
         if not weekly_data:
             return [], 0
 
@@ -2941,7 +2873,6 @@ class IsotopeDashboardGenerator:
         week_lookup = {(r['year'], r['week']): r['percentage'] for r in weekly_data}
 
         # Generate fixed last 10 production weeks using Thursday-based ISO week
-        # (matches how calculate_otif_gedraaide_producties labels its weeks)
         today = datetime.now().date()
         days_since_friday = (today.weekday() - 4) % 7
         current_friday = today - timedelta(days=days_since_friday)
@@ -2977,10 +2908,10 @@ class IsotopeDashboardGenerator:
 
         return last_10, average
 
-    def get_otif_gedraaide_last_year_average(self, changelog=None):
+    def get_otif_gedraaide_last_year_average(self):
         """Calculate OTIF gedraaide average for last year."""
 
-        weekly_data = self.calculate_otif_gedraaide_producties(changelog)
+        weekly_data = self.calculate_otif_gedraaide_producties()
         if not weekly_data:
             return 0
 
@@ -2995,10 +2926,10 @@ class IsotopeDashboardGenerator:
                 continue
         return statistics.mean(pcts) if pcts else 0
 
-    def get_otif_gedraaide_last_3months_average(self, changelog=None):
+    def get_otif_gedraaide_last_3months_average(self):
         """Calculate OTIF gedraaide average for last 3 months."""
 
-        weekly_data = self.calculate_otif_gedraaide_producties(changelog)
+        weekly_data = self.calculate_otif_gedraaide_producties()
         if not weekly_data:
             return 0
 
@@ -4106,7 +4037,7 @@ class IsotopeDashboardGenerator:
         # Skip reload if file has not changed since last successful load
         try:
             current_mtime = os.path.getmtime(self.ploegen_excel)
-            cached = self._excel_cache.get('ploegen')
+            cached = IsotopeDashboardGenerator._excel_cache.get('ploegen')
             if cached and cached['mtime'] == current_mtime:
                 self.ploegen_data = cached['ploegen_data']
                 self.ploegenwissel_date = cached['ploegenwissel_date']
@@ -4118,7 +4049,7 @@ class IsotopeDashboardGenerator:
                 self.ploegen_data = sq['ploegen_data']
                 pwd = sq.get('ploegenwissel_date')
                 self.ploegenwissel_date = date.fromisoformat(pwd) if pwd else None
-                self._excel_cache['ploegen'] = {
+                IsotopeDashboardGenerator._excel_cache['ploegen'] = {
                     'mtime': current_mtime,
                     'ploegen_data': self.ploegen_data,
                     'ploegenwissel_date': self.ploegenwissel_date,
@@ -4193,7 +4124,7 @@ class IsotopeDashboardGenerator:
             # Update in-process cache and persist to SQLite
             try:
                 mtime_now = os.path.getmtime(self.ploegen_excel)
-                self._excel_cache['ploegen'] = {
+                IsotopeDashboardGenerator._excel_cache['ploegen'] = {
                     'mtime': mtime_now,
                     'ploegen_data': ploegen,
                     'ploegenwissel_date': self.ploegenwissel_date,
@@ -4264,7 +4195,7 @@ class IsotopeDashboardGenerator:
 
         try:
             current_mtime = os.path.getmtime(self.vsm_excel)
-            cached = self._excel_cache.get('vsm')
+            cached = IsotopeDashboardGenerator._excel_cache.get('vsm')
             if cached and cached['mtime'] == current_mtime:
                 self.vsm_data = cached['vsm_data']
                 print("  (VSM excel unchanged — using cache)")
@@ -4273,7 +4204,7 @@ class IsotopeDashboardGenerator:
             sq = self._excel_cache_load_sqlite('vsm', current_mtime)
             if sq:
                 self.vsm_data = sq['vsm_data']
-                self._excel_cache['vsm'] = {
+                IsotopeDashboardGenerator._excel_cache['vsm'] = {
                     'mtime': current_mtime,
                     'vsm_data': self.vsm_data,
                 }
@@ -4392,7 +4323,7 @@ class IsotopeDashboardGenerator:
 
             try:
                 mtime_now = os.path.getmtime(self.vsm_excel)
-                self._excel_cache['vsm'] = {
+                IsotopeDashboardGenerator._excel_cache['vsm'] = {
                     'mtime': mtime_now,
                     'vsm_data': self.vsm_data,
                 }
@@ -4423,7 +4354,7 @@ class IsotopeDashboardGenerator:
         # Skip reload if file has not changed since last successful load
         try:
             current_mtime = os.path.getmtime(self.planning_excel)
-            cached = self._excel_cache.get('planning')
+            cached = IsotopeDashboardGenerator._excel_cache.get('planning')
             if cached and cached['mtime'] == current_mtime:
                 self.planning_data = cached['planning_data']
                 print("  (planning excel unchanged — using cache)")
@@ -4435,7 +4366,7 @@ class IsotopeDashboardGenerator:
                 self.planning_data = {
                     date.fromisoformat(k): v for k, v in sq['planning_data'].items()
                 }
-                self._excel_cache['planning'] = {
+                IsotopeDashboardGenerator._excel_cache['planning'] = {
                     'mtime': current_mtime,
                     'planning_data': self.planning_data,
                 }
@@ -4514,7 +4445,7 @@ class IsotopeDashboardGenerator:
             # Update in-process cache and persist to SQLite
             try:
                 mtime_now = os.path.getmtime(self.planning_excel)
-                self._excel_cache['planning'] = {
+                IsotopeDashboardGenerator._excel_cache['planning'] = {
                     'mtime': mtime_now,
                     'planning_data': planning,
                 }
@@ -4558,7 +4489,7 @@ class IsotopeDashboardGenerator:
         # Skip reload if file has not changed since last successful load
         try:
             current_mtime = os.path.getmtime(otif_path)
-            cached = self._excel_cache.get('otif')
+            cached = IsotopeDashboardGenerator._excel_cache.get('otif')
             if cached and cached['mtime'] == current_mtime:
                 self.otif_kpi_data = cached['otif_kpi_data']
                 self.otif_table_data = cached['otif_table_data']
@@ -4569,7 +4500,7 @@ class IsotopeDashboardGenerator:
             if sq:
                 self.otif_kpi_data   = sq['otif_kpi_data']
                 self.otif_table_data = sq['otif_table_data']
-                self._excel_cache['otif'] = {
+                IsotopeDashboardGenerator._excel_cache['otif'] = {
                     'mtime': current_mtime,
                     'otif_kpi_data':   self.otif_kpi_data,
                     'otif_table_data': self.otif_table_data,
@@ -4675,7 +4606,7 @@ class IsotopeDashboardGenerator:
             # Update in-process cache and persist to SQLite
             try:
                 mtime_now = os.path.getmtime(otif_path)
-                self._excel_cache['otif'] = {
+                IsotopeDashboardGenerator._excel_cache['otif'] = {
                     'mtime': mtime_now,
                     'otif_kpi_data':   kpi_data,
                     'otif_table_data': self.otif_table_data,
@@ -5938,25 +5869,11 @@ class IsotopeDashboardGenerator:
             within_spec_past_year = []
             within_spec_all_time = []
 
-        # Load productions changelog for OTIF missed production padding
-        planning_changelog = []
-        try:
-            if os.path.exists(PRODUCTIONS_DATABASE):
-                with open(PRODUCTIONS_DATABASE, 'r', encoding='utf-8') as f:
-                    _db = json.load(f)
-                    planning_changelog = _db.get('changelog', [])
-                print(f"✓ Loaded planning changelog ({len(planning_changelog)} entries)")
-            else:
-                print("⚠ Warning: productions_database.json not found, OTIF will use actuals only")
-        except Exception as e:
-            print(f"⚠ Warning: Could not load planning changelog: {e}")
-            planning_changelog = []
-
         # Get OTIF gedraaide producties data
         try:
-            otif_gedraaide_weeks, otif_gedraaide_average = self.get_otif_gedraaide_weeks(planning_changelog)
-            otif_gedraaide_last_year_avg = self.get_otif_gedraaide_last_year_average(planning_changelog)
-            otif_gedraaide_last_3months_avg = self.get_otif_gedraaide_last_3months_average(planning_changelog)
+            otif_gedraaide_weeks, otif_gedraaide_average = self.get_otif_gedraaide_weeks()
+            otif_gedraaide_last_year_avg = self.get_otif_gedraaide_last_year_average()
+            otif_gedraaide_last_3months_avg = self.get_otif_gedraaide_last_3months_average()
             print("✓ OTIF gedraaide producties calculations")
         except Exception as e:
             print(f"⚠ Warning: Could not get OTIF gedraaide data: {e}")
@@ -5964,7 +5881,7 @@ class IsotopeDashboardGenerator:
             otif_gedraaide_average = 0
             otif_gedraaide_last_year_avg = 0
             otif_gedraaide_last_3months_avg = 0
-        
+
         # Get issue tracking data
         try:
             issue_counts = self.get_issue_counts()
@@ -6208,7 +6125,7 @@ class IsotopeDashboardGenerator:
             otif_gedraaide_last_3months_avg=otif_gedraaide_last_3months_avg,
             vsm_data=self.vsm_data
         )
-        
+
         # Save FULL version to local location
         if os.path.exists(local_path):
             self.remove_readonly(local_path)
@@ -6555,11 +6472,11 @@ class IsotopeDashboardGenerator:
             </div>
         </div>
         """
-        
+
         # Create summary table for CURRENT week (Lopende week) - COPY from full dashboard
         tl_running_12 = [t for t in tl_running if t.get('kant') == '1.2']
         tl_running_21 = [t for t in tl_running if t.get('kant') == '2.1']
-        
+
         summary_table_rows = self._build_week_table_rows(
             ga_running, rb_running, in_running, tl_running_12, tl_running_21, io_running)
 
@@ -6688,17 +6605,17 @@ class IsotopeDashboardGenerator:
         {efficiency_table}
         
         {within_spec_table}
-        
+
         {otif_gedraaide_table}
-        
+
         {summary_table}
-        
+
         {previous_week_summary_table}
-        
+
     </div>
 </body>
 </html>"""
-        
+
         return html
     
     def create_html_dashboard(self, ga_running, ga_monthly, ga_previous,
@@ -6888,12 +6805,12 @@ class IsotopeDashboardGenerator:
             </div>
         </div>
         """
-        
+
         # Generate Gantt chart HTML (if cyclotron data available)
         gantt_chart_html = ""
         if cyclotron_data:
             gantt_chart_html = self.generate_gantt_chart_html(cyclotron_data)
-        
+
         # Create Gallium production efficiency table (mCi/µAh)
         gallium_eff_week_headers = ""
         gallium_eff_value_cells = ""
@@ -8020,11 +7937,11 @@ class IsotopeDashboardGenerator:
         {efficiency_table}
         
         {within_spec_table}
-        
+
         {otif_gedraaide_table}
-        
+
         {gantt_chart_html}
-        
+
         {summary_table}
         
         {previous_week_summary_table}
@@ -9932,6 +9849,10 @@ class IsotopeDashboardGenerator:
             if not _t('extract_philips_storingen', self.extract_philips_storingen_data):
                 print("[WARNING] Could not extract Philips storingen data")
 
+        # Connect SQLite early so Excel loaders can use the persistent mtime cache
+        if not _t('connect_sqlite', self.connect_sqlite):
+            return False
+
         try:
             _t('load_otif_excel', self.load_otif_data)
         except Exception as e:
@@ -9971,9 +9892,6 @@ class IsotopeDashboardGenerator:
         if not _t('extract_iodine', self.extract_iodine_data):
             return False
         print("[OK] Extracted records from bestralingen database")
-
-        if not _t('connect_sqlite', self.connect_sqlite):
-            return False
 
         def _store_all():
             self.store_in_sqlite('gallium_data',  self.gallium_data,  'opbrengst', 'theoretisch')
