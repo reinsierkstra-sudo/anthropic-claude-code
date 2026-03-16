@@ -1,0 +1,23 @@
+# Requirements for gallium_extractor.py and the modular renderer package.
+# Version pins are intentionally loose (>=) to allow patching while
+# preventing major-version surprises.
+
+# ── Database drivers ──────────────────────────────────────────────────────
+# Microsoft Access / ODBC connectivity (Windows only; requires the
+# Microsoft Access Database Engine redistributable to be installed).
+pyodbc>=4.0
+
+# ── HTTP requests ─────────────────────────────────────────────────────────
+requests>=2.28
+
+# ── HTML parsing (BeautifulSoup) ──────────────────────────────────────────
+beautifulsoup4>=4.11
+# lxml speeds up BeautifulSoup parsing and is the recommended parser
+lxml>=4.9
+
+# ── Excel file reading ────────────────────────────────────────────────────
+openpyxl>=3.0
+
+# ── Standard library modules used (no install needed) ────────────────────
+# sqlite3, json, os, shutil, hashlib, stat, re, statistics,
+# traceback, time, datetime, collections — all part of the Python stdlib.
