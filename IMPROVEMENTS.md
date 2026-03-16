@@ -58,7 +58,7 @@ Each phase is committed separately. Check marks indicate completed work.
 | # | Note | Description | Status |
 |---|------|-------------|--------|
 | 13 | IMPROVE-12 | Move `parse_eobhrmin`, `map_cyclotron_name`, `calculate_start_time`, `get_eob_time`, `create_end_datetime` out of `convert_bestralingen_to_gantt_format` to `@staticmethod`s | ✅ |
-| 14 | IMPROVE-10 | Move `get_*_color` helpers inside `generate_dashboard` to `@staticmethod`s | ⬜ |
+| 14 | IMPROVE-10 | Move `get_*_color` helpers inside `generate_dashboard` / `create_truncated_html_dashboard` to `@staticmethod`s | ✅ |
 
 ---
 
@@ -93,10 +93,10 @@ Each phase is committed separately. Check marks indicate completed work.
 
 | # | Note | Description | Status |
 |---|------|-------------|--------|
-| 21 | IMPROVE-05 | Extract `_build_week_table_rows(records, *, with_onclick)` shared by abbreviated + full dashboards | ⬜ |
-| 22 | IMPROVE-06 | Extract `_fmt_rb_cell(record, *, with_onclick)` used in 4 places | ⬜ |
+| 21 | IMPROVE-05 | Extract `_build_week_table_rows(records, *, with_onclick)` shared by abbreviated + full dashboards | ✅ |
+| 22 | IMPROVE-06 | Extract `_fmt_rb_cell(record, *, with_onclick)` + `_fmt_targetstroom_cell` + `_fmt_io_cell` used in multiple places | ✅ |
 | 23 | IMPROVE-07 | Wrap HTML-write file-protection in `@contextmanager _writable_output(html_path, hash_path)` | ⬜ |
-| 24 | IMPROVE-22 | Extract static CSS + JS from `generate_gantt_chart_html` into module-level string constants | ⬜ |
+| 24 | IMPROVE-22 | Extract static CSS + JS from `generate_gantt_chart_html` into module-level constants `_GANTT_CSS` and `@staticmethod _gantt_js_html` | ✅ |
 
 ---
 
@@ -111,6 +111,9 @@ Each phase is committed separately. Check marks indicate completed work.
 | Phase 4 | 10,550 | −79 (merged duplicate methods) |
 | Phase 5+6 | 10,213 | −337 (loop consolidation + static methods) |
 | Phase 7 | 10,133 | −80 (store_in_sqlite schema registry) |
-| Phase 8 | 10,369 | +236 (_TABLE_SCHEMAS class var added; net after debug-print removal already counted in phase 2–3) |
-| Phase 9 | 10,369 | 0 (architectural, no line change) |
-| **Current** | **10,369** | **−593 from baseline** |
+| Phase 8 | 10,369 | +236 (_TABLE_SCHEMAS class var; debug prints already removed) |
+| Phase 9 | 10,369 | 0 (architectural changes only) |
+| Phase 10 | 10,115 | −254 (dashboard dedup + CSS/JS extraction) |
+| **Final** | **10,115** | **−847 from baseline** |
+
+> **23 of 24 improvements completed.** Remaining: IMPROVE-07 (`_writable_output` context manager).
