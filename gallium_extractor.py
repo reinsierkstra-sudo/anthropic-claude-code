@@ -142,7 +142,9 @@ def _to_date(d):
 def _fmt_bo(bo):
     """Format a BO number: strip trailing .0 and dashes, return as plain integer string.
     If the value is not numeric, return it unchanged."""
-    if bo and str(bo).replace('.', '').replace('-', '').isdigit():
+    if bo is None:
+        return None
+    if str(bo).replace('.', '').replace('-', '').isdigit():
         return str(int(float(bo)))
     return bo
 
@@ -403,10 +405,6 @@ _GANTT_CSS = """\
 # ============================================================================
 
 class IsotopeDashboardGenerator:
-    # Class-level cache: survives across the 60-second loop because a new instance
-    # is created each time.  Keys: file path → (mtime, cached_data_or_dict).
-    _excel_cache = {}
-
     # ---- SQLite table schemas ----
     # Each entry maps a table name to a list of (column, sql_type) tuples.
     # 'alter_add' lists columns that may be missing on older databases.
@@ -500,6 +498,7 @@ class IsotopeDashboardGenerator:
         self.philips_storingen_data = []
         self.otif_kpi_data = []      # [{week, gallium, i123, indium, thallium, rubidium_krypton}, ...]
         self.otif_table_data = {}    # {product: {week: missed_count}}
+        self._excel_cache = {}       # Instance-level file cache: key → {mtime, ...}
         self.ploegen_data = {}  # Will store ploeg definitions
         self.planning_data = {}  # Will store who worked when
         self.ploegenwissel_date = None  # Date of last ploegen change (from P1 in Ploegen.xlsx)
@@ -511,7 +510,8 @@ class IsotopeDashboardGenerator:
         try:
             with open(filepath, 'rb') as f:
                 return hashlib.sha256(f.read()).hexdigest()
-        except Exception:
+        except (IOError, OSError) as e:
+            print(f"[WARNING] Hash calculation failed for {filepath!r}: {e}")
             return None
     
     def set_readonly(self, filepath):
@@ -712,7 +712,7 @@ class IsotopeDashboardGenerator:
     @staticmethod
     def parse_eobhrmin(eobhrmin_str):
         """Parse eobhrmin value to (hours, minutes) tuple."""
-        if not eobhrmin_str and eobhrmin_str != 0:
+        if eobhrmin_str is None or eobhrmin_str == '':
             return None
         if hasattr(eobhrmin_str, 'hour') and hasattr(eobhrmin_str, 'minute'):
             return (eobhrmin_str.hour, eobhrmin_str.minute)
@@ -1426,8 +1426,8 @@ class IsotopeDashboardGenerator:
             ).fetchone()
             if row and abs(row[0] - current_mtime) < 0.001:
                 return json.loads(row[1])
-        except Exception:
-            pass
+        except (json.JSONDecodeError, sqlite3.OperationalError) as e:
+            print(f"[WARNING] Excel cache load failed for {cache_key!r}: {e}")
         return None
 
     def _excel_cache_save_sqlite(self, cache_key, mtime, data):
@@ -1438,8 +1438,8 @@ class IsotopeDashboardGenerator:
                 (cache_key, mtime, json.dumps(data), datetime.now().isoformat())
             )
             self.sqlite_conn.commit()
-        except Exception:
-            pass
+        except (sqlite3.OperationalError, TypeError) as e:
+            print(f"[WARNING] Excel cache save failed for {cache_key!r}: {e}")
     
     def extract_gallium_data(self):
         """Extract Gallium data from Access - using Targetstroom from Galliumbestralingen"""
@@ -1850,8 +1850,8 @@ class IsotopeDashboardGenerator:
                     'output_percent': output_percent,
                     'identifier': bo_nummer if bo_nummer is not None else 'TEST_NONE',
                     'cyclotron': cyclotron,
-                    'bo_targetstroom': bo_targetstroom if bo_targetstroom is not None else -999,
-                    'targetstroom': targetstroom if targetstroom is not None else -999,
+                    'bo_targetstroom': bo_targetstroom,
+                    'targetstroom': targetstroom,
                     'totale_dosis': totale_dosis,
                     'meting_d1': meting_d1,
                     'meting_waste': meting_waste,
@@ -2000,7 +2000,7 @@ class IsotopeDashboardGenerator:
                 y = round(record.get('yield_percent', 0)) if record.get('yield_percent') is not None else 0
                 o = round(record.get('output_percent', 0)) if record.get('output_percent') is not None else 0
                 t_raw = record.get('targetstroom')
-                t = round(t_raw) if t_raw is not None and t_raw != -999 else 0
+                t = round(t_raw) if t_raw is not None else 0
                 return f"{y}%/{o}% + {t}µA", ''
             return record.get('targetstroom', 0), 'µA'
 
@@ -2030,6 +2030,9 @@ class IsotopeDashboardGenerator:
     
     def store_in_sqlite(self, table_name, data, col1, col2):
         """Store only new data in SQLite (schema-driven via _TABLE_SCHEMAS)."""
+        if table_name not in self._TABLE_SCHEMAS:
+            raise ValueError(f"Unknown table: {table_name!r}")
+
         cursor = self.sqlite_conn.cursor()
 
         # Create comments table if it doesn't exist
@@ -2128,7 +2131,13 @@ class IsotopeDashboardGenerator:
                 new_count += 1
 
         self.sqlite_conn.commit()
-    
+        cursor.close()
+
+    @staticmethod
+    def _get_friday_week(d):
+        """Return the Friday that starts the Friday-Thursday week containing date d."""
+        return d - timedelta(days=(d.weekday() - 4) % 7)
+
     def get_last_friday(self):
         """Get the date of last Friday"""
         today = datetime.now().date()
@@ -2558,6 +2567,7 @@ class IsotopeDashboardGenerator:
                 
                 # Filter out unrealistic years
                 if iso_year < 1900 or iso_year > 3000:
+                    print(f"[WARNING] Skipping within-spec record with unrealistic year {iso_year}")
                     continue
                 
                 percentage = (data['within_spec'] / data['total']) * 100
@@ -2636,7 +2646,7 @@ class IsotopeDashboardGenerator:
         percentages = []
         for w in weekly_data:
             try:
-                week_date = datetime.strptime(f"{w['year']}-W{w['week']:02d}-1", '%Y-W%W-%w')
+                week_date = datetime.combine(date.fromisocalendar(w['year'], w['week'], 1), datetime.min.time())
                 if week_date >= cutoff and w['percentage'] >= 10.0:
                     percentages.append(w['percentage'])
             except (ValueError, TypeError):
@@ -2664,7 +2674,7 @@ class IsotopeDashboardGenerator:
             # Create a date from year and week for comparison
             try:
                 # Use week 1, day 1 as representative date for the week
-                week_date = datetime.strptime(f"{w['year']}-W{w['week']:02d}-1", '%Y-W%W-%w')
+                week_date = datetime.combine(date.fromisocalendar(w['year'], w['week'], 1), datetime.min.time())
                 if week_date >= one_year_ago:
                     past_year.append(w)
             except Exception:
@@ -2750,10 +2760,7 @@ class IsotopeDashboardGenerator:
                     return None
             return None
 
-        def week_friday(d):
-            """Return the Friday that starts the Friday-Thursday week containing date d."""
-            days_since_friday = (d.weekday() - 4) % 7
-            return d - timedelta(days=days_since_friday)
+        week_friday = self._get_friday_week
 
         # ── Step 1: Build planned counts per (friday_week, isotope) from changelog snapshot ──
         # For each week, replay all changelog events up to Friday 18:00 of that week's start.
@@ -2826,7 +2833,7 @@ class IsotopeDashboardGenerator:
             if d is None:
                 continue
             ts = record.get('targetstroom')
-            if ts is None or ts == -999:
+            if ts is None:
                 pct = 0.0
             else:
                 nominal = ga_iba_nominal if str(record.get('cyclotron', '')).upper().startswith('IBA') else ga_philips_nominal
@@ -2839,7 +2846,7 @@ class IsotopeDashboardGenerator:
             if d is None:
                 continue
             ts = record.get('targetstroom')
-            if ts is None or ts == -999:
+            if ts is None:
                 pct = 0.0
             else:
                 nominal = in_iba_nominal if str(record.get('cyclotron', '')).upper().startswith('IBA') else in_philips_nominal
@@ -2852,7 +2859,7 @@ class IsotopeDashboardGenerator:
             if d is None:
                 continue
             ts = record.get('targetstroom')
-            if ts is None or ts == -999:
+            if ts is None:
                 pct = 0.0
             else:
                 pct = (ts / tl_nominal) * 100.0
@@ -2865,7 +2872,7 @@ class IsotopeDashboardGenerator:
                 continue
             bo_ts = record.get('bo_targetstroom')
             ts    = record.get('targetstroom')
-            if bo_ts is None or bo_ts == -999 or ts is None or ts == -999:
+            if bo_ts is None or ts is None:
                 pct = 0.0
             else:
                 pct = (ts / bo_ts) * 100.0
@@ -2877,7 +2884,7 @@ class IsotopeDashboardGenerator:
             if d is None:
                 continue
             stroom = record.get('stroom')
-            if stroom is None or stroom == -999:
+            if stroom is None:
                 pct = 0.0
             else:
                 pct = (stroom / rb_nominal) * 100.0
@@ -2981,7 +2988,7 @@ class IsotopeDashboardGenerator:
         pcts = []
         for w in weekly_data:
             try:
-                week_date = datetime.strptime(f"{w['year']}-W{w['week']:02d}-1", '%Y-W%W-%w')
+                week_date = datetime.combine(date.fromisocalendar(w['year'], w['week'], 1), datetime.min.time())
                 if week_date >= one_year_ago:
                     pcts.append(w['percentage'])
             except Exception:
@@ -2999,7 +3006,7 @@ class IsotopeDashboardGenerator:
         pcts = []
         for w in weekly_data:
             try:
-                week_date = datetime.strptime(f"{w['year']}-W{w['week']:02d}-1", '%Y-W%W-%w')
+                week_date = datetime.combine(date.fromisocalendar(w['year'], w['week'], 1), datetime.min.time())
                 if week_date >= three_months_ago:
                     pcts.append(w['percentage'])
             except Exception:
@@ -3074,15 +3081,31 @@ class IsotopeDashboardGenerator:
     
     def calculate_gallium_production_efficiency(self):
         """Calculate Gallium production efficiency (mCi/µAh) per week"""
-        
+        import bisect
+
+        # Pre-parse and sort opbrengsten by date for O(log n) lookup
+        parsed_opbrengsten = []
+        for opbrengst in self.gallium_opbrengsten_data:
+            d = opbrengst['date']
+            if isinstance(d, datetime):
+                d = d.date()
+            elif isinstance(d, str):
+                try:
+                    d = datetime.strptime(d, '%Y-%m-%d').date()
+                except Exception:
+                    continue
+            parsed_opbrengsten.append((d, opbrengst))
+        parsed_opbrengsten.sort(key=lambda x: x[0])
+        opbrengst_dates = [x[0] for x in parsed_opbrengsten]
+
         # Match Galliumbestralingen with Galliumopbrengsten
         matched_productions = []
-        
+
         for bestraling in self.gallium_data:
             eob_date = bestraling['date']
             if eob_date is None:
                 continue
-            
+
             # Convert to datetime.date if needed
             if isinstance(eob_date, datetime):
                 eob_date = eob_date.date()
@@ -3091,22 +3114,10 @@ class IsotopeDashboardGenerator:
                     eob_date = datetime.strptime(eob_date, '%Y-%m-%d').date()
                 except Exception:
                     continue
-            
-            # Find first opbrengst date after EOB date
-            matching_opbrengst = None
-            for opbrengst in self.gallium_opbrengsten_data:
-                opbrengst_date = opbrengst['date']
-                if isinstance(opbrengst_date, datetime):
-                    opbrengst_date = opbrengst_date.date()
-                elif isinstance(opbrengst_date, str):
-                    try:
-                        opbrengst_date = datetime.strptime(opbrengst_date, '%Y-%m-%d').date()
-                    except Exception:
-                        continue
-                
-                if opbrengst_date > eob_date:
-                    matching_opbrengst = opbrengst
-                    break
+
+            # Find first opbrengst date after EOB date (O(log n) via bisect)
+            idx = bisect.bisect_right(opbrengst_dates, eob_date)
+            matching_opbrengst = parsed_opbrengsten[idx][1] if idx < len(parsed_opbrengsten) else None
             
             if matching_opbrengst is None:
                 continue
@@ -3153,14 +3164,11 @@ class IsotopeDashboardGenerator:
         weekly_data = defaultdict(lambda: {'efficiencies': [], 'friday': None})
         
         for prod in matched_productions:
-            # Calculate which Friday-Thursday week this belongs to
-            days_since_friday = (prod['date'].weekday() - 4) % 7
-            week_start_friday = prod['date'] - timedelta(days=days_since_friday)
-            
+            week_start_friday = self._get_friday_week(prod['date'])
             weekly_data[week_start_friday]['efficiencies'].append(prod['efficiency'])
             if weekly_data[week_start_friday]['friday'] is None:
                 weekly_data[week_start_friday]['friday'] = week_start_friday
-        
+
         # Calculate average for each week and get ISO week number from Monday
         result = []
         for friday, data in sorted(weekly_data.items(), reverse=True):
@@ -3251,15 +3259,31 @@ class IsotopeDashboardGenerator:
     
     def calculate_indium_production_efficiency(self):
         """Calculate Indium production efficiency (mCi/µAh) per week"""
-        
+        import bisect
+
+        # Pre-parse and sort opbrengsten by date for O(log n) lookup
+        parsed_opbrengsten = []
+        for opbrengst in self.indium_opbrengsten_data:
+            d = opbrengst['date']
+            if isinstance(d, datetime):
+                d = d.date()
+            elif isinstance(d, str):
+                try:
+                    d = datetime.strptime(d, '%Y-%m-%d').date()
+                except Exception:
+                    continue
+            parsed_opbrengsten.append((d, opbrengst))
+        parsed_opbrengsten.sort(key=lambda x: x[0])
+        opbrengst_dates = [x[0] for x in parsed_opbrengsten]
+
         # Match Indiumbestralingen with Indiumopbrengsten
         matched_productions = []
-        
+
         for bestraling in self.indium_data:
             eob_date = bestraling['date']
             if eob_date is None:
                 continue
-            
+
             # Convert to datetime.date if needed
             if isinstance(eob_date, datetime):
                 eob_date = eob_date.date()
@@ -3268,22 +3292,10 @@ class IsotopeDashboardGenerator:
                     eob_date = datetime.strptime(eob_date, '%Y-%m-%d').date()
                 except Exception:
                     continue
-            
-            # Find first opbrengst date after EOB date
-            matching_opbrengst = None
-            for opbrengst in self.indium_opbrengsten_data:
-                opbrengst_date = opbrengst['date']
-                if isinstance(opbrengst_date, datetime):
-                    opbrengst_date = opbrengst_date.date()
-                elif isinstance(opbrengst_date, str):
-                    try:
-                        opbrengst_date = datetime.strptime(opbrengst_date, '%Y-%m-%d').date()
-                    except Exception:
-                        continue
-                
-                if opbrengst_date > eob_date:
-                    matching_opbrengst = opbrengst
-                    break
+
+            # Find first opbrengst date after EOB date (O(log n) via bisect)
+            idx = bisect.bisect_right(opbrengst_dates, eob_date)
+            matching_opbrengst = parsed_opbrengsten[idx][1] if idx < len(parsed_opbrengsten) else None
             
             if matching_opbrengst is None:
                 continue
@@ -3328,13 +3340,11 @@ class IsotopeDashboardGenerator:
         weekly_data = defaultdict(lambda: {'efficiencies': [], 'friday': None})
         
         for prod in matched_productions:
-            days_since_friday = (prod['date'].weekday() - 4) % 7
-            week_start_friday = prod['date'] - timedelta(days=days_since_friday)
-            
+            week_start_friday = self._get_friday_week(prod['date'])
             weekly_data[week_start_friday]['efficiencies'].append(prod['efficiency'])
             if weekly_data[week_start_friday]['friday'] is None:
                 weekly_data[week_start_friday]['friday'] = week_start_friday
-        
+
         # Calculate average for each week
         result = []
         for friday, data in sorted(weekly_data.items(), reverse=True):
@@ -3582,7 +3592,7 @@ class IsotopeDashboardGenerator:
             if totale_dosis is None or targetstroom is None or meting_d1 is None or meting_waste is None:
                 continue
             
-            if targetstroom <= 0 or targetstroom == -999:
+            if targetstroom <= 0:
                 continue
             
             # Calculate beam time from totale_dosis and targetstroom
@@ -3770,9 +3780,7 @@ class IsotopeDashboardGenerator:
             # Check targetstroom (fixed range)
             if targetstroom is None:
                 return False
-            if targetstroom == -999:
-                return False
-            
+
             ts_spec = SPEC_SETTINGS['iodine']['within_spec']['targetstroom']
             targetstroom_ok = ts_spec['min'] <= targetstroom <= ts_spec['max']
             
@@ -4098,7 +4106,7 @@ class IsotopeDashboardGenerator:
         # Skip reload if file has not changed since last successful load
         try:
             current_mtime = os.path.getmtime(self.ploegen_excel)
-            cached = IsotopeDashboardGenerator._excel_cache.get('ploegen')
+            cached = self._excel_cache.get('ploegen')
             if cached and cached['mtime'] == current_mtime:
                 self.ploegen_data = cached['ploegen_data']
                 self.ploegenwissel_date = cached['ploegenwissel_date']
@@ -4110,7 +4118,7 @@ class IsotopeDashboardGenerator:
                 self.ploegen_data = sq['ploegen_data']
                 pwd = sq.get('ploegenwissel_date')
                 self.ploegenwissel_date = date.fromisoformat(pwd) if pwd else None
-                IsotopeDashboardGenerator._excel_cache['ploegen'] = {
+                self._excel_cache['ploegen'] = {
                     'mtime': current_mtime,
                     'ploegen_data': self.ploegen_data,
                     'ploegenwissel_date': self.ploegenwissel_date,
@@ -4185,7 +4193,7 @@ class IsotopeDashboardGenerator:
             # Update in-process cache and persist to SQLite
             try:
                 mtime_now = os.path.getmtime(self.ploegen_excel)
-                IsotopeDashboardGenerator._excel_cache['ploegen'] = {
+                self._excel_cache['ploegen'] = {
                     'mtime': mtime_now,
                     'ploegen_data': ploegen,
                     'ploegenwissel_date': self.ploegenwissel_date,
@@ -4256,7 +4264,7 @@ class IsotopeDashboardGenerator:
 
         try:
             current_mtime = os.path.getmtime(self.vsm_excel)
-            cached = IsotopeDashboardGenerator._excel_cache.get('vsm')
+            cached = self._excel_cache.get('vsm')
             if cached and cached['mtime'] == current_mtime:
                 self.vsm_data = cached['vsm_data']
                 print("  (VSM excel unchanged — using cache)")
@@ -4265,7 +4273,7 @@ class IsotopeDashboardGenerator:
             sq = self._excel_cache_load_sqlite('vsm', current_mtime)
             if sq:
                 self.vsm_data = sq['vsm_data']
-                IsotopeDashboardGenerator._excel_cache['vsm'] = {
+                self._excel_cache['vsm'] = {
                     'mtime': current_mtime,
                     'vsm_data': self.vsm_data,
                 }
@@ -4384,7 +4392,7 @@ class IsotopeDashboardGenerator:
 
             try:
                 mtime_now = os.path.getmtime(self.vsm_excel)
-                IsotopeDashboardGenerator._excel_cache['vsm'] = {
+                self._excel_cache['vsm'] = {
                     'mtime': mtime_now,
                     'vsm_data': self.vsm_data,
                 }
@@ -4415,7 +4423,7 @@ class IsotopeDashboardGenerator:
         # Skip reload if file has not changed since last successful load
         try:
             current_mtime = os.path.getmtime(self.planning_excel)
-            cached = IsotopeDashboardGenerator._excel_cache.get('planning')
+            cached = self._excel_cache.get('planning')
             if cached and cached['mtime'] == current_mtime:
                 self.planning_data = cached['planning_data']
                 print("  (planning excel unchanged — using cache)")
@@ -4427,7 +4435,7 @@ class IsotopeDashboardGenerator:
                 self.planning_data = {
                     date.fromisoformat(k): v for k, v in sq['planning_data'].items()
                 }
-                IsotopeDashboardGenerator._excel_cache['planning'] = {
+                self._excel_cache['planning'] = {
                     'mtime': current_mtime,
                     'planning_data': self.planning_data,
                 }
@@ -4506,7 +4514,7 @@ class IsotopeDashboardGenerator:
             # Update in-process cache and persist to SQLite
             try:
                 mtime_now = os.path.getmtime(self.planning_excel)
-                IsotopeDashboardGenerator._excel_cache['planning'] = {
+                self._excel_cache['planning'] = {
                     'mtime': mtime_now,
                     'planning_data': planning,
                 }
@@ -4550,7 +4558,7 @@ class IsotopeDashboardGenerator:
         # Skip reload if file has not changed since last successful load
         try:
             current_mtime = os.path.getmtime(otif_path)
-            cached = IsotopeDashboardGenerator._excel_cache.get('otif')
+            cached = self._excel_cache.get('otif')
             if cached and cached['mtime'] == current_mtime:
                 self.otif_kpi_data = cached['otif_kpi_data']
                 self.otif_table_data = cached['otif_table_data']
@@ -4561,7 +4569,7 @@ class IsotopeDashboardGenerator:
             if sq:
                 self.otif_kpi_data   = sq['otif_kpi_data']
                 self.otif_table_data = sq['otif_table_data']
-                IsotopeDashboardGenerator._excel_cache['otif'] = {
+                self._excel_cache['otif'] = {
                     'mtime': current_mtime,
                     'otif_kpi_data':   self.otif_kpi_data,
                     'otif_table_data': self.otif_table_data,
@@ -4667,7 +4675,7 @@ class IsotopeDashboardGenerator:
             # Update in-process cache and persist to SQLite
             try:
                 mtime_now = os.path.getmtime(otif_path)
-                IsotopeDashboardGenerator._excel_cache['otif'] = {
+                self._excel_cache['otif'] = {
                     'mtime': mtime_now,
                     'otif_kpi_data':   kpi_data,
                     'otif_table_data': self.otif_table_data,
@@ -6327,7 +6335,7 @@ class IsotopeDashboardGenerator:
 
     @staticmethod
     def _get_iodine_targetstroom_color(targetstroom):
-        if targetstroom is None or targetstroom == -999:
+        if targetstroom is None:
             return '#000000'
         spec = SPEC_SETTINGS['iodine']['within_spec']['targetstroom']
         return '#3BB143' if spec['min'] <= targetstroom <= spec['max'] else '#FF2400'
@@ -6402,7 +6410,7 @@ class IsotopeDashboardGenerator:
             io_yield  = f"{round(record['yield_percent'], 1)}%"  if record.get('yield_percent')  is not None else "N/A"
             io_output = f"{round(record['output_percent'], 1)}%" if record.get('output_percent') is not None else "N/A"
             io_target = (f"{round(record['targetstroom'])}µA"
-                         if record.get('targetstroom') is not None and record.get('targetstroom') != -999
+                         if record.get('targetstroom') is not None
                          else "N/A")
             return (f"{bo_span} "
                     f"<span style='color: {yield_color}; font-weight: bold; font-size: 25px;'>{io_yield}</span>"
@@ -7615,8 +7623,8 @@ class IsotopeDashboardGenerator:
             val1 = f"{record['value1']:.2f}" if record['value1'] is not None else "N/A"
             val2 = f"{record['value2']:.2f}" if record['value2'] is not None else "N/A"
             identifier = str(int(record.get('identifier'))) if record.get('identifier') is not None and record.get('identifier') != 'TEST_NONE' else 'N/A'
-            bo_target = f"{record.get('bo_targetstroom'):.2f}" if record.get('bo_targetstroom') is not None and record.get('bo_targetstroom') != -999 else "N/A"
-            target = f"{record.get('targetstroom'):.2f}" if record.get('targetstroom') is not None and record.get('targetstroom') != -999 else "N/A"
+            bo_target = f"{record.get('bo_targetstroom'):.2f}" if record.get('bo_targetstroom') is not None else "N/A"
+            target = f"{record.get('targetstroom'):.2f}" if record.get('targetstroom') is not None else "N/A"
             opmerking = record.get('opmerking', '-') if record.get('opmerking') else '-'
 
             # Determine if dropdown should be shown (using Iodine-specific logic)
