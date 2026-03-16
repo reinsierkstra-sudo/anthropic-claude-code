@@ -329,6 +329,20 @@ def _fmt_bo(bo):
     return bo
 
 
+# Default file paths used when none are passed to IsotopeDashboardGenerator (IMPROVE-23)
+DEFAULT_PATHS = {
+    'sqlite_db':            'isotope_data.db',
+    'proces_db':            r'W:\Maximo\ProcesGegevens.accdb',
+    'ploegen_excel':        r'C:\Users\Reinder.sierkstra\Desktop\Dosis_overzichten\Ploegen.xlsx',
+    'planning_excel':       r'W:\Afdelingsplanning Cyclotron\Planning & Control Cyclotron.xlsm',
+    'storingen_db':         r'\\NLPT-FILE01P\Dept$\NLCYC\Storingen IBA\Storingen_IBA.accdb',
+    'philips_storingen_db': r'\\NLPT-FILE01P\Dept$\NLCYC\Storingen Philips\Storingen_Philips.accdb',
+    'vsm_excel':            r'C:\Users\Reinder.sierkstra\OneDrive - CURIUM\Niet onedrive spullen\Desktop\Targetstroom daily management VSM cyclotron.xlsx',
+    'planning_html':        r'W:\Afdelingsplanning Cyclotron\planning.html',
+    'productieschema_html': r'W:\Desktop Settings\Cyclotron formulieren\0 (BETA) Cyclotron productieplanning.html',
+}
+
+
 # --- Module-level Gantt CSS/JS constants (IMPROVE-22) ---
 _GANTT_CSS = """\
         <style>
