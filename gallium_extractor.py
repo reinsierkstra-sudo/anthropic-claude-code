@@ -87,6 +87,114 @@ warnings.filterwarnings('ignore')
 #   can safely become static methods or module-level functions, which also
 #   makes them testable in isolation.
 #
+# [IMPROVE-11] A date-normalisation pattern is duplicated ~15+ times across
+#   get_since_friday_data, get_previous_week_data, calculate_monthly_averages,
+#   calculate_within_spec_percentage, get_efficiency_last_year_average,
+#   get_efficiency_last_3months_average, get_efficiency_past_year,
+#   count_sf_references, and more.  The pattern is always:
+#     if isinstance(d, datetime): d = d.date()
+#     elif isinstance(d, str):
+#         try: d = datetime.strptime(d, '%Y-%m-%d').date()
+#         except: continue / return None
+#   Extract as a single module-level helper:
+#     def _to_date(d) -> Optional[date]
+#   and replace every occurrence with a single call.
+#
+# [IMPROVE-12] The five inner helper functions inside
+#   convert_bestralingen_to_gantt_format — map_cyclotron_name,
+#   calculate_start_time, get_eob_time, create_end_datetime, and
+#   parse_eobhrmin — are redefined on every call.  They don't capture any
+#   mutable state and parse_eobhrmin is also needed outside this method.
+#   Promote them to static methods or module-level functions.
+#
+# [IMPROVE-13] The gantt-conversion loop body inside
+#   convert_bestralingen_to_gantt_format is copy-pasted for Gallium,
+#   Rubidium, Indium, and Thallium (lines ~549-721).  Only the product code
+#   and 'identifier' / 'eobhrmin' field names differ.  Extract a single
+#   helper:
+#     def _convert_isotope_to_gantt(self, data, product_code, cutoff_date,
+#                                   eob_field='eobhrmin') -> list
+#   and call it four times (Iodine keeps its own block due to start/stop
+#   time logic).
+#
+# [IMPROVE-14] count_sf_references repeats the same date-to-string
+#   conversion block five times (once per isotope):
+#     if isinstance(date_val, str): date_str = ...
+#     else: date_str = date_val.strftime('%Y-%m-%d')
+#   Extract as:
+#     def _fmt_date_str(date_val) -> str
+#   and call it from every isotope block.  (This also overlaps with
+#   IMPROVE-11 — a single _to_date + isoformat() call covers both.)
+#
+# [IMPROVE-15] calculate_within_spec_percentage contains five near-identical
+#   per-isotope loops (Gallium, Rubidium, Indium, Thallium, Iodine) that
+#   parse the date and call is_production_in_spec.  Replace with a single
+#   loop over a lookup table:
+#     ISOTOPE_DATA = [
+#         ('gallium',  self.gallium_data),
+#         ('rubidium', self.rubidium_data),
+#         ...
+#     ]
+#     for isotope, dataset in ISOTOPE_DATA:
+#         for record in dataset: ...
+#
+# [IMPROVE-16] get_within_spec_last_year_average and
+#   get_within_spec_last_3months_average are near-identical (same pattern as
+#   IMPROVE-03 but for within-spec data).  Merge into:
+#     def _within_spec_average_since(self, days) -> float
+#   and expose two thin wrappers or call it directly.
+#
+# [IMPROVE-17] Bare 'except:' and 'except Exception: pass' clauses appear
+#   throughout the file (date parsing, column-add migrations, integrity
+#   checks).  Silent swallowing of exceptions makes debugging hard.  Replace
+#   with specific exception types (ValueError, TypeError, pyodbc.Error, etc.)
+#   and at minimum log the error with print() or the logging module.
+#
+# [IMPROVE-18] Several stdlib modules are imported inside functions on every
+#   call: 'statistics' (in get_efficiency_weeks and ~5 other methods),
+#   're' (in count_sf_references), 'hashlib' (in calculate_file_hash),
+#   'stat' (in set_readonly / remove_readonly), 'traceback' (in multiple
+#   extract_* methods), 'time' (in run).  Move all of these to the top-level
+#   import block.
+#
+# [IMPROVE-19] store_in_sqlite is a ~200-line god method with four parallel
+#   if/elif branches for CREATE TABLE, UPDATE, and INSERT — one per table
+#   type.  Define a schema registry (a dict mapping table_name to its column
+#   list + types) and generate the SQL programmatically.  This makes adding
+#   a new isotope table a one-line dictionary entry instead of ~50 lines of
+#   duplicated SQL.
+#
+# [IMPROVE-20] Approximately 40 blocks of commented-out debug prints
+#   (# print(f"[DEBUG] ..."), # print(f"[GALLIUM DEBUG] ..."), etc.) are
+#   scattered throughout the file.  Either delete them or replace with
+#   proper logging.debug() calls so they can be enabled at runtime via
+#   logging.setLevel(logging.DEBUG) without code changes.
+#
+# [IMPROVE-21] In __main__, a brand-new IsotopeDashboardGenerator instance
+#   is created on every 60-second loop iteration, which reconnects to all
+#   databases each time.  The class-level _excel_cache was added as a
+#   workaround.  Instead, reuse a single instance and add a reset() method
+#   that clears per-run state (data lists, connection handles) so resources
+#   are properly recycled without paying the instantiation overhead.
+#
+# [IMPROVE-22] generate_gantt_chart_html embeds thousands of lines of CSS
+#   and JavaScript directly inside an f-string.  Extract the static CSS and
+#   JS into separate string constants (or external .css/.js template files)
+#   and inject only the dynamic data (cyclotron_json) at runtime.  This
+#   makes the UI easier to edit and enables browser caching.
+#
+# [IMPROVE-23] IsotopeDashboardGenerator.__init__ accepts nine path
+#   parameters with hardcoded default values pointing to specific network
+#   shares and a user's Desktop.  Extract the defaults into a dedicated
+#   config dict, dataclass, or .ini/.json config file so paths can be
+#   changed without modifying source code.
+#
+# [IMPROVE-24] parse_eobhrmin uses int() to extract minutes from a float's
+#   decimal part (e.g., 0.3 → 30 min via int(0.3 * 100)).  Floating-point
+#   representation means 0.3 is actually 0.2999..., so int() silently gives
+#   29 instead of 30.  Replace int(...) with round(...) when converting the
+#   decimal fraction to minutes.
+#
 # ============================================================================
 
 # ============================================================================
