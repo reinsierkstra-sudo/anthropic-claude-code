@@ -10684,6 +10684,33 @@ class IsotopeDashboardGenerator:
             if conn:
                 conn.close()
 
+    def reset(self):
+        """Close connections and clear cached data so the instance can be reused."""
+        self.close()
+        self.access_conn = None
+        self.proces_conn = None
+        self.sqlite_conn = None
+        self.storingen_conn = None
+        self.philips_storingen_conn = None
+        self.gallium_data = []
+        self.gallium_opbrengsten_data = []
+        self.rubidium_data = []
+        self.indium_data = []
+        self.indium_opbrengsten_data = []
+        self.thallium_data = []
+        self.iodine_data = []
+        self.efficiency_data = []
+        self.iba_storingen_data = []
+        self.philips_storingen_data = []
+        self.otif_kpi_data = []
+        self.otif_table_data = {}
+        self.ploegen_data = {}
+        self.planning_data = {}
+        self.ploegenwissel_date = None
+        self.vsm_data = []
+        self.planning_html_content = None
+        self.productieschema_html_content = None
+
 
 if __name__ == "__main__":
     ACCESS_DB_PATH = r"\\TUPETT-FI01\Data$\Malshare\Proc\Metrics\thalliumproces\bestralingen.mdb"
@@ -10694,33 +10721,31 @@ if __name__ == "__main__":
     print("Press Ctrl+C to stop")
     print("=" * 60)
     
+    generator = IsotopeDashboardGenerator(ACCESS_DB_PATH)
     loop_counter = 0
-    while True:
-        try:
+    try:
+        while True:
             loop_counter += 1
-            generator = IsotopeDashboardGenerator(ACCESS_DB_PATH)
-            
             try:
                 current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 print(f"\n[{current_time}] Starting dashboard generation...")
-                
+
                 generator.run(loop_counter)
-                
+
                 print(f"[OK] Process complete!")
                 print(f"Waiting 60 seconds until next update...")
-                
+
+            except Exception as e:
+                print(f"\n[ERROR] Error during generation: {e}")
+                print("Waiting 60 seconds before retry...")
             finally:
-                generator.close()
-            
+                generator.reset()
+
             # Wait 60 seconds before next update
             time.sleep(60)
-            
-        except KeyboardInterrupt:
-            print("\n" + "=" * 60)
-            print("Dashboard generator stopped by user")
-            print("=" * 60)
-            break
-        except Exception as e:
-            print(f"\n[ERROR] Error during generation: {e}")
-            print("Waiting 60 seconds before retry...")
-            time.sleep(60)
+
+    except KeyboardInterrupt:
+        print("\n" + "=" * 60)
+        print("Dashboard generator stopped by user")
+        print("=" * 60)
+        generator.close()
