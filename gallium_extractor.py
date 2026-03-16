@@ -335,26 +335,28 @@ class IsotopeDashboardGenerator:
     # is created each time.  Keys: file path → (mtime, cached_data_or_dict).
     _excel_cache = {}
 
-    def __init__(self, access_db_path, sqlite_db_path='isotope_data.db', proces_db_path=r'W:\Maximo\ProcesGegevens.accdb',
-                 ploegen_excel=r'C:\Users\Reinder.sierkstra\Desktop\Dosis_overzichten\Ploegen.xlsx',
-                 planning_excel=r'W:\Afdelingsplanning Cyclotron\Planning & Control Cyclotron.xlsm',
-                 storingen_db_path=r'\\NLPT-FILE01P\Dept$\NLCYC\Storingen IBA\Storingen_IBA.accdb',
-                 philips_storingen_db_path=r'\\NLPT-FILE01P\Dept$\NLCYC\Storingen Philips\Storingen_Philips.accdb',
-                 vsm_excel=r'C:\Users\Reinder.sierkstra\OneDrive - CURIUM\Niet onedrive spullen\Desktop\Targetstroom daily management VSM cyclotron.xlsx',
-                 planning_html=r'W:\Afdelingsplanning Cyclotron\planning.html',
-                 productieschema_html=r'W:\Desktop Settings\Cyclotron formulieren\0 (BETA) Cyclotron productieplanning.html'):
+    def __init__(self, access_db_path,
+                 sqlite_db_path=None,
+                 proces_db_path=None,
+                 ploegen_excel=None,
+                 planning_excel=None,
+                 storingen_db_path=None,
+                 philips_storingen_db_path=None,
+                 vsm_excel=None,
+                 planning_html=None,
+                 productieschema_html=None):
         self.access_db_path = access_db_path
-        self.sqlite_db_path = sqlite_db_path
-        self.proces_db_path = proces_db_path
-        self.ploegen_excel = ploegen_excel
-        self.planning_excel = planning_excel
-        self.storingen_db_path = storingen_db_path
-        self.philips_storingen_db_path = philips_storingen_db_path
-        self.vsm_excel = vsm_excel
+        self.sqlite_db_path          = sqlite_db_path         or DEFAULT_PATHS['sqlite_db']
+        self.proces_db_path          = proces_db_path         or DEFAULT_PATHS['proces_db']
+        self.ploegen_excel           = ploegen_excel          or DEFAULT_PATHS['ploegen_excel']
+        self.planning_excel          = planning_excel         or DEFAULT_PATHS['planning_excel']
+        self.storingen_db_path       = storingen_db_path      or DEFAULT_PATHS['storingen_db']
+        self.philips_storingen_db_path = philips_storingen_db_path or DEFAULT_PATHS['philips_storingen_db']
+        self.vsm_excel               = vsm_excel              or DEFAULT_PATHS['vsm_excel']
         self.vsm_data = []
-        self.planning_html = planning_html
+        self.planning_html           = planning_html          or DEFAULT_PATHS['planning_html']
         self.planning_html_content = None
-        self.productieschema_html = productieschema_html
+        self.productieschema_html    = productieschema_html   or DEFAULT_PATHS['productieschema_html']
         self.productieschema_html_content = None
         self.comments_file = 'production_comments.json'
         self.access_conn = None
