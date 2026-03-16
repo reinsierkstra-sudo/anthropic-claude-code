@@ -53,16 +53,6 @@ loop_interval_seconds: 60
 
 
 # ------------------------------------------------------------------------------
-# Incremental collection — lookback window
-# ------------------------------------------------------------------------------
-# On the first run the collector performs a full historical import.
-# On subsequent runs it only fetches records from the last N days, which
-# covers both new entries and any recent edits made in the Access databases.
-# Increase this value if you need corrections to older records to be picked up.
-collection_lookback_days: 30
-
-
-# ------------------------------------------------------------------------------
 # Within-spec thresholds per isotope
 # ------------------------------------------------------------------------------
 # These define whether a production is "passing" quality criteria.

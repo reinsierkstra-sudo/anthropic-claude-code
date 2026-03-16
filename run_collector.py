@@ -17,7 +17,7 @@ success (✓) or warnings (⚠) for each data source.
 """
 
 import traceback
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
 from config.loader import load_settings
 
@@ -34,10 +34,9 @@ def main() -> bool:
     # Import here so the module can be loaded without pyodbc installed
     from gallium_extractor import IsotopeDashboardGenerator
     from collector import access_reader
-    from collector.raw_db import connect as raw_connect, get_max_date, store as raw_store
+    from collector.raw_db import connect as raw_connect, store as raw_store
 
     raw_db_path = paths.get("raw_db", "data/raw.db")
-    lookback_days = cfg.get("collection_lookback_days", 30)
 
     generator = IsotopeDashboardGenerator(
         access_db_path             = paths.get("access_db"),
@@ -95,15 +94,6 @@ def main() -> bool:
         print("✗ Could not connect to SQLite database — aborting.")
         return False
 
-    # Determine incremental since-dates per table.
-    # On first run max_date is None → full extraction.
-    # On subsequent runs extract from (max_date - lookback_days) to catch edits.
-    def _since(table: str):
-        max_str = get_max_date(raw_conn, table)
-        if max_str:
-            return date.fromisoformat(max_str) - timedelta(days=lookback_days)
-        return None  # full extraction
-
     # ── OTIF Excel ────────────────────────────────────────────────────────
     try:
         generator.load_otif_data()
@@ -137,29 +127,29 @@ def main() -> bool:
         print(f"⚠ Could not load productieschema HTML: {e}")
         generator.productieschema_html_content = None
 
-    # ── Isotope data from bestralingen (incremental) ──────────────────────
-    # Open a second read-only Access connection for the standalone extractors
-    # so we can pass since_date without touching the generator's internals.
+    # ── Isotope data from bestralingen ────────────────────────────────────
+    # Full extraction every run so that edits to any historical record in
+    # Access are always picked up.  The upsert in raw_store handles
+    # deduplication: existing (identifier, date) pairs are updated in-place,
+    # new pairs are inserted.
     access_conn = access_reader.connect_access(paths.get("access_db", ""))
     if access_conn is None:
         print("✗ Could not open Access connection for isotope extraction — aborting.")
         return False
 
     isotopes = [
-        ("gallium_data",  access_reader.extract_gallium_data,  "EOB datum"),
-        ("rubidium_data", access_reader.extract_rubidium_data, "EOB datum"),
-        ("indium_data",   access_reader.extract_indium_data,   "EOB datum"),
-        ("thallium_data", access_reader.extract_thallium_data, "EOB datum"),
-        ("iodine_data",   access_reader.extract_iodine_data,   "BO ingroei tot datum"),
+        ("gallium_data",  access_reader.extract_gallium_data),
+        ("rubidium_data", access_reader.extract_rubidium_data),
+        ("indium_data",   access_reader.extract_indium_data),
+        ("thallium_data", access_reader.extract_thallium_data),
+        ("iodine_data",   access_reader.extract_iodine_data),
     ]
 
-    for table, extractor, _date_col in isotopes:
-        since = _since(table)
-        label = f"since {since}" if since else "full extraction"
+    for table, extractor in isotopes:
         try:
-            records = extractor(access_conn, since_date=since)
+            records = extractor(access_conn)
             raw_store(raw_conn, table, records)
-            print(f"✓ {table}: {len(records)} records ({label})")
+            print(f"✓ {table}: {len(records)} records")
         except Exception as e:
             print(f"✗ {table}: extraction failed — {e}")
             traceback.print_exc()
