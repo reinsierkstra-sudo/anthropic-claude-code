@@ -2524,10 +2524,14 @@ class IsotopeDashboardGenerator:
             (self.thallium_data, 'thallium', 'Thallium'),
             (self.iodine_data,   'iodine',   'Iodine'),
         ]
+        bad_years = set()
         for data, spec_key, label in isotope_datasets:
             for record in data:
                 date = _to_date(record['date'])
                 if date is None:
+                    continue
+                if not (1900 <= date.year <= 3000):
+                    bad_years.add(date.year)
                     continue
                 within_spec = self.is_production_in_spec(record, spec_key)
                 all_productions.append({
@@ -2535,6 +2539,8 @@ class IsotopeDashboardGenerator:
                     'isotope': label,
                     'within_spec': within_spec,
                 })
+        if bad_years:
+            print(f"[WARNING] Skipped {len(bad_years)} production record(s) with unrealistic year(s): {sorted(bad_years)} — fix source data")
         
         # Group by week (Friday-Thursday, matching get_last_friday logic)
         weekly_data = defaultdict(lambda: {'total': 0, 'within_spec': 0, 'dates': [], 'friday': None})
@@ -2549,9 +2555,13 @@ class IsotopeDashboardGenerator:
             days_since_friday = (prod['date'].weekday() - 4) % 7
             week_start_friday = prod['date'] - timedelta(days=days_since_friday)
             
+            # Filter out records with unrealistic years (data entry errors in source)
+            if not (1900 <= week_start_friday.year <= 3000):
+                continue
+
             # Use the actual Friday date as the key
             week_key = week_start_friday
-            
+
             if weekly_data[week_key]['friday'] is None:
                 weekly_data[week_key]['friday'] = week_start_friday
             
@@ -2569,9 +2579,8 @@ class IsotopeDashboardGenerator:
                 # Use the ISO week that contains this Thursday for display
                 iso_year, iso_week, _ = thursday.isocalendar()
                 
-                # Filter out unrealistic years
+                # Guard: skip any residual records with unrealistic years
                 if iso_year < 1900 or iso_year > 3000:
-                    print(f"[WARNING] Skipping within-spec record with unrealistic year {iso_year}")
                     continue
                 
                 percentage = (data['within_spec'] / data['total']) * 100
