@@ -41,7 +41,7 @@ def main() -> dict:
     """
     cfg = load_settings()
     paths = cfg.get("paths", {})
-    sqlite_db = paths.get("sqlite_db", "isotope_data.db")
+    sqlite_db = paths.get("raw_db", "data/raw.db")
 
     from gallium_extractor import IsotopeDashboardGenerator
 

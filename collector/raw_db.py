@@ -255,6 +255,27 @@ def store(conn: sqlite3.Connection, table_name: str, data: list,
     cursor.close()
 
 
+def get_max_date(conn: sqlite3.Connection, table_name: str) -> str | None:
+    """Return the most recent ``date`` value stored in *table_name*, or ``None``.
+
+    Used by the collector to determine the starting point for incremental
+    extraction.  Returns a ``'YYYY-MM-DD'`` string, or ``None`` if the table
+    is empty or does not exist.
+
+    Parameters
+    ----------
+    conn : sqlite3.Connection
+        An open SQLite connection.
+    table_name : str
+        The name of the table to inspect.
+    """
+    try:
+        row = conn.execute(f"SELECT MAX(date) FROM {table_name}").fetchone()
+        return row[0] if row and row[0] else None
+    except sqlite3.OperationalError:
+        return None
+
+
 def load_table(conn: sqlite3.Connection, table_name: str) -> list:
     """Return all rows from *table_name* as a list of dicts.
 

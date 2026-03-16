@@ -17,7 +17,7 @@ success (✓) or warnings (⚠) for each data source.
 """
 
 import traceback
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from config.loader import load_settings
 
@@ -33,10 +33,15 @@ def main() -> bool:
 
     # Import here so the module can be loaded without pyodbc installed
     from gallium_extractor import IsotopeDashboardGenerator
+    from collector import access_reader
+    from collector.raw_db import connect as raw_connect, get_max_date, store as raw_store
+
+    raw_db_path = paths.get("raw_db", "data/raw.db")
+    lookback_days = cfg.get("collection_lookback_days", 30)
 
     generator = IsotopeDashboardGenerator(
         access_db_path             = paths.get("access_db"),
-        sqlite_db_path             = paths.get("sqlite_db", "isotope_data.db"),
+        sqlite_db_path             = raw_db_path,
         proces_db_path             = paths.get("proces_db"),
         storingen_db_path          = paths.get("storingen_db"),
         philips_storingen_db_path  = paths.get("philips_storingen_db"),
@@ -85,9 +90,19 @@ def main() -> bool:
             print("⚠ Could not extract Philips storingen data")
 
     # ── SQLite (must connect before Excel loaders so mtime cache works) ───
+    raw_conn = raw_connect(raw_db_path)
     if not generator.connect_sqlite():
         print("✗ Could not connect to SQLite database — aborting.")
         return False
+
+    # Determine incremental since-dates per table.
+    # On first run max_date is None → full extraction.
+    # On subsequent runs extract from (max_date - lookback_days) to catch edits.
+    def _since(table: str):
+        max_str = get_max_date(raw_conn, table)
+        if max_str:
+            return date.fromisoformat(max_str) - timedelta(days=lookback_days)
+        return None  # full extraction
 
     # ── OTIF Excel ────────────────────────────────────────────────────────
     try:
@@ -122,38 +137,41 @@ def main() -> bool:
         print(f"⚠ Could not load productieschema HTML: {e}")
         generator.productieschema_html_content = None
 
-    # ── Isotope data from bestralingen ────────────────────────────────────
-    if not generator.extract_gallium_data():
-        print("✗ Could not extract Gallium data — aborting.")
+    # ── Isotope data from bestralingen (incremental) ──────────────────────
+    # Open a second read-only Access connection for the standalone extractors
+    # so we can pass since_date without touching the generator's internals.
+    access_conn = access_reader.connect_access(paths.get("access_db", ""))
+    if access_conn is None:
+        print("✗ Could not open Access connection for isotope extraction — aborting.")
         return False
+
+    isotopes = [
+        ("gallium_data",  access_reader.extract_gallium_data,  "EOB datum"),
+        ("rubidium_data", access_reader.extract_rubidium_data, "EOB datum"),
+        ("indium_data",   access_reader.extract_indium_data,   "EOB datum"),
+        ("thallium_data", access_reader.extract_thallium_data, "EOB datum"),
+        ("iodine_data",   access_reader.extract_iodine_data,   "BO ingroei tot datum"),
+    ]
+
+    for table, extractor, _date_col in isotopes:
+        since = _since(table)
+        label = f"since {since}" if since else "full extraction"
+        try:
+            records = extractor(access_conn, since_date=since)
+            raw_store(raw_conn, table, records)
+            print(f"✓ {table}: {len(records)} records ({label})")
+        except Exception as e:
+            print(f"✗ {table}: extraction failed — {e}")
+            traceback.print_exc()
+            return False
+
+    # Opbrengsten data (not persisted to raw.db, used only during calculation)
     generator.extract_gallium_opbrengsten_data()
-
-    if not generator.extract_rubidium_data():
-        print("✗ Could not extract Rubidium data — aborting.")
-        return False
-
-    if not generator.extract_indium_data():
-        print("✗ Could not extract Indium data — aborting.")
-        return False
     generator.extract_indium_opbrengsten_data()
 
-    if not generator.extract_thallium_data():
-        print("✗ Could not extract Thallium data — aborting.")
-        return False
-
-    if not generator.extract_iodine_data():
-        print("✗ Could not extract Iodine data — aborting.")
-        return False
-
-    print("✓ Extracted all isotope records from bestralingen database")
-
-    # ── Persist to SQLite ─────────────────────────────────────────────────
-    generator.store_in_sqlite("gallium_data",  generator.gallium_data,  "opbrengst",       "theoretisch")
-    generator.store_in_sqlite("rubidium_data", generator.rubidium_data, "activiteit_mbq",  "benodigde_mci")
-    generator.store_in_sqlite("indium_data",   generator.indium_data,   "opbrengst",       "theoretisch")
-    generator.store_in_sqlite("thallium_data", generator.thallium_data, "opbrengst",       "theoretisch")
-    generator.store_in_sqlite("iodine_data",   generator.iodine_data,   "meting",          "verwacht")
-    print("✓ Stored all records to SQLite")
+    access_conn.close()
+    raw_conn.close()
+    print("✓ All isotope records stored to raw.db")
 
     generator.close()
     return True

@@ -16,7 +16,17 @@ Provides
 
 import traceback
 import pyodbc
-from datetime import datetime
+from datetime import date, datetime
+
+
+def _date_filter(since_date, col_name: str) -> str:
+    """Return an MS Access WHERE clause for *col_name* >= *since_date*, or empty string.
+
+    MS Access date literals use the ``#MM/DD/YYYY#`` format.
+    """
+    if since_date is None:
+        return ""
+    return f"WHERE [{col_name}] >= #{since_date.strftime('%m/%d/%Y')}#"
 
 
 # ---------------------------------------------------------------------------
@@ -232,13 +242,16 @@ def connect_storingen_philips(path: str):
 # Extraction functions
 # ---------------------------------------------------------------------------
 
-def extract_gallium_data(conn) -> list:
+def extract_gallium_data(conn, since_date=None) -> list:
     """Extract Gallium data from Access — using Targetstroom from Galliumbestralingen.
 
     Parameters
     ----------
     conn : pyodbc.Connection
         An open connection to the bestralingen Access database.
+    since_date : datetime.date, optional
+        If given, only records with ``[EOB datum] >= since_date`` are returned.
+        Pass ``None`` (default) for a full extraction.
 
     Returns
     -------
@@ -248,7 +261,7 @@ def extract_gallium_data(conn) -> list:
     cursor = conn.cursor()
 
     try:
-        query = """
+        query = f"""
             SELECT
                 [EOB datum],
                 [Targetstroom],
@@ -259,6 +272,7 @@ def extract_gallium_data(conn) -> list:
                 [Target nr + Opmerking],
                 [IBA Bestralingspositie]
             FROM Galliumbestralingen
+            {_date_filter(since_date, 'EOB datum')}
             ORDER BY [EOB datum] DESC
         """
 
@@ -365,13 +379,16 @@ def extract_indium_opbrengsten_data(conn) -> list:
     return _extract_opbrengsten(conn, 'Indiumopbrengsten')
 
 
-def extract_rubidium_data(conn) -> list:
+def extract_rubidium_data(conn, since_date=None) -> list:
     """Extract Rubidium data from Access.
 
     Parameters
     ----------
     conn : pyodbc.Connection
         An open connection to the bestralingen Access database.
+    since_date : datetime.date, optional
+        If given, only records with ``[EOB datum] >= since_date`` are returned.
+        Pass ``None`` (default) for a full extraction.
 
     Returns
     -------
@@ -381,7 +398,7 @@ def extract_rubidium_data(conn) -> list:
     cursor = conn.cursor()
 
     try:
-        query = """
+        query = f"""
             SELECT
                 [EOB datum],
                 [Activiteit MBq],
@@ -392,6 +409,7 @@ def extract_rubidium_data(conn) -> list:
                 [EOB tijd],
                 [Opmerking]
             FROM Rubidiumbestralingen
+            {_date_filter(since_date, 'EOB datum')}
             ORDER BY [EOB datum] DESC
         """
 
@@ -438,13 +456,16 @@ def extract_rubidium_data(conn) -> list:
         return []
 
 
-def extract_indium_data(conn) -> list:
+def extract_indium_data(conn, since_date=None) -> list:
     """Extract Indium data from Access — using Targetstroom from Indiumbestralingen.
 
     Parameters
     ----------
     conn : pyodbc.Connection
         An open connection to the bestralingen Access database.
+    since_date : datetime.date, optional
+        If given, only records with ``[EOB datum] >= since_date`` are returned.
+        Pass ``None`` (default) for a full extraction.
 
     Returns
     -------
@@ -454,7 +475,7 @@ def extract_indium_data(conn) -> list:
     cursor = conn.cursor()
 
     try:
-        query = """
+        query = f"""
             SELECT
                 [EOB datum],
                 [Targetstroom],
@@ -464,6 +485,7 @@ def extract_indium_data(conn) -> list:
                 [EOBhrmin],
                 [Opmerking]
             FROM Indiumbestralingen
+            {_date_filter(since_date, 'EOB datum')}
             ORDER BY [EOB datum] DESC
         """
 
@@ -503,7 +525,7 @@ def extract_indium_data(conn) -> list:
         return []
 
 
-def extract_thallium_data(conn) -> list:
+def extract_thallium_data(conn, since_date=None) -> list:
     """Extract Thallium data from Access — using Targetstroom from Thalliumbestralingen.
 
     Kant (cyclotron side) is derived from the first digit of the BO number:
@@ -513,6 +535,9 @@ def extract_thallium_data(conn) -> list:
     ----------
     conn : pyodbc.Connection
         An open connection to the bestralingen Access database.
+    since_date : datetime.date, optional
+        If given, only records with ``[EOB datum] >= since_date`` are returned.
+        Pass ``None`` (default) for a full extraction.
 
     Returns
     -------
@@ -524,7 +549,7 @@ def extract_thallium_data(conn) -> list:
     try:
         print("Using BO number first digit to determine kant (1→1.2, 2→2.1)")
 
-        query = """
+        query = f"""
             SELECT
                 [EOB datum],
                 [Targetstroom],
@@ -533,6 +558,7 @@ def extract_thallium_data(conn) -> list:
                 [EOB tijd],
                 [Opmerking]
             FROM Thalliumbestralingen
+            {_date_filter(since_date, 'EOB datum')}
             ORDER BY [EOB datum] DESC
         """
 
@@ -583,7 +609,7 @@ def extract_thallium_data(conn) -> list:
         return []
 
 
-def extract_iodine_data(conn) -> list:
+def extract_iodine_data(conn, since_date=None) -> list:
     """Extract Iodine-123 data from Access.
 
     Computes ``yield_percent`` and ``output_percent`` from the raw measurement
@@ -596,6 +622,9 @@ def extract_iodine_data(conn) -> list:
     ----------
     conn : pyodbc.Connection
         An open connection to the bestralingen Access database.
+    since_date : datetime.date, optional
+        If given, only records with ``[BO ingroei tot datum] >= since_date`` are
+        returned.  Pass ``None`` (default) for a full extraction.
 
     Returns
     -------
@@ -605,7 +634,7 @@ def extract_iodine_data(conn) -> list:
     cursor = conn.cursor()
 
     try:
-        query = """
+        query = f"""
             SELECT
                 [BO ingroei tot datum],
                 [*Meting D1 opbrengst I-123],
@@ -622,6 +651,7 @@ def extract_iodine_data(conn) -> list:
                 [@Totale storingstijd],
                 [@Opmerkingen tijdens bestraling]
             FROM [Iodine 123]
+            {_date_filter(since_date, 'BO ingroei tot datum')}
             ORDER BY [BO ingroei tot datum] DESC
         """
 
