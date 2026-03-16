@@ -2095,7 +2095,6 @@ class IsotopeDashboardGenerator:
             
         except Exception as e:
             print(f"✗ Error extracting efficiency data: {e}")
-            import traceback
             traceback.print_exc()
             return False
     
@@ -2205,7 +2204,6 @@ class IsotopeDashboardGenerator:
             
         except Exception as e:
             print(f"✗ Error extracting Iodine data: {e}")
-            import traceback
             traceback.print_exc()
             return False
     
@@ -2259,7 +2257,6 @@ class IsotopeDashboardGenerator:
             
         except Exception as e:
             print(f"✗ Error extracting IBA storingen data: {e}")
-            import traceback
             traceback.print_exc()
             return False
     
@@ -2313,14 +2310,12 @@ class IsotopeDashboardGenerator:
             
         except Exception as e:
             print(f"✗ Error extracting Philips storingen data: {e}")
-            import traceback
             traceback.print_exc()
             return False
     
     def count_sf_references(self):
         """Count how many times each SF code appears in all production opmerkingen fields
         and track which productions reference each SF code"""
-        import re
         
         sf_counts = {}
         sf_productions = {}  # Will store list of productions for each SF code
@@ -2890,8 +2885,6 @@ class IsotopeDashboardGenerator:
     
     def get_efficiency_weeks(self):
         """Get last 10 weeks of efficiency data with color coding"""
-        import statistics
-        from datetime import datetime, timedelta
         
         # Return empty list if no data
         if not self.efficiency_data:
@@ -2978,8 +2971,6 @@ class IsotopeDashboardGenerator:
     
     def get_efficiency_last_year_average(self):
         """Calculate efficiency average for last year"""
-        import statistics
-        from datetime import datetime, timedelta
         
         if not self.efficiency_data:
             return 0
@@ -3018,8 +3009,6 @@ class IsotopeDashboardGenerator:
     
     def get_efficiency_last_3months_average(self):
         """Calculate efficiency average for last 3 months"""
-        import statistics
-        from datetime import datetime, timedelta
         
         if not self.efficiency_data:
             return 0
@@ -3058,7 +3047,6 @@ class IsotopeDashboardGenerator:
     
     def get_efficiency_past_year(self):
         """Get efficiency data for past year"""
-        from datetime import datetime, timedelta
         
         if not self.efficiency_data:
             return []
@@ -3090,8 +3078,6 @@ class IsotopeDashboardGenerator:
     
     def get_efficiency_all_time(self):
         """Get all efficiency data, grouped by quarter"""
-        from datetime import datetime
-        from collections import defaultdict
         
         if not self.efficiency_data:
             return []
@@ -3142,8 +3128,6 @@ class IsotopeDashboardGenerator:
     
     def calculate_within_spec_percentage(self):
         """Calculate percentage of productions within spec for each week"""
-        from datetime import datetime, timedelta
-        import statistics
         
         # Get all productions from last 52 weeks
         all_productions = []
@@ -3264,7 +3248,6 @@ class IsotopeDashboardGenerator:
             })
         
         # Group by week (Friday-Thursday, matching get_last_friday logic)
-        from collections import defaultdict
         weekly_data = defaultdict(lambda: {'total': 0, 'within_spec': 0, 'dates': [], 'friday': None})
         
         for prod in all_productions:
@@ -3318,7 +3301,6 @@ class IsotopeDashboardGenerator:
     
     def get_within_spec_weeks(self):
         """Get last 10 weeks of within-spec percentages with color coding"""
-        import statistics
         
         weekly_data = self.calculate_within_spec_percentage()
         
@@ -3377,8 +3359,6 @@ class IsotopeDashboardGenerator:
     
     def get_within_spec_last_year_average(self):
         """Calculate within-spec average for last year"""
-        import statistics
-        from datetime import datetime, timedelta
         
         weekly_data = self.calculate_within_spec_percentage()
         if not weekly_data:
@@ -3402,8 +3382,6 @@ class IsotopeDashboardGenerator:
     
     def get_within_spec_last_3months_average(self):
         """Calculate within-spec average for last 3 months"""
-        import statistics
-        from datetime import datetime, timedelta
         
         weekly_data = self.calculate_within_spec_percentage()
         if not weekly_data:
@@ -3427,7 +3405,6 @@ class IsotopeDashboardGenerator:
     
     def get_within_spec_past_year(self):
         """Get within-spec percentage for past year"""
-        from datetime import datetime, timedelta
         
         weekly_data = self.calculate_within_spec_percentage()
         today = datetime.now()
@@ -3449,7 +3426,6 @@ class IsotopeDashboardGenerator:
     
     def get_within_spec_all_time(self):
         """Get all within-spec percentage data, grouped by quarter from 2010 onwards"""
-        from collections import defaultdict
         
         weekly_data = self.calculate_within_spec_percentage()
         
@@ -3494,8 +3470,6 @@ class IsotopeDashboardGenerator:
     def calculate_otif_gedraaide_producties(self, changelog=None):
         """Calculate OTIF percentage per week based on actual vs nominal targetstroom for all isotopes.
         If changelog is provided, weeks with planning data are padded with 0% entries for missed productions."""
-        from datetime import datetime, timedelta
-        from collections import defaultdict
 
         # Nominals derived from SPEC_SETTINGS min/max midpoints
         ga_philips_nominal = (SPEC_SETTINGS['gallium']['philips']['min'] + SPEC_SETTINGS['gallium']['philips']['max']) / 2  # 80
@@ -3700,7 +3674,6 @@ class IsotopeDashboardGenerator:
 
     def get_otif_gedraaide_weeks(self, changelog=None):
         """Get last 10 weeks of OTIF gedraaide producties with green/red coloring vs all-time average."""
-        import statistics
 
         weekly_data = self.calculate_otif_gedraaide_producties(changelog)
         if not weekly_data:
@@ -3751,8 +3724,6 @@ class IsotopeDashboardGenerator:
 
     def get_otif_gedraaide_last_year_average(self, changelog=None):
         """Calculate OTIF gedraaide average for last year."""
-        import statistics
-        from datetime import datetime, timedelta
 
         weekly_data = self.calculate_otif_gedraaide_producties(changelog)
         if not weekly_data:
@@ -3771,8 +3742,6 @@ class IsotopeDashboardGenerator:
 
     def get_otif_gedraaide_last_3months_average(self, changelog=None):
         """Calculate OTIF gedraaide average for last 3 months."""
-        import statistics
-        from datetime import datetime, timedelta
 
         weekly_data = self.calculate_otif_gedraaide_producties(changelog)
         if not weekly_data:
@@ -3791,7 +3760,6 @@ class IsotopeDashboardGenerator:
 
     def get_issue_counts(self):
         """Get counts of each issue type from production_comments"""
-        from datetime import datetime, timedelta
         
         if not self.sqlite_conn:
             return {'this_week': {}, 'last_week': {}, 'all_time': {}}
@@ -3858,8 +3826,6 @@ class IsotopeDashboardGenerator:
     
     def calculate_gallium_production_efficiency(self):
         """Calculate Gallium production efficiency (mCi/µAh) per week"""
-        from datetime import datetime, timedelta
-        from collections import defaultdict
         
         # Match Galliumbestralingen with Galliumopbrengsten
         matched_productions = []
@@ -4003,7 +3969,6 @@ class IsotopeDashboardGenerator:
     
     def get_gallium_efficiency_averages(self):
         """Calculate all-time, past year, and past 3 months averages"""
-        from datetime import datetime, timedelta
         
         all_weeks = self.calculate_gallium_production_efficiency()
         
@@ -4038,8 +4003,6 @@ class IsotopeDashboardGenerator:
     
     def calculate_indium_production_efficiency(self):
         """Calculate Indium production efficiency (mCi/µAh) per week"""
-        from datetime import datetime, timedelta
-        from collections import defaultdict
         
         # Match Indiumbestralingen with Indiumopbrengsten
         matched_productions = []
@@ -4171,7 +4134,6 @@ class IsotopeDashboardGenerator:
     
     def get_indium_efficiency_averages(self):
         """Calculate all-time, past year, and past 3 months averages"""
-        from datetime import datetime, timedelta
         
         all_weeks = self.calculate_indium_production_efficiency()
         
@@ -4203,8 +4165,6 @@ class IsotopeDashboardGenerator:
     
     def calculate_rubidium_production_efficiency(self):
         """Calculate Rubidium production efficiency (mCi/µAh) per week - only productions 3-6 hours"""
-        from datetime import datetime, timedelta
-        from collections import defaultdict
         
         matched_productions = []
         
@@ -4318,7 +4278,6 @@ class IsotopeDashboardGenerator:
     
     def get_rubidium_efficiency_averages(self):
         """Calculate all-time, past year, and past 3 months averages"""
-        from datetime import datetime, timedelta
         
         all_weeks = self.calculate_rubidium_production_efficiency()
         
@@ -4350,8 +4309,6 @@ class IsotopeDashboardGenerator:
     
     def calculate_iodine_production_efficiency(self):
         """Calculate Iodine production efficiency (mCi/µAh) per week - only productions >= 10 hours"""
-        from datetime import datetime, timedelta
-        from collections import defaultdict
         
         matched_productions = []
         
@@ -4467,7 +4424,6 @@ class IsotopeDashboardGenerator:
     
     def get_iodine_efficiency_averages(self):
         """Calculate all-time, past year, and past 3 months averages for Iodine efficiency"""
-        from datetime import datetime, timedelta
         
         all_weeks = self.calculate_iodine_production_efficiency()
         
@@ -4793,7 +4749,6 @@ class IsotopeDashboardGenerator:
     
     def calculate_shift_statistics(self, week_start_friday):
         """Calculate % in spec per shift per day for a given week - WITH PROPORTIONAL DIVISION"""
-        from collections import defaultdict
         
         # Structure: stats[day_date][shift_name] = {'total': float, 'in_spec': float}
         stats = defaultdict(lambda: defaultdict(lambda: {'total': 0.0, 'in_spec': 0.0}))
@@ -4846,7 +4801,6 @@ class IsotopeDashboardGenerator:
         """Single-pass equivalent of calling calculate_shift_statistics() for every
         week in the lookback window.  Iterates each production exactly once instead
         of 26 times, giving the same result ~26× faster."""
-        from collections import defaultdict
 
         stats = defaultdict(lambda: defaultdict(lambda: {'total': 0.0, 'in_spec': 0.0}))
 
@@ -5193,7 +5147,6 @@ class IsotopeDashboardGenerator:
 
         try:
             import openpyxl
-            from datetime import datetime
             
             # Create temporary macro-free copy
             wb_original = openpyxl.load_workbook(self.planning_excel, data_only=True)
@@ -5271,7 +5224,6 @@ class IsotopeDashboardGenerator:
             
         except Exception as e:
             print(f"⚠ Warning: Could not load planning data: {e}")
-            import traceback
             traceback.print_exc()
             self.planning_data = {}
             return False
@@ -5288,7 +5240,6 @@ class IsotopeDashboardGenerator:
         import glob
         import tempfile
         import openpyxl
-        from collections import defaultdict
 
         otif_folder = r"X:\Cyclotron Bureau\OTIF"
         pattern = os.path.join(otif_folder, "OTIF week*.xlsx")
@@ -5421,7 +5372,6 @@ class IsotopeDashboardGenerator:
 
         except Exception as e:
             print(f"⚠ Warning: Could not load OTIF data: {e}")
-            import traceback
             traceback.print_exc()
             return False
         finally:
@@ -5433,8 +5383,6 @@ class IsotopeDashboardGenerator:
 
     def calculate_ploeg_statistics(self, shift_stats_all_time):
         """Calculate 6-month, 3-month, and monthly averages per ploeg"""
-        from collections import defaultdict
-        from datetime import datetime, timedelta
         
         # Structure: ploeg_stats[ploeg_number] = {'total': N, 'in_spec': M}
         ploeg_stats_6month = defaultdict(lambda: {'total': 0, 'in_spec': 0})
@@ -5501,8 +5449,6 @@ class IsotopeDashboardGenerator:
     
     def calculate_ploeg_rolling_averages(self, shift_stats_all_time):
         """Calculate rolling 30-day averages for each ploeg over the past 6 months"""
-        from collections import defaultdict
-        from datetime import datetime, timedelta
         
         today = datetime.now().date()
         six_months_ago = today - timedelta(days=180)
@@ -5587,8 +5533,6 @@ class IsotopeDashboardGenerator:
     
     def calculate_ploeg_leaderboard(self, shift_stats_all_time):
         """Calculate ploeg performance leaderboard for past 30 days"""
-        from datetime import datetime, timedelta
-        from collections import defaultdict
         
         today = datetime.now().date()
         thirty_days_ago = today - timedelta(days=30)
@@ -5661,8 +5605,6 @@ class IsotopeDashboardGenerator:
     
     def calculate_last_month_winner(self, shift_stats_all_time):
         """Calculate which ploeg won the last full calendar month"""
-        from datetime import datetime, timedelta
-        from collections import defaultdict
         import calendar
         
         today = datetime.now().date()
@@ -5777,8 +5719,6 @@ class IsotopeDashboardGenerator:
     
     def collect_ploeg_production_details(self):
         """Collect detailed production data for each ploeg for the last 6 months - using ALREADY LOADED data"""
-        from datetime import datetime, timedelta, date
-        from collections import defaultdict
         
         # Get date range - last 6 months OR from ploegenwissel_date
         end_date = datetime.now().date()
@@ -5858,7 +5798,6 @@ class IsotopeDashboardGenerator:
             
         except Exception as e:
             print(f"✗ Error collecting Gallium: {e}")
-            import traceback
             traceback.print_exc()
         
         # RUBIDIUM - Use already-loaded self.rubidium_data
@@ -6625,13 +6564,12 @@ class IsotopeDashboardGenerator:
     def generate_dashboard(self, _timings=None):
         """Generate combined HTML dashboard.
         If _timings dict is passed in, internal stages are recorded in it."""
-        import time as _time
 
         def _t(label, fn, *args, **kwargs):
-            t0 = _time.perf_counter()
+            t0 = time.perf_counter()
             result = fn(*args, **kwargs)
             if _timings is not None:
-                _timings[label] = _time.perf_counter() - t0
+                _timings[label] = time.perf_counter() - t0
             return result
         # Get efficiency data for top table
         try:
@@ -6792,7 +6730,6 @@ class IsotopeDashboardGenerator:
             print(f"✓ Calculated weekly shift statistics")
         except Exception as e:
             print(f"⚠ Warning: Could not calculate weekly shift statistics: {e}")
-            import traceback
             traceback.print_exc()
             shift_stats_this_week = {}
             shift_stats_last_week = {}
@@ -6810,13 +6747,12 @@ class IsotopeDashboardGenerator:
                 lookback_date = default_lookback
             
             # Single pass over all productions — no weekly loop needed
-            _t0_alltime = _time.perf_counter()
+            _t0_alltime = time.perf_counter()
             shift_stats_all_time = self.calculate_shift_statistics_all_time(lookback_date)
-            if _timings is not None: _timings['calc_shift_stats_all_time'] = _time.perf_counter() - _t0_alltime
+            if _timings is not None: _timings['calc_shift_stats_all_time'] = time.perf_counter() - _t0_alltime
             print("✓ Calculated all-time shift statistics")
         except Exception as e:
             print(f"⚠ Warning: Could not calculate all-time shift statistics: {e}")
-            import traceback
             traceback.print_exc()
             shift_stats_all_time = {}
         
@@ -6844,7 +6780,6 @@ class IsotopeDashboardGenerator:
                 print(f"⚠ Skipping ploegen statistics due to loading errors")
         except Exception as e:
             print(f"⚠ Warning: Could not calculate ploegen statistics: {e}")
-            import traceback
             traceback.print_exc()
         
         # Debug iodine data
@@ -6894,7 +6829,6 @@ class IsotopeDashboardGenerator:
             print(f"✓ Converted bestralingen data to gantt format ({len(bestralingen_gantt_data)} entries)")
         except Exception as e:
             print(f"⚠ Warning: Could not convert bestralingen data: {e}")
-            import traceback
             traceback.print_exc()
             bestralingen_gantt_data = []
         # print("[DEBUG] ===== FINISHED BESTRALINGEN TO GANTT CONVERSION =====")
@@ -6968,7 +6902,7 @@ class IsotopeDashboardGenerator:
         if os.path.exists(local_path):
             self.remove_readonly(local_path)
         
-        _tw0 = _time.perf_counter()
+        _tw0 = time.perf_counter()
         with open(local_path, 'w', encoding='utf-8') as f:
             f.write(html_content_full)
         
@@ -6984,7 +6918,7 @@ class IsotopeDashboardGenerator:
             print(f"⚠ Warning: Could not copy dosisoverzicht.png: {e}")
         
         # Set read-only and save hash
-        if _timings is not None: _timings['write_local'] = _time.perf_counter() - _tw0
+        if _timings is not None: _timings['write_local'] = time.perf_counter() - _tw0
         self.set_readonly(local_path)
         print("✓ Generated local dashboard")
         self.save_file_hash(local_path, local_hash_path)
@@ -7000,13 +6934,13 @@ class IsotopeDashboardGenerator:
             if os.path.exists(network_path):
                 self.remove_readonly(network_path)
             
-            _tn0 = _time.perf_counter()
+            _tn0 = time.perf_counter()
             with open(network_path, 'w', encoding='utf-8') as f:
                 f.write(html_content_truncated)
             
             # Set read-only and save hash
             self.set_readonly(network_path)
-            if _timings is not None: _timings['write_network'] = _time.perf_counter() - _tn0
+            if _timings is not None: _timings['write_network'] = time.perf_counter() - _tn0
             print("✓ Generated network dashboard")
             self.save_file_hash(network_path, network_hash_path)
         except Exception as e:
@@ -7024,7 +6958,7 @@ class IsotopeDashboardGenerator:
             if os.path.exists(bureau_path):
                 self.remove_readonly(bureau_path)
             
-            _tb0 = _time.perf_counter()
+            _tb0 = time.perf_counter()
             with open(bureau_path, 'w', encoding='utf-8') as f:
                 f.write(html_content_full)
             
@@ -7038,7 +6972,7 @@ class IsotopeDashboardGenerator:
             
             # Set read-only and save hash
             self.set_readonly(bureau_path)
-            if _timings is not None: _timings['write_bureau'] = _time.perf_counter() - _tb0
+            if _timings is not None: _timings['write_bureau'] = time.perf_counter() - _tb0
             print("✓ Generated bureau dashboard")
             self.save_file_hash(bureau_path, bureau_hash_path)
         except Exception as e:
@@ -7057,7 +6991,6 @@ class IsotopeDashboardGenerator:
                                         otif_gedraaide_last_year_avg=0, otif_gedraaide_last_3months_avg=0,
                                         vsm_data=None):
         """Create TRUNCATED HTML dashboard - summary tables + weekly production tables only (no isotope sections)"""
-        from datetime import datetime
         
         # Helper functions (copy from full dashboard)
         def get_efficiency_color(efficiency):
@@ -8045,7 +7978,6 @@ class IsotopeDashboardGenerator:
         for record in self.iba_storingen_data:
             storingsnummer = record.get('storingsnummer', '')
             # Extract just the number part from storingsnummer (could be "SF0042", "0042", or "42")
-            import re
             match = re.search(r'(\d+)', str(storingsnummer))
             if match:
                 number_part = match.group(1)
@@ -8071,7 +8003,6 @@ class IsotopeDashboardGenerator:
             count = record.get('count', 0)
             
             # Get the number part for SF lookup
-            import re
             match = re.search(r'(\d+)', str(storingsnummer))
             number_part = match.group(1) if match else ''
             
@@ -8114,7 +8045,6 @@ class IsotopeDashboardGenerator:
         for record in self.philips_storingen_data:
             storingsnummer = record.get('storingsnummer', '')
             # Extract just the number part from storingsnummer (could be "SF0042", "0042", or "42")
-            import re
             match = re.search(r'(\d+)', str(storingsnummer))
             if match:
                 number_part = match.group(1)
@@ -8140,7 +8070,6 @@ class IsotopeDashboardGenerator:
             count = record.get('count', 0)
             
             # Get the number part for SF lookup
-            import re
             match = re.search(r'(\d+)', str(storingsnummer))
             number_part = match.group(1) if match else ''
             
@@ -8452,7 +8381,6 @@ class IsotopeDashboardGenerator:
         """
         except Exception as _otif_err:
             print(f"⚠ Warning: Could not generate OTIF section: {_otif_err}")
-            import traceback
             traceback.print_exc()
         
         # Helper function to create table rows for targetstroom-based data with dropdown
@@ -10905,23 +10833,22 @@ class IsotopeDashboardGenerator:
     
     def run(self, loop_counter=1):
         """Run the complete extraction and dashboard generation"""
-        import time as _time
 
-        _run_start = _time.perf_counter()
+        _run_start = time.perf_counter()
         _timings = {}  # label -> seconds
 
         def _t(label, fn, *args, **kwargs):
             """Time a single call and store result under label."""
-            t0 = _time.perf_counter()
+            t0 = time.perf_counter()
             result = fn(*args, **kwargs)
-            _timings[label] = _time.perf_counter() - t0
+            _timings[label] = time.perf_counter() - t0
             return result
 
         def _print_timings():
             print("\n" + "=" * 60)
             print("  TIMING BREAKDOWN")
             print("=" * 60)
-            total = _time.perf_counter() - _run_start
+            total = time.perf_counter() - _run_start
             for lbl, secs in _timings.items():
                 bar = chr(9608) * max(1, int(secs / total * 30)) if total > 0 else ""
                 pct = secs / total * 100 if total > 0 else 0
