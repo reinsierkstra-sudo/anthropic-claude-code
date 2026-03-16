@@ -2741,7 +2741,209 @@ class IsotopeDashboardGenerator:
                 })
         
         return result
-    
+
+    def calculate_otif_gedraaide_producties(self):
+        """Calculate OTIF percentage per week based on actual vs nominal targetstroom for all isotopes."""
+
+        # Nominals derived from SPEC_SETTINGS min/max midpoints
+        ga_philips_nominal = (SPEC_SETTINGS['gallium']['philips']['min'] + SPEC_SETTINGS['gallium']['philips']['max']) / 2  # 80
+        ga_iba_nominal     = (SPEC_SETTINGS['gallium']['iba']['min']    + SPEC_SETTINGS['gallium']['iba']['max'])    / 2  # 135
+        in_philips_nominal = (SPEC_SETTINGS['indium']['philips']['min'] + SPEC_SETTINGS['indium']['philips']['max']) / 2  # 80
+        in_iba_nominal     = (SPEC_SETTINGS['indium']['iba']['min']     + SPEC_SETTINGS['indium']['iba']['max'])     / 2  # 135
+        tl_nominal         = (SPEC_SETTINGS['thallium']['min']          + SPEC_SETTINGS['thallium']['max'])          / 2  # 170
+        rb_nominal         = 70.0  # µA
+
+        def parse_date(d):
+            if d is None:
+                return None
+            if isinstance(d, datetime):
+                return d.date()
+            if hasattr(d, 'year') and not isinstance(d, datetime):
+                return d
+            if isinstance(d, str):
+                try:
+                    return datetime.strptime(d, '%Y-%m-%d').date()
+                except Exception:
+                    return None
+            return None
+
+        week_friday = self._get_friday_week
+
+        # ── Collect actual productions per (friday_week, isotope) ──
+        weekly_actuals = defaultdict(lambda: defaultdict(list))
+
+        # Gallium
+        for record in self.gallium_data:
+            d = parse_date(record.get('date'))
+            if d is None:
+                continue
+            ts = record.get('targetstroom')
+            if ts is None:
+                pct = 0.0
+            else:
+                nominal = ga_iba_nominal if str(record.get('cyclotron', '')).upper().startswith('IBA') else ga_philips_nominal
+                pct = (ts / nominal) * 100.0
+            weekly_actuals[week_friday(d)]['gallium'].append(pct)
+
+        # Indium
+        for record in self.indium_data:
+            d = parse_date(record.get('date'))
+            if d is None:
+                continue
+            ts = record.get('targetstroom')
+            if ts is None:
+                pct = 0.0
+            else:
+                nominal = in_iba_nominal if str(record.get('cyclotron', '')).upper().startswith('IBA') else in_philips_nominal
+                pct = (ts / nominal) * 100.0
+            weekly_actuals[week_friday(d)]['indium'].append(pct)
+
+        # Thallium
+        for record in self.thallium_data:
+            d = parse_date(record.get('date'))
+            if d is None:
+                continue
+            ts = record.get('targetstroom')
+            if ts is None:
+                pct = 0.0
+            else:
+                pct = (ts / tl_nominal) * 100.0
+            weekly_actuals[week_friday(d)]['thallium'].append(pct)
+
+        # Iodine
+        for record in self.iodine_data:
+            d = parse_date(record.get('date'))
+            if d is None:
+                continue
+            bo_ts = record.get('bo_targetstroom')
+            ts    = record.get('targetstroom')
+            if bo_ts is None or ts is None:
+                pct = 0.0
+            else:
+                pct = (ts / bo_ts) * 100.0
+            weekly_actuals[week_friday(d)]['iodine'].append(pct)
+
+        # Rubidium
+        for record in self.rubidium_data:
+            d = parse_date(record.get('date'))
+            if d is None:
+                continue
+            stroom = record.get('stroom')
+            if stroom is None:
+                pct = 0.0
+            else:
+                pct = (stroom / rb_nominal) * 100.0
+            weekly_actuals[week_friday(d)]['rubidium'].append(pct)
+
+        # ── Compute weekly average from actuals only ──
+        result = []
+        for friday in sorted(weekly_actuals.keys(), reverse=True):
+            all_pcts = []
+            for isotope_pcts in weekly_actuals[friday].values():
+                all_pcts.extend(isotope_pcts)
+
+            if not all_pcts:
+                continue
+
+            thursday = friday + timedelta(days=6)
+            iso_year, iso_week, _ = thursday.isocalendar()
+            if iso_year < 1900 or iso_year > 3000:
+                continue
+
+            result.append({
+                'year': iso_year,
+                'week': iso_week,
+                'percentage': sum(all_pcts) / len(all_pcts),
+                'friday': friday,
+            })
+
+        return result
+
+    def get_otif_gedraaide_weeks(self):
+        """Get last 10 weeks of OTIF gedraaide producties with green/red coloring vs all-time average."""
+
+        weekly_data = self.calculate_otif_gedraaide_producties()
+        if not weekly_data:
+            return [], 0
+
+        all_pcts = [w['percentage'] for w in weekly_data]
+        average = statistics.mean(all_pcts) if all_pcts else 0
+
+        # Build lookup: (year, week) -> percentage
+        week_lookup = {(r['year'], r['week']): r['percentage'] for r in weekly_data}
+
+        # Generate fixed last 10 production weeks using Thursday-based ISO week
+        today = datetime.now().date()
+        days_since_friday = (today.weekday() - 4) % 7
+        current_friday = today - timedelta(days=days_since_friday)
+        fixed_weeks = []
+        seen = set()
+        for i in range(9, -1, -1):
+            friday_i = current_friday - timedelta(weeks=i)
+            thursday_i = friday_i + timedelta(days=6)
+            iso_year, iso_week, _ = thursday_i.isocalendar()
+            key = (iso_year, iso_week)
+            if key not in seen:
+                seen.add(key)
+                fixed_weeks.append(key)
+
+        last_10 = []
+        for (yr, wk) in fixed_weeks:
+            if (yr, wk) in week_lookup:
+                percentage = week_lookup[(yr, wk)]
+                color = '#3BB143' if percentage >= 97 else '#FF2400'
+                last_10.append({
+                    'week': wk,
+                    'percentage': percentage,
+                    'color': color,
+                    'no_data': False
+                })
+            else:
+                last_10.append({
+                    'week': wk,
+                    'percentage': None,
+                    'color': '#aaa',
+                    'no_data': True
+                })
+
+        return last_10, average
+
+    def get_otif_gedraaide_last_year_average(self):
+        """Calculate OTIF gedraaide average for last year."""
+
+        weekly_data = self.calculate_otif_gedraaide_producties()
+        if not weekly_data:
+            return 0
+
+        one_year_ago = datetime.now() - timedelta(days=365)
+        pcts = []
+        for w in weekly_data:
+            try:
+                week_date = datetime.combine(date.fromisocalendar(w['year'], w['week'], 1), datetime.min.time())
+                if week_date >= one_year_ago:
+                    pcts.append(w['percentage'])
+            except Exception:
+                continue
+        return statistics.mean(pcts) if pcts else 0
+
+    def get_otif_gedraaide_last_3months_average(self):
+        """Calculate OTIF gedraaide average for last 3 months."""
+
+        weekly_data = self.calculate_otif_gedraaide_producties()
+        if not weekly_data:
+            return 0
+
+        three_months_ago = datetime.now() - timedelta(days=90)
+        pcts = []
+        for w in weekly_data:
+            try:
+                week_date = datetime.combine(date.fromisocalendar(w['year'], w['week'], 1), datetime.min.time())
+                if week_date >= three_months_ago:
+                    pcts.append(w['percentage'])
+            except Exception:
+                continue
+        return statistics.mean(pcts) if pcts else 0
+
     def get_issue_counts(self):
         """Get counts of each issue type from production_comments"""
         
@@ -5667,6 +5869,19 @@ class IsotopeDashboardGenerator:
             within_spec_past_year = []
             within_spec_all_time = []
 
+        # Get OTIF gedraaide producties data
+        try:
+            otif_gedraaide_weeks, otif_gedraaide_average = self.get_otif_gedraaide_weeks()
+            otif_gedraaide_last_year_avg = self.get_otif_gedraaide_last_year_average()
+            otif_gedraaide_last_3months_avg = self.get_otif_gedraaide_last_3months_average()
+            print("✓ OTIF gedraaide producties calculations")
+        except Exception as e:
+            print(f"⚠ Warning: Could not get OTIF gedraaide data: {e}")
+            otif_gedraaide_weeks = []
+            otif_gedraaide_average = 0
+            otif_gedraaide_last_year_avg = 0
+            otif_gedraaide_last_3months_avg = 0
+
         # Get issue tracking data
         try:
             issue_counts = self.get_issue_counts()
@@ -5887,6 +6102,10 @@ class IsotopeDashboardGenerator:
             ploeg_production_details,
             production_history,
             combined_gantt_data,
+            otif_gedraaide_weeks=otif_gedraaide_weeks,
+            otif_gedraaide_average=otif_gedraaide_average,
+            otif_gedraaide_last_year_avg=otif_gedraaide_last_year_avg,
+            otif_gedraaide_last_3months_avg=otif_gedraaide_last_3months_avg,
             vsm_data=self.vsm_data,
             planning_html_content=self.planning_html_content,
             productieschema_html_content=self.productieschema_html_content
@@ -5900,9 +6119,13 @@ class IsotopeDashboardGenerator:
             within_spec_weeks, within_spec_average, within_spec_last_year_avg, within_spec_last_3months_avg,
             shift_stats_this_week, shift_stats_last_week, this_week_friday, last_week_friday,
             tampering_warning,
+            otif_gedraaide_weeks=otif_gedraaide_weeks,
+            otif_gedraaide_average=otif_gedraaide_average,
+            otif_gedraaide_last_year_avg=otif_gedraaide_last_year_avg,
+            otif_gedraaide_last_3months_avg=otif_gedraaide_last_3months_avg,
             vsm_data=self.vsm_data
         )
-        
+
         # Save FULL version to local location
         if os.path.exists(local_path):
             self.remove_readonly(local_path)
@@ -6142,6 +6365,8 @@ class IsotopeDashboardGenerator:
                                         within_spec_weeks, within_spec_average, within_spec_last_year_avg, within_spec_last_3months_avg,
                                         shift_stats_this_week, shift_stats_last_week, this_week_friday, last_week_friday,
                                         tampering_warning=None,
+                                        otif_gedraaide_weeks=None, otif_gedraaide_average=0,
+                                        otif_gedraaide_last_year_avg=0, otif_gedraaide_last_3months_avg=0,
                                         vsm_data=None):
         """Create TRUNCATED HTML dashboard - summary tables + weekly production tables only (no isotope sections)"""
 
@@ -6213,10 +6438,45 @@ class IsotopeDashboardGenerator:
         </div>
         """
 
+        # Build OTIF gedraaide producties table
+        otif_gedraaide_weeks = otif_gedraaide_weeks or []
+        otif_ged_week_headers = ""
+        otif_ged_percentage_cells = ""
+        for week_data in otif_gedraaide_weeks:
+            otif_ged_week_headers += f"<th style='text-align: center;'>Week {week_data['week']}</th>"
+            if week_data.get('no_data'):
+                otif_ged_percentage_cells += f"<td style='text-align: center; color: #aaa; font-weight: bold; font-size: 20px;'>--.-‌%</td>"
+            else:
+                otif_ged_percentage_cells += f"<td style='text-align: center; color: {week_data['color']}; font-weight: bold; font-size: 20px;'>{week_data['percentage']:.1f}%</td>"
+
+        otif_gedraaide_table = f"""
+        <div class="section">
+            <h2 style="border-bottom: 3px solid; border-image: linear-gradient(to right, #662678, #E40D7E) 1; padding-bottom: 10px;">OTIF gedraaide producties</h2>
+            <p style="color: grey; font-size: 13px; margin-top: -8px; margin-bottom: 10px;">niet gemaakte producties worden buiten beschouwing gelaten</p>
+            <table>
+                <thead>
+                    <tr>
+                        {otif_ged_week_headers if otif_ged_week_headers else '<th>No data available</th>'}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        {otif_ged_percentage_cells if otif_ged_percentage_cells else '<td>No data available</td>'}
+                    </tr>
+                </tbody>
+            </table>
+            <div style="text-align: center; margin-top: 10px; font-size: 16px;">
+                <span style="color: black; font-weight: bold;">All-time average: {otif_gedraaide_average:.1f}%</span>
+                <span style="color: {'#3BB143' if otif_gedraaide_last_year_avg >= 97 else '#FF2400'}; font-weight: bold; margin-left: 20px;">Last year average: {otif_gedraaide_last_year_avg:.1f}%</span>
+                <span style="color: {'#3BB143' if otif_gedraaide_last_3months_avg >= 97 else '#FF2400'}; font-weight: bold; margin-left: 20px;">Last 3 months average: {otif_gedraaide_last_3months_avg:.1f}%</span>
+            </div>
+        </div>
+        """
+
         # Create summary table for CURRENT week (Lopende week) - COPY from full dashboard
         tl_running_12 = [t for t in tl_running if t.get('kant') == '1.2']
         tl_running_21 = [t for t in tl_running if t.get('kant') == '2.1']
-        
+
         summary_table_rows = self._build_week_table_rows(
             ga_running, rb_running, in_running, tl_running_12, tl_running_21, io_running)
 
@@ -6346,6 +6606,8 @@ class IsotopeDashboardGenerator:
         
         {within_spec_table}
 
+        {otif_gedraaide_table}
+
         {summary_table}
 
         {previous_week_summary_table}
@@ -6353,7 +6615,7 @@ class IsotopeDashboardGenerator:
     </div>
 </body>
 </html>"""
-        
+
         return html
     
     def create_html_dashboard(self, ga_running, ga_monthly, ga_previous,
@@ -6374,6 +6636,8 @@ class IsotopeDashboardGenerator:
                                ploeg_production_details=None,
                                production_history=None,
                                cyclotron_data=None,
+                               otif_gedraaide_weeks=None, otif_gedraaide_average=0,
+                               otif_gedraaide_last_year_avg=0, otif_gedraaide_last_3months_avg=0,
                                vsm_data=None,
                                planning_html_content=None,
                                productieschema_html_content=None):
@@ -6507,11 +6771,46 @@ class IsotopeDashboardGenerator:
         </div>
         """
 
+        # Build OTIF gedraaide producties table
+        _otif_ged_weeks = otif_gedraaide_weeks or []
+        otif_ged_week_headers = ""
+        otif_ged_percentage_cells = ""
+        for week_data in _otif_ged_weeks:
+            otif_ged_week_headers += f"<th style='text-align: center;'>Week {week_data['week']}</th>"
+            if week_data.get('no_data'):
+                otif_ged_percentage_cells += f"<td style='text-align: center; color: #aaa; font-weight: bold; font-size: 20px;'>--.-‌%</td>"
+            else:
+                otif_ged_percentage_cells += f"<td style='text-align: center; color: {week_data['color']}; font-weight: bold; font-size: 20px;'>{week_data['percentage']:.1f}%</td>"
+
+        otif_gedraaide_table = f"""
+        <div class="section">
+            <h2 style="border-bottom: 3px solid; border-image: linear-gradient(to right, #662678, #E40D7E) 1; padding-bottom: 10px;">OTIF gedraaide producties</h2>
+            <p style="color: grey; font-size: 13px; margin-top: -8px; margin-bottom: 10px;">niet gemaakte producties worden buiten beschouwing gelaten</p>
+            <table>
+                <thead>
+                    <tr>
+                        {otif_ged_week_headers if otif_ged_week_headers else '<th>No data available</th>'}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        {otif_ged_percentage_cells if otif_ged_percentage_cells else '<td>No data available</td>'}
+                    </tr>
+                </tbody>
+            </table>
+            <div style="text-align: center; margin-top: 10px; font-size: 16px;">
+                <span style="color: black; font-weight: bold;">All-time average: {otif_gedraaide_average:.1f}%</span>
+                <span style="color: {'#3BB143' if otif_gedraaide_last_year_avg >= 97 else '#FF2400'}; font-weight: bold; margin-left: 20px;">Last year average: {otif_gedraaide_last_year_avg:.1f}%</span>
+                <span style="color: {'#3BB143' if otif_gedraaide_last_3months_avg >= 97 else '#FF2400'}; font-weight: bold; margin-left: 20px;">Last 3 months average: {otif_gedraaide_last_3months_avg:.1f}%</span>
+            </div>
+        </div>
+        """
+
         # Generate Gantt chart HTML (if cyclotron data available)
         gantt_chart_html = ""
         if cyclotron_data:
             gantt_chart_html = self.generate_gantt_chart_html(cyclotron_data)
-        
+
         # Create Gallium production efficiency table (mCi/µAh)
         gallium_eff_week_headers = ""
         gallium_eff_value_cells = ""
@@ -7639,8 +7938,10 @@ class IsotopeDashboardGenerator:
         
         {within_spec_table}
 
+        {otif_gedraaide_table}
+
         {gantt_chart_html}
-        
+
         {summary_table}
         
         {previous_week_summary_table}
