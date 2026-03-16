@@ -6338,6 +6338,155 @@ class IsotopeDashboardGenerator:
         
     
     
+    # ---- Dashboard color helpers as @staticmethods (IMPROVE-10) ----
+
+    @staticmethod
+    def _get_efficiency_color(efficiency):
+        if efficiency is None:
+            return '#000000'
+        spec = SPEC_SETTINGS['rubidium']
+        return '#3BB143' if spec['min'] <= round(efficiency) <= spec['max'] else '#FF2400'
+
+    @staticmethod
+    def _get_rb_stroom_color(stroom):
+        return '#3BB143' if stroom is not None and 67 <= stroom <= 72 else '#FF2400'
+
+    @staticmethod
+    def _get_targetstroom_color(targetstroom, isotope_type, cyclotron=None):
+        if targetstroom is None:
+            return '#000000'
+        ts = round(targetstroom)
+        if isotope_type == 'thallium':
+            spec = SPEC_SETTINGS['thallium']
+        elif isotope_type in ('gallium', 'indium'):
+            key = 'iba' if (cyclotron and str(cyclotron).upper().startswith('IBA')) else 'philips'
+            spec = SPEC_SETTINGS[isotope_type][key]
+        else:
+            return '#000000'
+        return '#3BB143' if spec['min'] <= ts <= spec['max'] else '#FF2400'
+
+    @staticmethod
+    def _get_iodine_yield_color(yield_percent):
+        if yield_percent is None:
+            return '#000000'
+        threshold = SPEC_SETTINGS['iodine']['chart_colors']['yield']['min']
+        return '#3BB143' if yield_percent >= threshold else '#FF2400'
+
+    @staticmethod
+    def _get_iodine_output_color(output_percent):
+        if output_percent is None:
+            return '#000000'
+        spec = SPEC_SETTINGS['iodine']['within_spec']['output']
+        return '#3BB143' if spec['min'] <= output_percent <= spec['max'] else '#FF2400'
+
+    @staticmethod
+    def _get_iodine_targetstroom_color(targetstroom):
+        if targetstroom is None or targetstroom == -999:
+            return '#000000'
+        spec = SPEC_SETTINGS['iodine']['within_spec']['targetstroom']
+        return '#3BB143' if spec['min'] <= targetstroom <= spec['max'] else '#FF2400'
+
+    @staticmethod
+    def _get_iodine_color(record):
+        output = record.get('output_percent')
+        yield_pct = record.get('yield_percent')
+        targetstroom = record.get('targetstroom')
+        spec = SPEC_SETTINGS['iodine']['within_spec']
+        output_ok = spec['output']['min'] <= output <= spec['output']['max'] if output is not None else False
+        ts_spec = spec['targetstroom']
+        targetstroom_ok = ts_spec['min'] <= targetstroom <= ts_spec['max'] if targetstroom is not None else False
+        yield_good = yield_pct >= SPEC_SETTINGS['iodine']['chart_colors']['yield']['min'] if yield_pct is not None else False
+        if output_ok and targetstroom_ok:
+            return '#3BB143' if yield_good else '#FFA500'
+        return '#FF2400'
+
+    def _fmt_targetstroom_cell(self, record, isotope_type, isotope_label, with_onclick=False):
+        """Format a targetstroom (µA) table cell as HTML (IMPROVE-05)."""
+        if record is None or record.get('targetstroom') is None:
+            return ''
+        bo = record.get('identifier', '')
+        date = record.get('date', '')
+        bo_fmt = _fmt_bo(bo)
+        color = self._get_targetstroom_color(record['targetstroom'], isotope_type, record.get('cyclotron'))
+        val = f"{round(record['targetstroom'])}µA"
+        if with_onclick:
+            bo_span = (f"<span onclick=\"showProductionHistory('{bo}', '{date}', '{isotope_label}')\" "
+                       f"style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; "
+                       f"text-decoration: underline;'>{bo_fmt}</span>")
+        else:
+            bo_span = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{bo_fmt}</span>"
+        return f"{bo_span} <span style='color: {color}; font-weight: bold; font-size: 25px;'>{val}</span>"
+
+    def _fmt_rb_cell(self, record, with_onclick=False):
+        """Format a Rubidium table cell as HTML (IMPROVE-06)."""
+        if record is None or record.get('efficiency') is None:
+            return ''
+        bo = record.get('identifier', '')
+        date = record.get('date', '')
+        bo_fmt = _fmt_bo(bo)
+        eff_color = self._get_efficiency_color(record['efficiency'])
+        stroom = record.get('stroom')
+        stroom_color = self._get_rb_stroom_color(stroom)
+        stroom_str = f"{stroom:.1f}µA" if stroom is not None else 'N/A'
+        if with_onclick:
+            bo_span = (f"<span onclick=\"showProductionHistory('{bo}', '{date}', 'Rubidium')\" "
+                       f"style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; "
+                       f"text-decoration: underline;'>{bo_fmt}</span>")
+        else:
+            bo_span = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{bo_fmt}</span>"
+        return (f"{bo_span} <span style='color: {eff_color}; font-weight: bold; font-size: 25px;'>"
+                f"{round(record['efficiency'])}%</span> "
+                f"<span style='color: {stroom_color}; font-weight: bold; font-size: 25px;'>{stroom_str}</span>")
+
+    def _fmt_io_cell(self, record, with_onclick=False):
+        """Format an Iodine table cell as HTML (IMPROVE-05/06)."""
+        if record is None:
+            return ''
+        bo = record.get('identifier', '')
+        date = record.get('date', '')
+        bo_fmt = _fmt_bo(bo)
+        if with_onclick:
+            bo_span = (f"<span onclick=\"showProductionHistory('{bo}', '{date}', 'Iodine')\" "
+                       f"style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; "
+                       f"text-decoration: underline;'>{bo_fmt}</span>")
+            yield_color  = self._get_iodine_yield_color(record.get('yield_percent'))
+            output_color = self._get_iodine_output_color(record.get('output_percent'))
+            target_color = self._get_iodine_targetstroom_color(record.get('targetstroom'))
+            io_yield  = f"{round(record['yield_percent'], 1)}%"  if record.get('yield_percent')  is not None else "N/A"
+            io_output = f"{round(record['output_percent'], 1)}%" if record.get('output_percent') is not None else "N/A"
+            io_target = (f"{round(record['targetstroom'])}µA"
+                         if record.get('targetstroom') is not None and record.get('targetstroom') != -999
+                         else "N/A")
+            return (f"{bo_span} "
+                    f"<span style='color: {yield_color}; font-weight: bold; font-size: 25px;'>{io_yield}</span>"
+                    f"<span style='color: black; font-weight: bold; font-size: 25px;'>/</span>"
+                    f"<span style='color: {output_color}; font-weight: bold; font-size: 25px;'>{io_output}</span>"
+                    f"  <span style='color: {target_color}; font-weight: bold; font-size: 25px;'>{io_target}</span>")
+        else:
+            bo_span = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{bo_fmt}</span>"
+            io_color = self._get_iodine_color(record)
+            io_yield  = round(record['yield_percent'])  if record.get('yield_percent')  else '-'
+            io_output = round(record['output_percent']) if record.get('output_percent') else '-'
+            io_target = round(record['targetstroom'])   if record.get('targetstroom')   else '-'
+            return (f"{bo_span} <span style='color: {io_color}; font-weight: bold; font-size: 25px;'>"
+                    f"{io_yield}%/{io_output}% + {io_target}µA</span>")
+
+    def _build_week_table_rows(self, ga, rb, in_, tl_12, tl_21, io, *, with_onclick=False):
+        """Build <tr> rows for a week's production summary table (IMPROVE-05)."""
+        if not any([ga, rb, in_, tl_12, tl_21, io]):
+            return ''
+        rows = ''
+        n = max(len(ga), len(rb), len(in_), len(tl_12), len(tl_21), len(io))
+        for i in range(n):
+            ga_val   = self._fmt_targetstroom_cell(ga[i]    if i < len(ga)    else None, 'gallium',  'Gallium',  with_onclick)
+            rb_val   = self._fmt_rb_cell           (rb[i]    if i < len(rb)    else None,                         with_onclick)
+            in_val   = self._fmt_targetstroom_cell (in_[i]   if i < len(in_)   else None, 'indium',   'Indium',   with_onclick)
+            tl12_val = self._fmt_targetstroom_cell (tl_12[i] if i < len(tl_12) else None, 'thallium', 'Thallium', with_onclick)
+            tl21_val = self._fmt_targetstroom_cell (tl_21[i] if i < len(tl_21) else None, 'thallium', 'Thallium', with_onclick)
+            io_val   = self._fmt_io_cell           (io[i]    if i < len(io)    else None,                         with_onclick)
+            rows += f'<tr><td>{ga_val}</td><td>{rb_val}</td><td>{in_val}</td><td>{tl12_val}</td><td>{tl21_val}</td><td>{io_val}</td></tr>'
+        return rows
+
     def create_truncated_html_dashboard(self, ga_running, ga_previous, rb_running, rb_previous, in_running, in_previous,
                                         tl_running, tl_previous, io_running, io_previous,
                                         efficiency_weeks, efficiency_average, efficiency_last_year_avg, efficiency_last_3months_avg,
@@ -6348,52 +6497,7 @@ class IsotopeDashboardGenerator:
                                         otif_gedraaide_last_year_avg=0, otif_gedraaide_last_3months_avg=0,
                                         vsm_data=None):
         """Create TRUNCATED HTML dashboard - summary tables + weekly production tables only (no isotope sections)"""
-        
-        # Helper functions (copy from full dashboard)
-        def get_efficiency_color(efficiency):
-            if efficiency >= SPEC_SETTINGS['rubidium']['min'] and efficiency <= SPEC_SETTINGS['rubidium']['max']:
-                return '#3BB143'  # Green
-            else:
-                return '#FF2400'  # Red
 
-        def get_rb_stroom_color(stroom):
-            if stroom is not None and 67 <= stroom <= 72:
-                return '#3BB143'  # Green
-            return '#FF2400'  # Red
-
-        def get_targetstroom_color(targetstroom, isotope_type, cyclotron=None):
-            if isotope_type == 'gallium':
-                spec = SPEC_SETTINGS['gallium']['iba'] if (cyclotron and str(cyclotron).upper().startswith('IBA')) else SPEC_SETTINGS['gallium']['philips']
-            elif isotope_type == 'indium':
-                spec = SPEC_SETTINGS['indium']['iba'] if (cyclotron and str(cyclotron).upper().startswith('IBA')) else SPEC_SETTINGS['indium']['philips']
-            elif isotope_type == 'thallium':
-                spec = SPEC_SETTINGS['thallium']
-            else:
-                return '#000000'
-            
-            if spec['min'] <= targetstroom <= spec['max']:
-                return '#3BB143'
-            else:
-                return '#FF2400'
-        
-        def get_iodine_color(record):
-            output = record.get('output_percent')
-            yield_pct = record.get('yield_percent')
-            targetstroom = record.get('targetstroom')
-            
-            output_ok = (SPEC_SETTINGS['iodine']['within_spec']['output']['min'] <= output <= SPEC_SETTINGS['iodine']['within_spec']['output']['max']) if output else False
-            
-            # Check targetstroom against fixed spec range (96-124 µA)
-            ts_spec = SPEC_SETTINGS['iodine']['within_spec']['targetstroom']
-            targetstroom_ok = (ts_spec['min'] <= targetstroom <= ts_spec['max']) if targetstroom else False
-            
-            yield_good = (yield_pct >= SPEC_SETTINGS['iodine']['chart_colors']['yield']['min']) if yield_pct else False
-            
-            if output_ok and targetstroom_ok:
-                return '#3BB143' if yield_good else '#FFA500'
-            else:
-                return '#FF2400'
-        
         # Build efficiency table
         efficiency_week_headers = ""
         efficiency_percentage_cells = ""
@@ -6501,74 +6605,9 @@ class IsotopeDashboardGenerator:
         tl_running_12 = [t for t in tl_running if t.get('kant') == '1.2']
         tl_running_21 = [t for t in tl_running if t.get('kant') == '2.1']
         
-        max_productions = max(len(ga_running), len(rb_running), len(in_running), len(tl_running_12), len(tl_running_21), len(io_running)) if any([ga_running, rb_running, in_running, tl_running, io_running]) else 0
-        
-        summary_table_rows = ""
-        for i in range(max_productions):
-            # Gallium
-            if i < len(ga_running) and ga_running[i].get('targetstroom') is not None:
-                ga_cyclotron = ga_running[i].get('cyclotron', 'Philips')
-                ga_color = get_targetstroom_color(ga_running[i]['targetstroom'], 'gallium', ga_cyclotron)
-                ga_bo = ga_running[i].get('identifier', '')
-                ga_bo_formatted = _fmt_bo(ga_bo)
-                ga_val = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{ga_bo_formatted}</span> <span style='color: {ga_color}; font-weight: bold; font-size: 25px;'>{round(ga_running[i]['targetstroom'])}µA</span>"
-            else:
-                ga_val = ""
+        summary_table_rows = self._build_week_table_rows(
+            ga_running, rb_running, in_running, tl_running_12, tl_running_21, io_running)
 
-            # Rubidium
-            if i < len(rb_running) and rb_running[i].get('efficiency') is not None:
-                rb_color = get_efficiency_color(rb_running[i]['efficiency'])
-                rb_bo = rb_running[i].get('identifier', '')
-                rb_bo_formatted = _fmt_bo(rb_bo)
-                rb_stroom = rb_running[i].get('stroom')
-                rb_stroom_color = get_rb_stroom_color(rb_stroom)
-                rb_stroom_str = f"{rb_stroom:.1f}µA" if rb_stroom is not None else 'N/A'
-                rb_eff = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{rb_bo_formatted}</span> <span style='color: {rb_color}; font-weight: bold; font-size: 25px;'>{round(rb_running[i]['efficiency'])}%</span> <span style='color: {rb_stroom_color}; font-weight: bold; font-size: 25px;'>{rb_stroom_str}</span>"
-            else:
-                rb_eff = ""
-            
-            # Indium
-            if i < len(in_running) and in_running[i].get('targetstroom') is not None:
-                in_cyclotron = in_running[i].get('cyclotron', 'Philips')
-                in_color = get_targetstroom_color(in_running[i]['targetstroom'], 'indium', in_cyclotron)
-                in_bo = in_running[i].get('identifier', '')
-                in_bo_formatted = _fmt_bo(in_bo)
-                in_val = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{in_bo_formatted}</span> <span style='color: {in_color}; font-weight: bold; font-size: 25px;'>{round(in_running[i]['targetstroom'])}µA</span>"
-            else:
-                in_val = ""
-            
-            # Thallium 1.2
-            if i < len(tl_running_12) and tl_running_12[i].get('targetstroom') is not None:
-                tl_color = get_targetstroom_color(tl_running_12[i]['targetstroom'], 'thallium')
-                tl_bo = tl_running_12[i].get('identifier', '')
-                tl_bo_formatted = _fmt_bo(tl_bo)
-                tl_val_12 = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_running_12[i]['targetstroom'])}µA</span>"
-            else:
-                tl_val_12 = ""
-            
-            # Thallium 2.1
-            if i < len(tl_running_21) and tl_running_21[i].get('targetstroom') is not None:
-                tl_color = get_targetstroom_color(tl_running_21[i]['targetstroom'], 'thallium')
-                tl_bo = tl_running_21[i].get('identifier', '')
-                tl_bo_formatted = _fmt_bo(tl_bo)
-                tl_val_21 = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_running_21[i]['targetstroom'])}µA</span>"
-            else:
-                tl_val_21 = ""
-            
-            # Iodine
-            if i < len(io_running):
-                io_color = get_iodine_color(io_running[i])
-                io_bo = io_running[i].get('identifier', '')
-                io_bo_formatted = _fmt_bo(io_bo)
-                io_yield = round(io_running[i]['yield_percent']) if io_running[i].get('yield_percent') else '-'
-                io_output = round(io_running[i]['output_percent']) if io_running[i].get('output_percent') else '-'
-                io_targetstroom = round(io_running[i]['targetstroom']) if io_running[i].get('targetstroom') else '-'
-                io_eff = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{io_bo_formatted}</span> <span style='color: {io_color}; font-weight: bold; font-size: 25px;'>{io_yield}%/{io_output}% + {io_targetstroom}µA</span>"
-            else:
-                io_eff = ""
-            
-            summary_table_rows += f"<tr><td>{ga_val}</td><td>{rb_eff}</td><td>{in_val}</td><td>{tl_val_12}</td><td>{tl_val_21}</td><td>{io_eff}</td></tr>"
-        
         summary_table = f"""
         <div class="section">
             <h2 style="border-bottom: 3px solid #FF5722;">Lopende week</h2>
@@ -6594,74 +6633,9 @@ class IsotopeDashboardGenerator:
         tl_previous_12 = [t for t in tl_previous if t.get('kant') == '1.2']
         tl_previous_21 = [t for t in tl_previous if t.get('kant') == '2.1']
         
-        max_productions_prev = max(len(ga_previous), len(rb_previous), len(in_previous), len(tl_previous_12), len(tl_previous_21), len(io_previous)) if any([ga_previous, rb_previous, in_previous, tl_previous, io_previous]) else 0
-        
-        summary_table_rows_prev = ""
-        for i in range(max_productions_prev):
-            # Gallium
-            if i < len(ga_previous) and ga_previous[i].get('targetstroom') is not None:
-                ga_cyclotron = ga_previous[i].get('cyclotron', 'Philips')
-                ga_color = get_targetstroom_color(ga_previous[i]['targetstroom'], 'gallium', ga_cyclotron)
-                ga_bo = ga_previous[i].get('identifier', '')
-                ga_bo_formatted = _fmt_bo(ga_bo)
-                ga_val = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{ga_bo_formatted}</span> <span style='color: {ga_color}; font-weight: bold; font-size: 25px;'>{round(ga_previous[i]['targetstroom'])}µA</span>"
-            else:
-                ga_val = ""
-            
-            # Rubidium
-            if i < len(rb_previous) and rb_previous[i].get('efficiency') is not None:
-                rb_color = get_efficiency_color(rb_previous[i]['efficiency'])
-                rb_bo = rb_previous[i].get('identifier', '')
-                rb_bo_formatted = _fmt_bo(rb_bo)
-                rb_stroom = rb_previous[i].get('stroom')
-                rb_stroom_color = get_rb_stroom_color(rb_stroom)
-                rb_stroom_str = f"{rb_stroom:.1f}µA" if rb_stroom is not None else 'N/A'
-                rb_eff = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{rb_bo_formatted}</span> <span style='color: {rb_color}; font-weight: bold; font-size: 25px;'>{round(rb_previous[i]['efficiency'])}%</span> <span style='color: {rb_stroom_color}; font-weight: bold; font-size: 25px;'>{rb_stroom_str}</span>"
-            else:
-                rb_eff = ""
-            
-            # Indium
-            if i < len(in_previous) and in_previous[i].get('targetstroom') is not None:
-                in_cyclotron = in_previous[i].get('cyclotron', 'Philips')
-                in_color = get_targetstroom_color(in_previous[i]['targetstroom'], 'indium', in_cyclotron)
-                in_bo = in_previous[i].get('identifier', '')
-                in_bo_formatted = _fmt_bo(in_bo)
-                in_val = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{in_bo_formatted}</span> <span style='color: {in_color}; font-weight: bold; font-size: 25px;'>{round(in_previous[i]['targetstroom'])}µA</span>"
-            else:
-                in_val = ""
-            
-            # Thallium 1.2
-            if i < len(tl_previous_12) and tl_previous_12[i].get('targetstroom') is not None:
-                tl_color = get_targetstroom_color(tl_previous_12[i]['targetstroom'], 'thallium')
-                tl_bo = tl_previous_12[i].get('identifier', '')
-                tl_bo_formatted = _fmt_bo(tl_bo)
-                tl_val_12 = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_previous_12[i]['targetstroom'])}µA</span>"
-            else:
-                tl_val_12 = ""
-            
-            # Thallium 2.1
-            if i < len(tl_previous_21) and tl_previous_21[i].get('targetstroom') is not None:
-                tl_color = get_targetstroom_color(tl_previous_21[i]['targetstroom'], 'thallium')
-                tl_bo = tl_previous_21[i].get('identifier', '')
-                tl_bo_formatted = _fmt_bo(tl_bo)
-                tl_val_21 = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_previous_21[i]['targetstroom'])}µA</span>"
-            else:
-                tl_val_21 = ""
-            
-            # Iodine
-            if i < len(io_previous):
-                io_color = get_iodine_color(io_previous[i])
-                io_bo = io_previous[i].get('identifier', '')
-                io_bo_formatted = _fmt_bo(io_bo)
-                io_yield = round(io_previous[i]['yield_percent']) if io_previous[i].get('yield_percent') else '-'
-                io_output = round(io_previous[i]['output_percent']) if io_previous[i].get('output_percent') else '-'
-                io_targetstroom = round(io_previous[i]['targetstroom']) if io_previous[i].get('targetstroom') else '-'
-                io_eff = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{io_bo_formatted}</span> <span style='color: {io_color}; font-weight: bold; font-size: 25px;'>{io_yield}%/{io_output}% + {io_targetstroom}µA</span>"
-            else:
-                io_eff = ""
-            
-            summary_table_rows_prev += f"<tr><td>{ga_val}</td><td>{rb_eff}</td><td>{in_val}</td><td>{tl_val_12}</td><td>{tl_val_21}</td><td>{io_eff}</td></tr>"
-        
+        summary_table_rows_prev = self._build_week_table_rows(
+            ga_previous, rb_previous, in_previous, tl_previous_12, tl_previous_21, io_previous)
+
         previous_week_summary_table = f"""
         <div class="section">
             <h2 style="border-bottom: 3px solid #9C27B0;">Afgelopen week</h2>
@@ -6796,87 +6770,6 @@ class IsotopeDashboardGenerator:
                                planning_html_content=None,
                                productieschema_html_content=None):
         """Create HTML dashboard with all visualizations"""
-        
-        # Helper function to get color based on efficiency value - MUST BE FIRST!
-        def get_efficiency_color(efficiency):
-            if efficiency is None:
-                return "#000000"  # Black for no data
-            eff_rounded = round(efficiency)
-            
-            spec = SPEC_SETTINGS['rubidium']
-            if eff_rounded < spec['min'] or eff_rounded > spec['max']:
-                return "#FF2400"  # Hard Red
-            else:
-                return "#3BB143"  # Hard Green
-
-        def get_rb_stroom_color(stroom):
-            if stroom is not None and 67 <= stroom <= 72:
-                return '#3BB143'
-            return '#FF2400'
-        
-        # Helper function to get color based on targetstroom value (µA)
-        def get_targetstroom_color(targetstroom, isotope_type, cyclotron=None):
-            if targetstroom is None:
-                return "#000000"  # Black for no data
-            
-            ts_rounded = round(targetstroom)
-            
-            # Use SPEC_SETTINGS for ranges
-            if isotope_type == 'thallium':
-                spec = SPEC_SETTINGS['thallium']
-                if ts_rounded < spec['min'] or ts_rounded > spec['max']:
-                    return "#FF2400"  # Red - outside range
-                else:
-                    return "#3BB143"  # Green - inside range
-            elif isotope_type in ['gallium', 'indium']:
-                # Gallium and Indium have different ranges based on cyclotron
-                if cyclotron and str(cyclotron).upper().startswith('IBA'):
-                    spec = SPEC_SETTINGS[isotope_type]['iba']
-                else:
-                    spec = SPEC_SETTINGS[isotope_type]['philips']
-                
-                if ts_rounded < spec['min'] or ts_rounded > spec['max']:
-                    return "#FF2400"  # Red - outside range
-                else:
-                    return "#3BB143"  # Green - inside range
-            
-            return "#000000"  # Default black
-        
-        # Helper function to get color for Iodine efficiency (special rules)
-        def get_iodine_yield_color(yield_percent):
-            """Color for Yield%: Green if >= threshold, Red if < threshold (visual only, not pass/fail)"""
-            if yield_percent is None:
-                return "#000000"  # Black for no data
-            
-            threshold = SPEC_SETTINGS['iodine']['chart_colors']['yield']['min']
-            if yield_percent >= threshold:
-                return "#3BB143"  # Green
-            else:
-                return "#FF2400"  # Red
-        
-        def get_iodine_output_color(output_percent):
-            """Color for Output%: Green if within range, Red otherwise"""
-            if output_percent is None:
-                return "#000000"  # Black for no data
-            
-            spec = SPEC_SETTINGS['iodine']['within_spec']['output']
-            if spec['min'] <= output_percent <= spec['max']:
-                return "#3BB143"  # Green
-            else:
-                return "#FF2400"  # Red
-        
-        # Helper function to get color for Iodine targetstroom (check against fixed spec range)
-        def get_iodine_targetstroom_color(targetstroom, bo_targetstroom):
-            if targetstroom is None:
-                return "#000000"  # Black for no data
-            if targetstroom == -999:
-                return "#000000"  # Black for missing data
-            
-            ts_spec = SPEC_SETTINGS['iodine']['within_spec']['targetstroom']
-            if ts_spec['min'] <= targetstroom <= ts_spec['max']:
-                return "#3BB143"  # Green if within spec range (96-124 µA)
-            else:
-                return "#FF2400"  # Red if outside spec range
         
         # Create summary table for CURRENT week
         # Separate Thallium by kant
