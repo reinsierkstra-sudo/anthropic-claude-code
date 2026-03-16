@@ -320,6 +320,14 @@ def _to_date(d):
             return None
     return None
 
+
+def _fmt_bo(bo):
+    """Format a BO number: strip trailing .0 and dashes, return as plain integer string.
+    If the value is not numeric, return it unchanged."""
+    if bo and str(bo).replace('.', '').replace('-', '').isdigit():
+        return str(int(float(bo)))
+    return bo
+
 # ============================================================================
 
 class IsotopeDashboardGenerator:
@@ -3186,51 +3194,29 @@ class IsotopeDashboardGenerator:
 
         return last_10, average
     
+    def _within_spec_average_since(self, days):
+        """Return average within-spec percentage for weeks within the last *days* days (min 10% filter)."""
+        weekly_data = self.calculate_within_spec_percentage()
+        if not weekly_data:
+            return 0
+        cutoff = datetime.now() - timedelta(days=days)
+        percentages = []
+        for w in weekly_data:
+            try:
+                week_date = datetime.strptime(f"{w['year']}-W{w['week']:02d}-1", '%Y-W%W-%w')
+                if week_date >= cutoff and w['percentage'] >= 10.0:
+                    percentages.append(w['percentage'])
+            except (ValueError, TypeError):
+                continue
+        return statistics.mean(percentages) if percentages else 0
+
     def get_within_spec_last_year_average(self):
         """Calculate within-spec average for last year"""
-        
-        weekly_data = self.calculate_within_spec_percentage()
-        if not weekly_data:
-            return 0
-        
-        today = datetime.now()
-        one_year_ago = today - timedelta(days=365)
-        
-        # Filter data from last year
-        last_year_percentages = []
-        for w in weekly_data:
-            # Create a date from year and week for comparison
-            try:
-                week_date = datetime.strptime(f"{w['year']}-W{w['week']:02d}-1", '%Y-W%W-%w')
-                if week_date >= one_year_ago and w['percentage'] >= 10.0:
-                    last_year_percentages.append(w['percentage'])
-            except:
-                continue
-        
-        return statistics.mean(last_year_percentages) if last_year_percentages else 0
-    
+        return self._within_spec_average_since(365)
+
     def get_within_spec_last_3months_average(self):
         """Calculate within-spec average for last 3 months"""
-        
-        weekly_data = self.calculate_within_spec_percentage()
-        if not weekly_data:
-            return 0
-        
-        today = datetime.now()
-        three_months_ago = today - timedelta(days=90)
-        
-        # Filter data from last 3 months
-        last_3months_percentages = []
-        for w in weekly_data:
-            # Create a date from year and week for comparison
-            try:
-                week_date = datetime.strptime(f"{w['year']}-W{w['week']:02d}-1", '%Y-W%W-%w')
-                if week_date >= three_months_ago and w['percentage'] >= 10.0:
-                    last_3months_percentages.append(w['percentage'])
-            except:
-                continue
-        
-        return statistics.mean(last_3months_percentages) if last_3months_percentages else 0
+        return self._within_spec_average_since(90)
     
     def get_within_spec_past_year(self):
         """Get within-spec percentage for past year"""
@@ -6982,16 +6968,16 @@ class IsotopeDashboardGenerator:
                 ga_cyclotron = ga_running[i].get('cyclotron', 'Philips')
                 ga_color = get_targetstroom_color(ga_running[i]['targetstroom'], 'gallium', ga_cyclotron)
                 ga_bo = ga_running[i].get('identifier', '')
-                ga_bo_formatted = str(int(float(ga_bo))) if ga_bo and str(ga_bo).replace('.','').replace('-','').isdigit() else ga_bo
+                ga_bo_formatted = _fmt_bo(ga_bo)
                 ga_val = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{ga_bo_formatted}</span> <span style='color: {ga_color}; font-weight: bold; font-size: 25px;'>{round(ga_running[i]['targetstroom'])}µA</span>"
             else:
                 ga_val = ""
-            
+
             # Rubidium
             if i < len(rb_running) and rb_running[i].get('efficiency') is not None:
                 rb_color = get_efficiency_color(rb_running[i]['efficiency'])
                 rb_bo = rb_running[i].get('identifier', '')
-                rb_bo_formatted = str(int(float(rb_bo))) if rb_bo and str(rb_bo).replace('.','').replace('-','').isdigit() else rb_bo
+                rb_bo_formatted = _fmt_bo(rb_bo)
                 rb_stroom = rb_running[i].get('stroom')
                 rb_stroom_color = get_rb_stroom_color(rb_stroom)
                 rb_stroom_str = f"{rb_stroom:.1f}µA" if rb_stroom is not None else 'N/A'
@@ -7004,7 +6990,7 @@ class IsotopeDashboardGenerator:
                 in_cyclotron = in_running[i].get('cyclotron', 'Philips')
                 in_color = get_targetstroom_color(in_running[i]['targetstroom'], 'indium', in_cyclotron)
                 in_bo = in_running[i].get('identifier', '')
-                in_bo_formatted = str(int(float(in_bo))) if in_bo and str(in_bo).replace('.','').replace('-','').isdigit() else in_bo
+                in_bo_formatted = _fmt_bo(in_bo)
                 in_val = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{in_bo_formatted}</span> <span style='color: {in_color}; font-weight: bold; font-size: 25px;'>{round(in_running[i]['targetstroom'])}µA</span>"
             else:
                 in_val = ""
@@ -7013,7 +6999,7 @@ class IsotopeDashboardGenerator:
             if i < len(tl_running_12) and tl_running_12[i].get('targetstroom') is not None:
                 tl_color = get_targetstroom_color(tl_running_12[i]['targetstroom'], 'thallium')
                 tl_bo = tl_running_12[i].get('identifier', '')
-                tl_bo_formatted = str(int(float(tl_bo))) if tl_bo and str(tl_bo).replace('.','').replace('-','').isdigit() else tl_bo
+                tl_bo_formatted = _fmt_bo(tl_bo)
                 tl_val_12 = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_running_12[i]['targetstroom'])}µA</span>"
             else:
                 tl_val_12 = ""
@@ -7022,7 +7008,7 @@ class IsotopeDashboardGenerator:
             if i < len(tl_running_21) and tl_running_21[i].get('targetstroom') is not None:
                 tl_color = get_targetstroom_color(tl_running_21[i]['targetstroom'], 'thallium')
                 tl_bo = tl_running_21[i].get('identifier', '')
-                tl_bo_formatted = str(int(float(tl_bo))) if tl_bo and str(tl_bo).replace('.','').replace('-','').isdigit() else tl_bo
+                tl_bo_formatted = _fmt_bo(tl_bo)
                 tl_val_21 = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_running_21[i]['targetstroom'])}µA</span>"
             else:
                 tl_val_21 = ""
@@ -7031,7 +7017,7 @@ class IsotopeDashboardGenerator:
             if i < len(io_running):
                 io_color = get_iodine_color(io_running[i])
                 io_bo = io_running[i].get('identifier', '')
-                io_bo_formatted = str(int(float(io_bo))) if io_bo and str(io_bo).replace('.','').replace('-','').isdigit() else io_bo
+                io_bo_formatted = _fmt_bo(io_bo)
                 io_yield = round(io_running[i]['yield_percent']) if io_running[i].get('yield_percent') else '-'
                 io_output = round(io_running[i]['output_percent']) if io_running[i].get('output_percent') else '-'
                 io_targetstroom = round(io_running[i]['targetstroom']) if io_running[i].get('targetstroom') else '-'
@@ -7075,7 +7061,7 @@ class IsotopeDashboardGenerator:
                 ga_cyclotron = ga_previous[i].get('cyclotron', 'Philips')
                 ga_color = get_targetstroom_color(ga_previous[i]['targetstroom'], 'gallium', ga_cyclotron)
                 ga_bo = ga_previous[i].get('identifier', '')
-                ga_bo_formatted = str(int(float(ga_bo))) if ga_bo and str(ga_bo).replace('.','').replace('-','').isdigit() else ga_bo
+                ga_bo_formatted = _fmt_bo(ga_bo)
                 ga_val = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{ga_bo_formatted}</span> <span style='color: {ga_color}; font-weight: bold; font-size: 25px;'>{round(ga_previous[i]['targetstroom'])}µA</span>"
             else:
                 ga_val = ""
@@ -7084,7 +7070,7 @@ class IsotopeDashboardGenerator:
             if i < len(rb_previous) and rb_previous[i].get('efficiency') is not None:
                 rb_color = get_efficiency_color(rb_previous[i]['efficiency'])
                 rb_bo = rb_previous[i].get('identifier', '')
-                rb_bo_formatted = str(int(float(rb_bo))) if rb_bo and str(rb_bo).replace('.','').replace('-','').isdigit() else rb_bo
+                rb_bo_formatted = _fmt_bo(rb_bo)
                 rb_stroom = rb_previous[i].get('stroom')
                 rb_stroom_color = get_rb_stroom_color(rb_stroom)
                 rb_stroom_str = f"{rb_stroom:.1f}µA" if rb_stroom is not None else 'N/A'
@@ -7097,7 +7083,7 @@ class IsotopeDashboardGenerator:
                 in_cyclotron = in_previous[i].get('cyclotron', 'Philips')
                 in_color = get_targetstroom_color(in_previous[i]['targetstroom'], 'indium', in_cyclotron)
                 in_bo = in_previous[i].get('identifier', '')
-                in_bo_formatted = str(int(float(in_bo))) if in_bo and str(in_bo).replace('.','').replace('-','').isdigit() else in_bo
+                in_bo_formatted = _fmt_bo(in_bo)
                 in_val = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{in_bo_formatted}</span> <span style='color: {in_color}; font-weight: bold; font-size: 25px;'>{round(in_previous[i]['targetstroom'])}µA</span>"
             else:
                 in_val = ""
@@ -7106,7 +7092,7 @@ class IsotopeDashboardGenerator:
             if i < len(tl_previous_12) and tl_previous_12[i].get('targetstroom') is not None:
                 tl_color = get_targetstroom_color(tl_previous_12[i]['targetstroom'], 'thallium')
                 tl_bo = tl_previous_12[i].get('identifier', '')
-                tl_bo_formatted = str(int(float(tl_bo))) if tl_bo and str(tl_bo).replace('.','').replace('-','').isdigit() else tl_bo
+                tl_bo_formatted = _fmt_bo(tl_bo)
                 tl_val_12 = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_previous_12[i]['targetstroom'])}µA</span>"
             else:
                 tl_val_12 = ""
@@ -7115,7 +7101,7 @@ class IsotopeDashboardGenerator:
             if i < len(tl_previous_21) and tl_previous_21[i].get('targetstroom') is not None:
                 tl_color = get_targetstroom_color(tl_previous_21[i]['targetstroom'], 'thallium')
                 tl_bo = tl_previous_21[i].get('identifier', '')
-                tl_bo_formatted = str(int(float(tl_bo))) if tl_bo and str(tl_bo).replace('.','').replace('-','').isdigit() else tl_bo
+                tl_bo_formatted = _fmt_bo(tl_bo)
                 tl_val_21 = f"<span style='color: black; font-size: 15px; font-weight: bold;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_previous_21[i]['targetstroom'])}µA</span>"
             else:
                 tl_val_21 = ""
@@ -7124,7 +7110,7 @@ class IsotopeDashboardGenerator:
             if i < len(io_previous):
                 io_color = get_iodine_color(io_previous[i])
                 io_bo = io_previous[i].get('identifier', '')
-                io_bo_formatted = str(int(float(io_bo))) if io_bo and str(io_bo).replace('.','').replace('-','').isdigit() else io_bo
+                io_bo_formatted = _fmt_bo(io_bo)
                 io_yield = round(io_previous[i]['yield_percent']) if io_previous[i].get('yield_percent') else '-'
                 io_output = round(io_previous[i]['output_percent']) if io_previous[i].get('output_percent') else '-'
                 io_targetstroom = round(io_previous[i]['targetstroom']) if io_previous[i].get('targetstroom') else '-'
@@ -7366,7 +7352,7 @@ class IsotopeDashboardGenerator:
                 ga_bo = ga_running[i].get('identifier', '')
                 ga_date = ga_running[i].get('date', '')
                 # Format BO number as integer to remove .0
-                ga_bo_formatted = str(int(float(ga_bo))) if ga_bo and str(ga_bo).replace('.','').replace('-','').isdigit() else ga_bo
+                ga_bo_formatted = _fmt_bo(ga_bo)
                 ga_val = f"<span onclick=\"showProductionHistory('{ga_bo}', '{ga_date}', 'Gallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{ga_bo_formatted}</span> <span style='color: {ga_color}; font-weight: bold; font-size: 25px;'>{round(ga_running[i]['targetstroom'])}µA</span>"
             else:
                 ga_val = ""
@@ -7377,7 +7363,7 @@ class IsotopeDashboardGenerator:
                 rb_bo = rb_running[i].get('identifier', '')
                 rb_date = rb_running[i].get('date', '')
                 # Format BO number as integer to remove .0
-                rb_bo_formatted = str(int(float(rb_bo))) if rb_bo and str(rb_bo).replace('.','').replace('-','').isdigit() else rb_bo
+                rb_bo_formatted = _fmt_bo(rb_bo)
                 rb_stroom = rb_running[i].get('stroom')
                 rb_stroom_color = get_rb_stroom_color(rb_stroom)
                 rb_stroom_str = f"{rb_stroom:.1f}µA" if rb_stroom is not None else 'N/A'
@@ -7392,7 +7378,7 @@ class IsotopeDashboardGenerator:
                 in_bo = in_running[i].get('identifier', '')
                 in_date = in_running[i].get('date', '')
                 # Format BO number as integer to remove .0
-                in_bo_formatted = str(int(float(in_bo))) if in_bo and str(in_bo).replace('.','').replace('-','').isdigit() else in_bo
+                in_bo_formatted = _fmt_bo(in_bo)
                 in_val = f"<span onclick=\"showProductionHistory('{in_bo}', '{in_date}', 'Indium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{in_bo_formatted}</span> <span style='color: {in_color}; font-weight: bold; font-size: 25px;'>{round(in_running[i]['targetstroom'])}µA</span>"
             else:
                 in_val = ""
@@ -7403,7 +7389,7 @@ class IsotopeDashboardGenerator:
                 tl_bo = tl_running_12[i].get('identifier', '')
                 tl_date = tl_running_12[i].get('date', '')
                 # Format BO number as integer to remove .0
-                tl_bo_formatted = str(int(float(tl_bo))) if tl_bo and str(tl_bo).replace('.','').replace('-','').isdigit() else tl_bo
+                tl_bo_formatted = _fmt_bo(tl_bo)
                 tl_val_12 = f"<span onclick=\"showProductionHistory('{tl_bo}', '{tl_date}', 'Thallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_running_12[i]['targetstroom'])}µA</span>"
             else:
                 tl_val_12 = ""
@@ -7414,7 +7400,7 @@ class IsotopeDashboardGenerator:
                 tl_bo = tl_running_21[i].get('identifier', '')
                 tl_date = tl_running_21[i].get('date', '')
                 # Format BO number as integer to remove .0
-                tl_bo_formatted = str(int(float(tl_bo))) if tl_bo and str(tl_bo).replace('.','').replace('-','').isdigit() else tl_bo
+                tl_bo_formatted = _fmt_bo(tl_bo)
                 tl_val_21 = f"<span onclick=\"showProductionHistory('{tl_bo}', '{tl_date}', 'Thallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_running_21[i]['targetstroom'])}µA</span>"
             else:
                 tl_val_21 = ""
@@ -7430,7 +7416,7 @@ class IsotopeDashboardGenerator:
                 io_bo = io_running[i].get('identifier', '')
                 io_date = io_running[i].get('date', '')
                 # Format BO number as integer to remove .0
-                io_bo_formatted = str(int(float(io_bo))) if io_bo and str(io_bo).replace('.','').replace('-','').isdigit() else io_bo
+                io_bo_formatted = _fmt_bo(io_bo)
                 io_eff = f"<span onclick=\"showProductionHistory('{io_bo}', '{io_date}', 'Iodine')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{io_bo_formatted}</span> <span style='color: {io_yield_color}; font-weight: bold; font-size: 25px;'>{io_yield}</span><span style='color: black; font-weight: bold; font-size: 25px;'>/</span><span style='color: {io_output_color}; font-weight: bold; font-size: 25px;'>{io_output}</span>  <span style='color: {io_target_color}; font-weight: bold; font-size: 25px;'>{io_target}</span>"
             else:
                 io_eff = ""
@@ -7474,7 +7460,7 @@ class IsotopeDashboardGenerator:
                 ga_bo = ga_previous[i].get('identifier', '')
                 ga_date = ga_previous[i].get('date', '')
                 # Format BO number as integer to remove .0
-                ga_bo_formatted = str(int(float(ga_bo))) if ga_bo and str(ga_bo).replace('.','').replace('-','').isdigit() else ga_bo
+                ga_bo_formatted = _fmt_bo(ga_bo)
                 ga_val = f"<span onclick=\"showProductionHistory('{ga_bo}', '{ga_date}', 'Gallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{ga_bo_formatted}</span> <span style='color: {ga_color}; font-weight: bold; font-size: 25px;'>{round(ga_previous[i]['targetstroom'])}µA</span>"
             else:
                 ga_val = ""
@@ -7485,7 +7471,7 @@ class IsotopeDashboardGenerator:
                 rb_bo = rb_previous[i].get('identifier', '')
                 rb_date = rb_previous[i].get('date', '')
                 # Format BO number as integer to remove .0
-                rb_bo_formatted = str(int(float(rb_bo))) if rb_bo and str(rb_bo).replace('.','').replace('-','').isdigit() else rb_bo
+                rb_bo_formatted = _fmt_bo(rb_bo)
                 rb_stroom = rb_previous[i].get('stroom')
                 rb_stroom_color = get_rb_stroom_color(rb_stroom)
                 rb_stroom_str = f"{rb_stroom:.1f}µA" if rb_stroom is not None else 'N/A'
@@ -7500,7 +7486,7 @@ class IsotopeDashboardGenerator:
                 in_bo = in_previous[i].get('identifier', '')
                 in_date = in_previous[i].get('date', '')
                 # Format BO number as integer to remove .0
-                in_bo_formatted = str(int(float(in_bo))) if in_bo and str(in_bo).replace('.','').replace('-','').isdigit() else in_bo
+                in_bo_formatted = _fmt_bo(in_bo)
                 in_val = f"<span onclick=\"showProductionHistory('{in_bo}', '{in_date}', 'Indium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{in_bo_formatted}</span> <span style='color: {in_color}; font-weight: bold; font-size: 25px;'>{round(in_previous[i]['targetstroom'])}µA</span>"
             else:
                 in_val = ""
@@ -7511,7 +7497,7 @@ class IsotopeDashboardGenerator:
                 tl_bo = tl_previous_12[i].get('identifier', '')
                 tl_date = tl_previous_12[i].get('date', '')
                 # Format BO number as integer to remove .0
-                tl_bo_formatted = str(int(float(tl_bo))) if tl_bo and str(tl_bo).replace('.','').replace('-','').isdigit() else tl_bo
+                tl_bo_formatted = _fmt_bo(tl_bo)
                 tl_val_12 = f"<span onclick=\"showProductionHistory('{tl_bo}', '{tl_date}', 'Thallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_previous_12[i]['targetstroom'])}µA</span>"
             else:
                 tl_val_12 = ""
@@ -7522,7 +7508,7 @@ class IsotopeDashboardGenerator:
                 tl_bo = tl_previous_21[i].get('identifier', '')
                 tl_date = tl_previous_21[i].get('date', '')
                 # Format BO number as integer to remove .0
-                tl_bo_formatted = str(int(float(tl_bo))) if tl_bo and str(tl_bo).replace('.','').replace('-','').isdigit() else tl_bo
+                tl_bo_formatted = _fmt_bo(tl_bo)
                 tl_val_21 = f"<span onclick=\"showProductionHistory('{tl_bo}', '{tl_date}', 'Thallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_previous_21[i]['targetstroom'])}µA</span>"
             else:
                 tl_val_21 = ""
@@ -7538,7 +7524,7 @@ class IsotopeDashboardGenerator:
                 io_bo = io_previous[i].get('identifier', '')
                 io_date = io_previous[i].get('date', '')
                 # Format BO number as integer to remove .0
-                io_bo_formatted = str(int(float(io_bo))) if io_bo and str(io_bo).replace('.','').replace('-','').isdigit() else io_bo
+                io_bo_formatted = _fmt_bo(io_bo)
                 io_eff = f"<span onclick=\"showProductionHistory('{io_bo}', '{io_date}', 'Iodine')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{io_bo_formatted}</span> <span style='color: {io_yield_color}; font-weight: bold; font-size: 25px;'>{io_yield}</span><span style='color: black; font-weight: bold; font-size: 25px;'>/</span><span style='color: {io_output_color}; font-weight: bold; font-size: 25px;'>{io_output}</span>  <span style='color: {io_target_color}; font-weight: bold; font-size: 25px;'>{io_target}</span>"
             else:
                 io_eff = ""
@@ -10769,17 +10755,11 @@ class IsotopeDashboardGenerator:
         return True
     
     def close(self):
-        """Close connections"""
-        if self.access_conn:
-            self.access_conn.close()
-        if self.proces_conn:
-            self.proces_conn.close()
-        if self.storingen_conn:
-            self.storingen_conn.close()
-        if self.philips_storingen_conn:
-            self.philips_storingen_conn.close()
-        if self.sqlite_conn:
-            self.sqlite_conn.close()
+        """Close all database connections."""
+        for conn in (self.access_conn, self.proces_conn, self.storingen_conn,
+                     self.philips_storingen_conn, self.sqlite_conn):
+            if conn:
+                conn.close()
 
 
 if __name__ == "__main__":
