@@ -405,6 +405,11 @@ _GANTT_CSS = """\
 # ============================================================================
 
 class IsotopeDashboardGenerator:
+    # Class-level cache: intentionally shared across instances so it survives the
+    # 60-second loop (a new instance is created each iteration).
+    # Keys: cache_key → {mtime, ...}
+    _excel_cache: dict = {}
+
     # ---- SQLite table schemas ----
     # Each entry maps a table name to a list of (column, sql_type) tuples.
     # 'alter_add' lists columns that may be missing on older databases.
@@ -498,7 +503,6 @@ class IsotopeDashboardGenerator:
         self.philips_storingen_data = []
         self.otif_kpi_data = []      # [{week, gallium, i123, indium, thallium, rubidium_krypton}, ...]
         self.otif_table_data = {}    # {product: {week: missed_count}}
-        self._excel_cache = {}       # Instance-level file cache: key → {mtime, ...}
         self.ploegen_data = {}  # Will store ploeg definitions
         self.planning_data = {}  # Will store who worked when
         self.ploegenwissel_date = None  # Date of last ploegen change (from P1 in Ploegen.xlsx)
@@ -1396,7 +1400,7 @@ class IsotopeDashboardGenerator:
         """Connect to SQLite database"""
         try:
             self.sqlite_conn = sqlite3.connect(self.sqlite_db_path)
-            self._excel_cache_create_table()
+            IsotopeDashboardGenerator._excel_cache_create_table()
             return True
         except Exception as e:
             print(f"✗ Error connecting to SQLite database: {e}")
@@ -4106,19 +4110,19 @@ class IsotopeDashboardGenerator:
         # Skip reload if file has not changed since last successful load
         try:
             current_mtime = os.path.getmtime(self.ploegen_excel)
-            cached = self._excel_cache.get('ploegen')
+            cached = IsotopeDashboardGenerator._excel_cache.get('ploegen')
             if cached and cached['mtime'] == current_mtime:
                 self.ploegen_data = cached['ploegen_data']
                 self.ploegenwissel_date = cached['ploegenwissel_date']
                 print("  (ploegen excel unchanged — using cache)")
                 return True
             # Not in memory; try SQLite persistent cache
-            sq = self._excel_cache_load_sqlite('ploegen', current_mtime)
+            sq = IsotopeDashboardGenerator._excel_cache_load_sqlite('ploegen', current_mtime)
             if sq:
                 self.ploegen_data = sq['ploegen_data']
                 pwd = sq.get('ploegenwissel_date')
                 self.ploegenwissel_date = date.fromisoformat(pwd) if pwd else None
-                self._excel_cache['ploegen'] = {
+                IsotopeDashboardGenerator._excel_cache['ploegen'] = {
                     'mtime': current_mtime,
                     'ploegen_data': self.ploegen_data,
                     'ploegenwissel_date': self.ploegenwissel_date,
@@ -4193,12 +4197,12 @@ class IsotopeDashboardGenerator:
             # Update in-process cache and persist to SQLite
             try:
                 mtime_now = os.path.getmtime(self.ploegen_excel)
-                self._excel_cache['ploegen'] = {
+                IsotopeDashboardGenerator._excel_cache['ploegen'] = {
                     'mtime': mtime_now,
                     'ploegen_data': ploegen,
                     'ploegenwissel_date': self.ploegenwissel_date,
                 }
-                self._excel_cache_save_sqlite('ploegen', mtime_now, {
+                IsotopeDashboardGenerator._excel_cache_save_sqlite('ploegen', mtime_now, {
                     'ploegen_data': ploegen,
                     'ploegenwissel_date': self.ploegenwissel_date.isoformat() if self.ploegenwissel_date else None,
                 })
@@ -4264,16 +4268,16 @@ class IsotopeDashboardGenerator:
 
         try:
             current_mtime = os.path.getmtime(self.vsm_excel)
-            cached = self._excel_cache.get('vsm')
+            cached = IsotopeDashboardGenerator._excel_cache.get('vsm')
             if cached and cached['mtime'] == current_mtime:
                 self.vsm_data = cached['vsm_data']
                 print("  (VSM excel unchanged — using cache)")
                 return True
             # Not in memory; try SQLite persistent cache
-            sq = self._excel_cache_load_sqlite('vsm', current_mtime)
+            sq = IsotopeDashboardGenerator._excel_cache_load_sqlite('vsm', current_mtime)
             if sq:
                 self.vsm_data = sq['vsm_data']
-                self._excel_cache['vsm'] = {
+                IsotopeDashboardGenerator._excel_cache['vsm'] = {
                     'mtime': current_mtime,
                     'vsm_data': self.vsm_data,
                 }
@@ -4392,11 +4396,11 @@ class IsotopeDashboardGenerator:
 
             try:
                 mtime_now = os.path.getmtime(self.vsm_excel)
-                self._excel_cache['vsm'] = {
+                IsotopeDashboardGenerator._excel_cache['vsm'] = {
                     'mtime': mtime_now,
                     'vsm_data': self.vsm_data,
                 }
-                self._excel_cache_save_sqlite('vsm', mtime_now, {'vsm_data': self.vsm_data})
+                IsotopeDashboardGenerator._excel_cache_save_sqlite('vsm', mtime_now, {'vsm_data': self.vsm_data})
             except Exception:
                 pass
 
@@ -4423,19 +4427,19 @@ class IsotopeDashboardGenerator:
         # Skip reload if file has not changed since last successful load
         try:
             current_mtime = os.path.getmtime(self.planning_excel)
-            cached = self._excel_cache.get('planning')
+            cached = IsotopeDashboardGenerator._excel_cache.get('planning')
             if cached and cached['mtime'] == current_mtime:
                 self.planning_data = cached['planning_data']
                 print("  (planning excel unchanged — using cache)")
                 return True
             # Not in memory; try SQLite persistent cache
-            sq = self._excel_cache_load_sqlite('planning', current_mtime)
+            sq = IsotopeDashboardGenerator._excel_cache_load_sqlite('planning', current_mtime)
             if sq:
                 # Keys were stored as ISO date strings; convert back to date objects
                 self.planning_data = {
                     date.fromisoformat(k): v for k, v in sq['planning_data'].items()
                 }
-                self._excel_cache['planning'] = {
+                IsotopeDashboardGenerator._excel_cache['planning'] = {
                     'mtime': current_mtime,
                     'planning_data': self.planning_data,
                 }
@@ -4514,12 +4518,12 @@ class IsotopeDashboardGenerator:
             # Update in-process cache and persist to SQLite
             try:
                 mtime_now = os.path.getmtime(self.planning_excel)
-                self._excel_cache['planning'] = {
+                IsotopeDashboardGenerator._excel_cache['planning'] = {
                     'mtime': mtime_now,
                     'planning_data': planning,
                 }
                 # date keys must be serialized as ISO strings for JSON
-                self._excel_cache_save_sqlite('planning', mtime_now, {
+                IsotopeDashboardGenerator._excel_cache_save_sqlite('planning', mtime_now, {
                     'planning_data': {k.isoformat(): v for k, v in planning.items()},
                 })
             except Exception:
@@ -4558,18 +4562,18 @@ class IsotopeDashboardGenerator:
         # Skip reload if file has not changed since last successful load
         try:
             current_mtime = os.path.getmtime(otif_path)
-            cached = self._excel_cache.get('otif')
+            cached = IsotopeDashboardGenerator._excel_cache.get('otif')
             if cached and cached['mtime'] == current_mtime:
                 self.otif_kpi_data = cached['otif_kpi_data']
                 self.otif_table_data = cached['otif_table_data']
                 print("  (OTIF excel unchanged — using cache)")
                 return True
             # Not in memory; try SQLite persistent cache
-            sq = self._excel_cache_load_sqlite('otif', current_mtime)
+            sq = IsotopeDashboardGenerator._excel_cache_load_sqlite('otif', current_mtime)
             if sq:
                 self.otif_kpi_data   = sq['otif_kpi_data']
                 self.otif_table_data = sq['otif_table_data']
-                self._excel_cache['otif'] = {
+                IsotopeDashboardGenerator._excel_cache['otif'] = {
                     'mtime': current_mtime,
                     'otif_kpi_data':   self.otif_kpi_data,
                     'otif_table_data': self.otif_table_data,
@@ -4675,12 +4679,12 @@ class IsotopeDashboardGenerator:
             # Update in-process cache and persist to SQLite
             try:
                 mtime_now = os.path.getmtime(otif_path)
-                self._excel_cache['otif'] = {
+                IsotopeDashboardGenerator._excel_cache['otif'] = {
                     'mtime': mtime_now,
                     'otif_kpi_data':   kpi_data,
                     'otif_table_data': self.otif_table_data,
                 }
-                self._excel_cache_save_sqlite('otif', mtime_now, {
+                IsotopeDashboardGenerator._excel_cache_save_sqlite('otif', mtime_now, {
                     'otif_kpi_data':   kpi_data,
                     'otif_table_data': self.otif_table_data,
                 })

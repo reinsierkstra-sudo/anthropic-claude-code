@@ -14,11 +14,10 @@
 - **Fix:** Add `if table_name not in self._TABLE_SCHEMAS: raise ValueError(...)` guard at the top of `store_in_sqlite`. Wrap DDL identifiers in backticks/brackets.
 - **Done:** Added ValueError guard before any cursor use.
 
-### C2 — Mutable class-level `_excel_cache` shared across instances [x]
+### C2 — Mutable class-level `_excel_cache` shared across instances [ ]
 - **Line:** ~408
-- **Problem:** `_excel_cache = {}` is a class attribute. All instances share the same dict; concurrent or sequential re-use corrupts cached data.
-- **Fix:** Move to `__init__`: `self._excel_cache = {}`.
-- **Done:** Removed class attribute, added `self._excel_cache = {}` in `__init__`, replaced all `IsotopeDashboardGenerator._excel_cache` → `self._excel_cache`.
+- **Problem reported:** `_excel_cache = {}` is a class attribute shared across instances.
+- **Assessment:** The sharing is **intentional** — a new instance is created each loop iteration and the class-level cache allows mtime-checked Excel data to survive across iterations without re-opening files. Moving to instance-level broke the cross-iteration cache. Reverted; added explicit comment documenting the design intent.
 
 ---
 
@@ -103,7 +102,7 @@
 ## Implementation Order
 
 1. C1 — SQL injection guard ✓
-2. C2 — Class-level cache ✓
+2. C2 — Class-level cache (intentionally reverted — cross-iteration caching requires class-level)
 3. H4 — Wrong condition (`parse_eobhrmin`) ✓
 4. H5 — Temp file descriptor leaks ✓ (not applicable)
 5. H3 — Remove `-999` sentinel ✓
