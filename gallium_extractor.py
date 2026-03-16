@@ -301,6 +301,26 @@ PRODUCTIONS_DATABASE = r"\\pett-fs01p\nucleair\Isotopen productie\Cyclotron form
 CYCLOTRON_URL = "http://pett-webw02p/procdashboard/cyclotron.asp"
 
 # ============================================================================
+# MODULE-LEVEL HELPERS
+# ============================================================================
+
+def _to_date(d):
+    """Normalise any date/datetime/str value to a datetime.date, or None on failure."""
+    if d is None:
+        return None
+    if isinstance(d, datetime):
+        return d.date()
+    if hasattr(d, 'year') and not isinstance(d, datetime):
+        # Already a date object
+        return d
+    if isinstance(d, str):
+        try:
+            return datetime.strptime(d, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            return None
+    return None
+
+# ============================================================================
 
 class IsotopeDashboardGenerator:
     # Class-level cache: survives across the 60-second loop because a new instance
@@ -656,17 +676,13 @@ class IsotopeDashboardGenerator:
         #     print(f"[DEBUG] First Gallium item structure: {self.gallium_data[0]}")
         gallium_converted = 0
         for item in self.gallium_data:
-            if not item.get('date'):
+            item_date = _to_date(item['date'])
+            if item_date is None:
                 continue
-            
-            # Check if date is datetime.date or datetime.datetime
-            item_date = item['date']
-            if isinstance(item_date, datetime):
-                item_date = item_date.date()
-            
+
             # Convert cutoff_date to date for comparison
             cutoff_date_only = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
-            
+
             if item_date < cutoff_date_only:
                 continue
             
@@ -703,15 +719,12 @@ class IsotopeDashboardGenerator:
         # print(f"[DEBUG] Processing {len(self.rubidium_data)} Rubidium records...")
         rubidium_converted = 0
         for item in self.rubidium_data:
-            if not item.get('date'):
+            item_date = _to_date(item['date'])
+            if item_date is None:
                 continue
-            
-            item_date = item['date']
-            if isinstance(item_date, datetime):
-                item_date = item_date.date()
-            
+
             cutoff_date_only = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
-            
+
             if item_date < cutoff_date_only:
                 continue
             
@@ -747,15 +760,12 @@ class IsotopeDashboardGenerator:
         # print(f"[DEBUG] Processing {len(self.indium_data)} Indium records...")
         indium_converted = 0
         for item in self.indium_data:
-            if not item.get('date'):
+            item_date = _to_date(item['date'])
+            if item_date is None:
                 continue
-            
-            item_date = item['date']
-            if isinstance(item_date, datetime):
-                item_date = item_date.date()
-            
+
             cutoff_date_only = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
-            
+
             if item_date < cutoff_date_only:
                 continue
             
@@ -791,15 +801,12 @@ class IsotopeDashboardGenerator:
         # print(f"[DEBUG] Processing {len(self.thallium_data)} Thallium records...")
         thallium_converted = 0
         for item in self.thallium_data:
-            if not item.get('date'):
+            item_date = _to_date(item['date'])
+            if item_date is None:
                 continue
-            
-            item_date = item['date']
-            if isinstance(item_date, datetime):
-                item_date = item_date.date()
-            
+
             cutoff_date_only = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
-            
+
             if item_date < cutoff_date_only:
                 continue
             
@@ -836,13 +843,10 @@ class IsotopeDashboardGenerator:
         iodine_converted = 0
         for item in self.iodine_data:
             # For Iodine, prefer stop_datum over date (stop_datum is actual EOB date)
-            item_date = item.get('stop_datum') or item.get('date')
-            if not item_date:
+            item_date = _to_date(item.get('stop_datum') or item.get('date'))
+            if item_date is None:
                 continue
-            
-            if isinstance(item_date, datetime):
-                item_date = item_date.date()
-            
+
             cutoff_date_only = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
             
             if item_date < cutoff_date_only:
@@ -1637,61 +1641,31 @@ class IsotopeDashboardGenerator:
         # Return shift with maximum overlap
         return max(overlaps, key=overlaps.get) if max(overlaps.values()) > 0 else None
     
+    def _connect_access_db(self, path, attr_name, label):
+        """Open a read-only pyodbc connection to an Access database and store it on self."""
+        try:
+            conn_str = (
+                r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
+                f'DBQ={path};'
+                r'ReadOnly=1;'
+            )
+            setattr(self, attr_name, pyodbc.connect(conn_str))
+            return True
+        except Exception as e:
+            print(f"✗ Error connecting to {label}: {e}")
+            return False
+
     def connect_access(self):
-        """Connect to Access database"""
-        try:
-            conn_str = (
-                r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
-                f'DBQ={self.access_db_path};'
-                r'ReadOnly=1;'
-            )
-            self.access_conn = pyodbc.connect(conn_str)
-            return True
-        except Exception as e:
-            print(f"✗ Error connecting to Access database: {e}")
-            return False
-    
+        return self._connect_access_db(self.access_db_path, 'access_conn', 'Access database')
+
     def connect_proces_db(self):
-        """Connect to ProcesGegevens Access database"""
-        try:
-            conn_str = (
-                r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
-                f'DBQ={self.proces_db_path};'
-                r'ReadOnly=1;'
-            )
-            self.proces_conn = pyodbc.connect(conn_str)
-            return True
-        except Exception as e:
-            print(f"✗ Error connecting to ProcesGegevens database: {e}")
-            return False
-    
+        return self._connect_access_db(self.proces_db_path, 'proces_conn', 'ProcesGegevens database')
+
     def connect_storingen_db(self):
-        """Connect to Storingen IBA Access database"""
-        try:
-            conn_str = (
-                r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
-                f'DBQ={self.storingen_db_path};'
-                r'ReadOnly=1;'
-            )
-            self.storingen_conn = pyodbc.connect(conn_str)
-            return True
-        except Exception as e:
-            print(f"✗ Error connecting to Storingen IBA database: {e}")
-            return False
-    
+        return self._connect_access_db(self.storingen_db_path, 'storingen_conn', 'Storingen IBA database')
+
     def connect_philips_storingen_db(self):
-        """Connect to Storingen Philips Access database"""
-        try:
-            conn_str = (
-                r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
-                f'DBQ={self.philips_storingen_db_path};'
-                r'ReadOnly=1;'
-            )
-            self.philips_storingen_conn = pyodbc.connect(conn_str)
-            return True
-        except Exception as e:
-            print(f"✗ Error connecting to Storingen Philips database: {e}")
-            return False
+        return self._connect_access_db(self.philips_storingen_db_path, 'philips_storingen_conn', 'Storingen Philips database')
     
     def connect_sqlite(self):
         """Connect to SQLite database"""
@@ -1766,71 +1740,33 @@ class IsotopeDashboardGenerator:
             print(f"✗ Error extracting Gallium data: {e}")
             return False
     
+    def _extract_opbrengsten(self, table_name):
+        """Extract opbrengsten (yield) data from the named Access table."""
+        cursor = self.access_conn.cursor()
+        try:
+            cursor.execute(f"""
+                SELECT [Datum Tweede Scheiding], [Opbrengst (MBq)]
+                FROM {table_name}
+                ORDER BY [Datum Tweede Scheiding] ASC
+            """)
+            result = []
+            for row in cursor.fetchall():
+                if row[0] is not None and row[1] is not None:
+                    result.append({'date': row[0], 'opbrengst_mbq': row[1]})
+            return result
+        except Exception as e:
+            print(f"✗ Error extracting {table_name} data: {e}")
+            return []
+
     def extract_gallium_opbrengsten_data(self):
         """Extract Gallium opbrengsten (yield) data"""
-        cursor = self.access_conn.cursor()
-        
-        try:
-            query = """
-                SELECT 
-                    [Datum Tweede Scheiding],
-                    [Opbrengst (MBq)]
-                FROM Galliumopbrengsten
-                ORDER BY [Datum Tweede Scheiding] ASC
-            """
-            
-            cursor.execute(query)
-            rows = cursor.fetchall()
-            
-            self.gallium_opbrengsten_data = []
-            for row in rows:
-                datum = row[0]
-                opbrengst_mbq = row[1]
-                
-                if datum and opbrengst_mbq is not None:
-                    self.gallium_opbrengsten_data.append({
-                        'date': datum,
-                        'opbrengst_mbq': opbrengst_mbq
-                    })
-            
-            return True
-            
-        except Exception as e:
-            print(f"✗ Error extracting Gallium opbrengsten data: {e}")
-            return False
-    
+        self.gallium_opbrengsten_data = self._extract_opbrengsten('Galliumopbrengsten')
+        return True
+
     def extract_indium_opbrengsten_data(self):
         """Extract Indium opbrengsten (yield) data"""
-        cursor = self.access_conn.cursor()
-        
-        try:
-            query = """
-                SELECT 
-                    [Datum Tweede Scheiding],
-                    [Opbrengst (MBq)]
-                FROM Indiumopbrengsten
-                ORDER BY [Datum Tweede Scheiding] ASC
-            """
-            
-            cursor.execute(query)
-            rows = cursor.fetchall()
-            
-            self.indium_opbrengsten_data = []
-            for row in rows:
-                datum = row[0]
-                opbrengst_mbq = row[1]
-                
-                if datum and opbrengst_mbq is not None:
-                    self.indium_opbrengsten_data.append({
-                        'date': datum,
-                        'opbrengst_mbq': opbrengst_mbq
-                    })
-            
-            return True
-            
-        except Exception as e:
-            print(f"✗ Error extracting Indium opbrengsten data: {e}")
-            return False
+        self.indium_opbrengsten_data = self._extract_opbrengsten('Indiumopbrengsten')
+        return True
     
     def extract_rubidium_data(self):
         """Extract Rubidium data from Access"""
@@ -2710,19 +2646,10 @@ class IsotopeDashboardGenerator:
         
         since_friday = []
         for record in data:
-            record_date = record['date']
-            
+            record_date = _to_date(record['date'])
             if record_date is None:
                 continue
-                
-            if isinstance(record_date, datetime):
-                record_date = record_date.date()
-            elif isinstance(record_date, str):
-                try:
-                    record_date = datetime.strptime(record_date, '%Y-%m-%d').date()
-                except:
-                    continue
-            
+
             if last_friday <= record_date <= today:
                 # Make a proper copy with ALL fields
                 new_record = record.copy()
@@ -2739,19 +2666,10 @@ class IsotopeDashboardGenerator:
         
         previous_week = []
         for record in data:
-            record_date = record['date']
-            
+            record_date = _to_date(record['date'])
             if record_date is None:
                 continue
-                
-            if isinstance(record_date, datetime):
-                record_date = record_date.date()
-            elif isinstance(record_date, str):
-                try:
-                    record_date = datetime.strptime(record_date, '%Y-%m-%d').date()
-                except:
-                    continue
-            
+
             if previous_friday <= record_date <= last_thursday:
                 # Make a proper copy with ALL fields
                 new_record = record.copy()
@@ -2767,19 +2685,10 @@ class IsotopeDashboardGenerator:
         monthly_data = defaultdict(list)
         
         for record in data:
-            record_date = record['date']
-            
+            record_date = _to_date(record['date'])
             if record_date is None:
                 continue
-                
-            if isinstance(record_date, datetime):
-                record_date = record_date.date()
-            elif isinstance(record_date, str):
-                try:
-                    record_date = datetime.strptime(record_date, '%Y-%m-%d').date()
-                except:
-                    continue
-            
+
             month_start = record_date.replace(day=1)
             
             # Use targetstroom or efficiency depending on data type
@@ -2814,21 +2723,16 @@ class IsotopeDashboardGenerator:
         monthly_data_21 = defaultdict(list)
         
         for record in data:
-            record_date = record['date']
             kant = record.get('kant')
-            
-            # Skip records without date or with Unknown kant
-            if record_date is None or kant == 'Unknown' or kant is None:
+
+            # Skip records with Unknown kant
+            if kant == 'Unknown' or kant is None:
                 continue
-                
-            if isinstance(record_date, datetime):
-                record_date = record_date.date()
-            elif isinstance(record_date, str):
-                try:
-                    record_date = datetime.strptime(record_date, '%Y-%m-%d').date()
-                except:
-                    continue
-            
+
+            record_date = _to_date(record['date'])
+            if record_date is None:
+                continue
+
             month_start = record_date.replace(day=1)
             
             if record.get('targetstroom') is not None:
@@ -2981,17 +2885,10 @@ class IsotopeDashboardGenerator:
         # Filter data from last year
         last_year_data = []
         for record in self.efficiency_data:
-            date = record['date']
-            if isinstance(date, datetime):
-                record_date = date.date()
-            elif isinstance(date, str):
-                try:
-                    record_date = datetime.strptime(date, '%Y-%m-%d').date()
-                except:
-                    continue
-            else:
+            record_date = _to_date(record['date'])
+            if record_date is None:
                 continue
-            
+
             if record_date >= one_year_ago and record['efficiency'] != 0:
                 last_year_data.append(record['efficiency'])
         
@@ -3019,17 +2916,10 @@ class IsotopeDashboardGenerator:
         # Filter data from last 3 months
         last_3months_data = []
         for record in self.efficiency_data:
-            date = record['date']
-            if isinstance(date, datetime):
-                record_date = date.date()
-            elif isinstance(date, str):
-                try:
-                    record_date = datetime.strptime(date, '%Y-%m-%d').date()
-                except:
-                    continue
-            else:
+            record_date = _to_date(record['date'])
+            if record_date is None:
                 continue
-            
+
             if record_date >= three_months_ago and record['efficiency'] != 0:
                 last_3months_data.append(record['efficiency'])
         
@@ -3056,18 +2946,10 @@ class IsotopeDashboardGenerator:
         
         past_year = []
         for record in self.efficiency_data:
-            date = record['date']
-            
-            if isinstance(date, datetime):
-                record_date = date.date()
-            elif isinstance(date, str):
-                try:
-                    record_date = datetime.strptime(date, '%Y-%m-%d').date()
-                except:
-                    continue
-            else:
+            record_date = _to_date(record['date'])
+            if record_date is None:
                 continue
-            
+
             if record_date >= one_year_ago:
                 past_year.append({
                     'date': record_date.strftime('%Y-%m-%d'),
@@ -3086,18 +2968,10 @@ class IsotopeDashboardGenerator:
         quarterly_data = defaultdict(lambda: {'values': []})
         
         for record in self.efficiency_data:
-            date = record['date']
-            
-            if isinstance(date, datetime):
-                record_date = date.date()
-            elif isinstance(date, str):
-                try:
-                    record_date = datetime.strptime(date, '%Y-%m-%d').date()
-                except:
-                    continue
-            else:
+            record_date = _to_date(record['date'])
+            if record_date is None:
                 continue
-            
+
             year = record_date.year
             
             # Determine quarter based on month
@@ -3134,19 +3008,10 @@ class IsotopeDashboardGenerator:
         
         # Gallium
         for record in self.gallium_data:
-            date = record['date']
+            date = _to_date(record['date'])
             if date is None:
                 continue
-            if isinstance(date, datetime):
-                date = date.date()
-            elif isinstance(date, str):
-                try:
-                    date = datetime.strptime(date, '%Y-%m-%d').date()
-                except:
-                    continue
-            else:
-                continue
-            
+
             # Use centralized is_production_in_spec function
             within_spec = self.is_production_in_spec(record, 'gallium')
             all_productions.append({
@@ -3154,22 +3019,13 @@ class IsotopeDashboardGenerator:
                 'isotope': 'Gallium',
                 'within_spec': within_spec
             })
-        
+
         # Rubidium
         for record in self.rubidium_data:
-            date = record['date']
+            date = _to_date(record['date'])
             if date is None:
                 continue
-            if isinstance(date, datetime):
-                date = date.date()
-            elif isinstance(date, str):
-                try:
-                    date = datetime.strptime(date, '%Y-%m-%d').date()
-                except:
-                    continue
-            else:
-                continue
-            
+
             # Use centralized is_production_in_spec function
             within_spec = self.is_production_in_spec(record, 'rubidium')
             all_productions.append({
@@ -3177,22 +3033,13 @@ class IsotopeDashboardGenerator:
                 'isotope': 'Rubidium',
                 'within_spec': within_spec
             })
-        
+
         # Indium
         for record in self.indium_data:
-            date = record['date']
+            date = _to_date(record['date'])
             if date is None:
                 continue
-            if isinstance(date, datetime):
-                date = date.date()
-            elif isinstance(date, str):
-                try:
-                    date = datetime.strptime(date, '%Y-%m-%d').date()
-                except:
-                    continue
-            else:
-                continue
-            
+
             # Use centralized is_production_in_spec function
             within_spec = self.is_production_in_spec(record, 'indium')
             all_productions.append({
@@ -3200,22 +3047,13 @@ class IsotopeDashboardGenerator:
                 'isotope': 'Indium',
                 'within_spec': within_spec
             })
-        
+
         # Thallium
         for record in self.thallium_data:
-            date = record['date']
+            date = _to_date(record['date'])
             if date is None:
                 continue
-            if isinstance(date, datetime):
-                date = date.date()
-            elif isinstance(date, str):
-                try:
-                    date = datetime.strptime(date, '%Y-%m-%d').date()
-                except:
-                    continue
-            else:
-                continue
-            
+
             # Use centralized is_production_in_spec function
             within_spec = self.is_production_in_spec(record, 'thallium')
             all_productions.append({
@@ -3223,22 +3061,13 @@ class IsotopeDashboardGenerator:
                 'isotope': 'Thallium',
                 'within_spec': within_spec
             })
-        
+
         # Iodine
         for record in self.iodine_data:
-            date = record['date']
+            date = _to_date(record['date'])
             if date is None:
                 continue
-            if isinstance(date, datetime):
-                date = date.date()
-            elif isinstance(date, str):
-                try:
-                    date = datetime.strptime(date, '%Y-%m-%d').date()
-                except:
-                    continue
-            else:
-                continue
-            
+
             # Use centralized is_production_in_spec function
             within_spec = self.is_production_in_spec(record, 'iodine')
             all_productions.append({
