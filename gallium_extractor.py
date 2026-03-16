@@ -6776,88 +6776,10 @@ class IsotopeDashboardGenerator:
         tl_running_12 = [t for t in tl_running if t.get('kant') == '1.2']
         tl_running_21 = [t for t in tl_running if t.get('kant') == '2.1']
         
-        max_productions = max(len(ga_running), len(rb_running), len(in_running), len(tl_running_12), len(tl_running_21), len(io_running)) if any([ga_running, rb_running, in_running, tl_running, io_running]) else 0
-        
-        summary_table_rows = ""
-        for i in range(max_productions):
-            # Gallium - now showing targetstroom in µA
-            if i < len(ga_running) and ga_running[i].get('targetstroom') is not None:
-                ga_cyclotron = ga_running[i].get('cyclotron', 'Philips')
-                ga_color = get_targetstroom_color(ga_running[i]['targetstroom'], 'gallium', ga_cyclotron)
-                ga_bo = ga_running[i].get('identifier', '')
-                ga_date = ga_running[i].get('date', '')
-                # Format BO number as integer to remove .0
-                ga_bo_formatted = _fmt_bo(ga_bo)
-                ga_val = f"<span onclick=\"showProductionHistory('{ga_bo}', '{ga_date}', 'Gallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{ga_bo_formatted}</span> <span style='color: {ga_color}; font-weight: bold; font-size: 25px;'>{round(ga_running[i]['targetstroom'])}µA</span>"
-            else:
-                ga_val = ""
-            
-            # Rubidium
-            if i < len(rb_running) and rb_running[i].get('efficiency') is not None:
-                rb_color = get_efficiency_color(rb_running[i]['efficiency'])
-                rb_bo = rb_running[i].get('identifier', '')
-                rb_date = rb_running[i].get('date', '')
-                # Format BO number as integer to remove .0
-                rb_bo_formatted = _fmt_bo(rb_bo)
-                rb_stroom = rb_running[i].get('stroom')
-                rb_stroom_color = get_rb_stroom_color(rb_stroom)
-                rb_stroom_str = f"{rb_stroom:.1f}µA" if rb_stroom is not None else 'N/A'
-                rb_eff = f"<span onclick=\"showProductionHistory('{rb_bo}', '{rb_date}', 'Rubidium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{rb_bo_formatted}</span> <span style='color: {rb_color}; font-weight: bold; font-size: 25px;'>{round(rb_running[i]['efficiency'])}%</span> <span style='color: {rb_stroom_color}; font-weight: bold; font-size: 25px;'>{rb_stroom_str}</span>"
-            else:
-                rb_eff = ""
-            
-            # Indium - now showing targetstroom in µA
-            if i < len(in_running) and in_running[i].get('targetstroom') is not None:
-                in_cyclotron = in_running[i].get('cyclotron', 'Philips')
-                in_color = get_targetstroom_color(in_running[i]['targetstroom'], 'indium', in_cyclotron)
-                in_bo = in_running[i].get('identifier', '')
-                in_date = in_running[i].get('date', '')
-                # Format BO number as integer to remove .0
-                in_bo_formatted = _fmt_bo(in_bo)
-                in_val = f"<span onclick=\"showProductionHistory('{in_bo}', '{in_date}', 'Indium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{in_bo_formatted}</span> <span style='color: {in_color}; font-weight: bold; font-size: 25px;'>{round(in_running[i]['targetstroom'])}µA</span>"
-            else:
-                in_val = ""
-            
-            # Thallium 1.2 - separate column
-            if i < len(tl_running_12) and tl_running_12[i].get('targetstroom') is not None:
-                tl_color = get_targetstroom_color(tl_running_12[i]['targetstroom'], 'thallium')
-                tl_bo = tl_running_12[i].get('identifier', '')
-                tl_date = tl_running_12[i].get('date', '')
-                # Format BO number as integer to remove .0
-                tl_bo_formatted = _fmt_bo(tl_bo)
-                tl_val_12 = f"<span onclick=\"showProductionHistory('{tl_bo}', '{tl_date}', 'Thallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_running_12[i]['targetstroom'])}µA</span>"
-            else:
-                tl_val_12 = ""
-            
-            # Thallium 2.1 - separate column
-            if i < len(tl_running_21) and tl_running_21[i].get('targetstroom') is not None:
-                tl_color = get_targetstroom_color(tl_running_21[i]['targetstroom'], 'thallium')
-                tl_bo = tl_running_21[i].get('identifier', '')
-                tl_date = tl_running_21[i].get('date', '')
-                # Format BO number as integer to remove .0
-                tl_bo_formatted = _fmt_bo(tl_bo)
-                tl_val_21 = f"<span onclick=\"showProductionHistory('{tl_bo}', '{tl_date}', 'Thallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_running_21[i]['targetstroom'])}µA</span>"
-            else:
-                tl_val_21 = ""
-            
-            # Iodine: Yield%/Output% format + targetstroom (separate colors for yield and output)
-            if i < len(io_running):
-                io_yield_color = get_iodine_yield_color(io_running[i].get('yield_percent'))
-                io_output_color = get_iodine_output_color(io_running[i].get('output_percent'))
-                io_target_color = get_iodine_targetstroom_color(io_running[i].get('targetstroom'), io_running[i].get('bo_targetstroom'))
-                io_yield = f"{round(io_running[i]['yield_percent'], 1)}%" if io_running[i].get('yield_percent') is not None else "N/A"
-                io_output = f"{round(io_running[i]['output_percent'], 1)}%" if io_running[i].get('output_percent') is not None else "N/A"
-                io_target = f"{round(io_running[i]['targetstroom'])}µA" if io_running[i].get('targetstroom') is not None and io_running[i].get('targetstroom') != -999 else "N/A"
-                io_bo = io_running[i].get('identifier', '')
-                io_date = io_running[i].get('date', '')
-                # Format BO number as integer to remove .0
-                io_bo_formatted = _fmt_bo(io_bo)
-                io_eff = f"<span onclick=\"showProductionHistory('{io_bo}', '{io_date}', 'Iodine')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{io_bo_formatted}</span> <span style='color: {io_yield_color}; font-weight: bold; font-size: 25px;'>{io_yield}</span><span style='color: black; font-weight: bold; font-size: 25px;'>/</span><span style='color: {io_output_color}; font-weight: bold; font-size: 25px;'>{io_output}</span>  <span style='color: {io_target_color}; font-weight: bold; font-size: 25px;'>{io_target}</span>"
-            else:
-                io_eff = ""
-            
-            summary_table_rows += f"<tr><td>{ga_val}</td><td>{rb_eff}</td><td>{in_val}</td><td>{tl_val_12}</td><td>{tl_val_21}</td><td>{io_eff}</td></tr>"
-        
+        summary_table_rows = self._build_week_table_rows(
+            ga_running, rb_running, in_running, tl_running_12, tl_running_21, io_running,
+            with_onclick=True)
+
         summary_table = f"""
         <div class="section">
             <h2 style="border-bottom: 3px solid #FF5722;">Lopende week</h2>
@@ -6884,88 +6806,10 @@ class IsotopeDashboardGenerator:
         tl_previous_12 = [t for t in tl_previous if t.get('kant') == '1.2']
         tl_previous_21 = [t for t in tl_previous if t.get('kant') == '2.1']
         
-        max_productions_prev = max(len(ga_previous), len(rb_previous), len(in_previous), len(tl_previous_12), len(tl_previous_21), len(io_previous)) if any([ga_previous, rb_previous, in_previous, tl_previous, io_previous]) else 0
-        
-        summary_table_rows_prev = ""
-        for i in range(max_productions_prev):
-            # Gallium - now showing targetstroom in µA
-            if i < len(ga_previous) and ga_previous[i].get('targetstroom') is not None:
-                ga_cyclotron = ga_previous[i].get('cyclotron', 'Philips')
-                ga_color = get_targetstroom_color(ga_previous[i]['targetstroom'], 'gallium', ga_cyclotron)
-                ga_bo = ga_previous[i].get('identifier', '')
-                ga_date = ga_previous[i].get('date', '')
-                # Format BO number as integer to remove .0
-                ga_bo_formatted = _fmt_bo(ga_bo)
-                ga_val = f"<span onclick=\"showProductionHistory('{ga_bo}', '{ga_date}', 'Gallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{ga_bo_formatted}</span> <span style='color: {ga_color}; font-weight: bold; font-size: 25px;'>{round(ga_previous[i]['targetstroom'])}µA</span>"
-            else:
-                ga_val = ""
-            
-            # Rubidium
-            if i < len(rb_previous) and rb_previous[i].get('efficiency') is not None:
-                rb_color = get_efficiency_color(rb_previous[i]['efficiency'])
-                rb_bo = rb_previous[i].get('identifier', '')
-                rb_date = rb_previous[i].get('date', '')
-                # Format BO number as integer to remove .0
-                rb_bo_formatted = _fmt_bo(rb_bo)
-                rb_stroom = rb_previous[i].get('stroom')
-                rb_stroom_color = get_rb_stroom_color(rb_stroom)
-                rb_stroom_str = f"{rb_stroom:.1f}µA" if rb_stroom is not None else 'N/A'
-                rb_eff = f"<span onclick=\"showProductionHistory('{rb_bo}', '{rb_date}', 'Rubidium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{rb_bo_formatted}</span> <span style='color: {rb_color}; font-weight: bold; font-size: 25px;'>{round(rb_previous[i]['efficiency'])}%</span> <span style='color: {rb_stroom_color}; font-weight: bold; font-size: 25px;'>{rb_stroom_str}</span>"
-            else:
-                rb_eff = ""
-            
-            # Indium - now showing targetstroom in µA
-            if i < len(in_previous) and in_previous[i].get('targetstroom') is not None:
-                in_cyclotron = in_previous[i].get('cyclotron', 'Philips')
-                in_color = get_targetstroom_color(in_previous[i]['targetstroom'], 'indium', in_cyclotron)
-                in_bo = in_previous[i].get('identifier', '')
-                in_date = in_previous[i].get('date', '')
-                # Format BO number as integer to remove .0
-                in_bo_formatted = _fmt_bo(in_bo)
-                in_val = f"<span onclick=\"showProductionHistory('{in_bo}', '{in_date}', 'Indium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{in_bo_formatted}</span> <span style='color: {in_color}; font-weight: bold; font-size: 25px;'>{round(in_previous[i]['targetstroom'])}µA</span>"
-            else:
-                in_val = ""
-            
-            # Thallium 1.2 - separate column
-            if i < len(tl_previous_12) and tl_previous_12[i].get('targetstroom') is not None:
-                tl_color = get_targetstroom_color(tl_previous_12[i]['targetstroom'], 'thallium')
-                tl_bo = tl_previous_12[i].get('identifier', '')
-                tl_date = tl_previous_12[i].get('date', '')
-                # Format BO number as integer to remove .0
-                tl_bo_formatted = _fmt_bo(tl_bo)
-                tl_val_12 = f"<span onclick=\"showProductionHistory('{tl_bo}', '{tl_date}', 'Thallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_previous_12[i]['targetstroom'])}µA</span>"
-            else:
-                tl_val_12 = ""
-            
-            # Thallium 2.1 - separate column
-            if i < len(tl_previous_21) and tl_previous_21[i].get('targetstroom') is not None:
-                tl_color = get_targetstroom_color(tl_previous_21[i]['targetstroom'], 'thallium')
-                tl_bo = tl_previous_21[i].get('identifier', '')
-                tl_date = tl_previous_21[i].get('date', '')
-                # Format BO number as integer to remove .0
-                tl_bo_formatted = _fmt_bo(tl_bo)
-                tl_val_21 = f"<span onclick=\"showProductionHistory('{tl_bo}', '{tl_date}', 'Thallium')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{tl_bo_formatted}</span> <span style='color: {tl_color}; font-weight: bold; font-size: 25px;'>{round(tl_previous_21[i]['targetstroom'])}µA</span>"
-            else:
-                tl_val_21 = ""
-            
-            # Iodine: Yield%/Output% format + targetstroom (separate colors for yield and output)
-            if i < len(io_previous):
-                io_yield_color = get_iodine_yield_color(io_previous[i].get('yield_percent'))
-                io_output_color = get_iodine_output_color(io_previous[i].get('output_percent'))
-                io_target_color = get_iodine_targetstroom_color(io_previous[i].get('targetstroom'), io_previous[i].get('bo_targetstroom'))
-                io_yield = f"{round(io_previous[i]['yield_percent'], 1)}%" if io_previous[i].get('yield_percent') is not None else "N/A"
-                io_output = f"{round(io_previous[i]['output_percent'], 1)}%" if io_previous[i].get('output_percent') is not None else "N/A"
-                io_target = f"{round(io_previous[i]['targetstroom'])}µA" if io_previous[i].get('targetstroom') is not None and io_previous[i].get('targetstroom') != -999 else "N/A"
-                io_bo = io_previous[i].get('identifier', '')
-                io_date = io_previous[i].get('date', '')
-                # Format BO number as integer to remove .0
-                io_bo_formatted = _fmt_bo(io_bo)
-                io_eff = f"<span onclick=\"showProductionHistory('{io_bo}', '{io_date}', 'Iodine')\" style='color: black; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: underline;'>{io_bo_formatted}</span> <span style='color: {io_yield_color}; font-weight: bold; font-size: 25px;'>{io_yield}</span><span style='color: black; font-weight: bold; font-size: 25px;'>/</span><span style='color: {io_output_color}; font-weight: bold; font-size: 25px;'>{io_output}</span>  <span style='color: {io_target_color}; font-weight: bold; font-size: 25px;'>{io_target}</span>"
-            else:
-                io_eff = ""
-            
-            summary_table_rows_prev += f"<tr><td>{ga_val}</td><td>{rb_eff}</td><td>{in_val}</td><td>{tl_val_12}</td><td>{tl_val_21}</td><td>{io_eff}</td></tr>"
-        
+        summary_table_rows_prev = self._build_week_table_rows(
+            ga_previous, rb_previous, in_previous, tl_previous_12, tl_previous_21, io_previous,
+            with_onclick=True)
+
         previous_week_summary_table = f"""
         <div class="section">
             <h2 style="border-bottom: 3px solid #9C27B0;">Afgelopen week</h2>
@@ -7641,7 +7485,7 @@ class IsotopeDashboardGenerator:
                 cyclotron = record.get('cyclotron', 'Philips')  # Get cyclotron type, default to Philips
                 if targetstroom is not None:
                     val = f"{targetstroom:.2f} µA"
-                    color = get_targetstroom_color(targetstroom, isotope_type, cyclotron)
+                    color = self._get_targetstroom_color(targetstroom, isotope_type, cyclotron)
                     should_show_dropdown = (color == "#FF2400")  # Show dropdown if red
                 else:
                     val = "N/A"
@@ -7689,9 +7533,9 @@ class IsotopeDashboardGenerator:
                 date = record['date']
                 
                 # Determine if dropdown should be shown
-                color = get_efficiency_color(record.get('efficiency'))
+                color = self._get_efficiency_color(record.get('efficiency'))
                 should_show_dropdown = (color == "#FF2400")  # Show dropdown if red
-                
+
                 # Create unique ID for dropdown
                 dropdown_id = f"{isotope_name}_{date}_{identifier}".replace('.', '_').replace('-', '_').replace(' ', '_')
                 
@@ -7736,7 +7580,7 @@ class IsotopeDashboardGenerator:
             
             if targetstroom is not None:
                 val = f"{targetstroom:.2f} µA"
-                color = get_targetstroom_color(targetstroom, 'thallium')
+                color = self._get_targetstroom_color(targetstroom, 'thallium')
                 should_show_dropdown = (color == "#FF2400")
             else:
                 val = "N/A"
@@ -7782,9 +7626,9 @@ class IsotopeDashboardGenerator:
             opmerking = record.get('opmerking', '-') if record.get('opmerking') else '-'
             
             # Determine if dropdown should be shown
-            color = get_efficiency_color(record.get('efficiency'))
+            color = self._get_efficiency_color(record.get('efficiency'))
             should_show_dropdown = (color == "#FF2400")
-            
+
             # Create unique ID for dropdown
             dropdown_id = f"Rubidium_{date}_{identifier}".replace('.', '_').replace('-', '_').replace(' ', '_')
             
@@ -7829,9 +7673,9 @@ class IsotopeDashboardGenerator:
             opmerking = record.get('opmerking', '-') if record.get('opmerking') else '-'
             
             # Determine if dropdown should be shown (using Iodine-specific logic)
-            yield_color = get_iodine_yield_color(record.get('yield_percent'))
-            output_color = get_iodine_output_color(record.get('output_percent'))
-            target_color = get_iodine_targetstroom_color(record.get('targetstroom'), record.get('bo_targetstroom'))
+            yield_color = self._get_iodine_yield_color(record.get('yield_percent'))
+            output_color = self._get_iodine_output_color(record.get('output_percent'))
+            target_color = self._get_iodine_targetstroom_color(record.get('targetstroom'))
             should_show_dropdown = (yield_color == "#FF2400" or output_color == "#FF2400" or target_color == "#FF2400")
             
             # Create unique ID for dropdown
