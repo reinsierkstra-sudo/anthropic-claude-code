@@ -9950,6 +9950,10 @@ class IsotopeDashboardGenerator:
             if not _t('extract_philips_storingen', self.extract_philips_storingen_data):
                 print("[WARNING] Could not extract Philips storingen data")
 
+        # Connect SQLite early so Excel loaders can use the persistent mtime cache
+        if not _t('connect_sqlite', self.connect_sqlite):
+            return False
+
         try:
             _t('load_otif_excel', self.load_otif_data)
         except Exception as e:
@@ -9989,9 +9993,6 @@ class IsotopeDashboardGenerator:
         if not _t('extract_iodine', self.extract_iodine_data):
             return False
         print("[OK] Extracted records from bestralingen database")
-
-        if not _t('connect_sqlite', self.connect_sqlite):
-            return False
 
         def _store_all():
             self.store_in_sqlite('gallium_data',  self.gallium_data,  'opbrengst', 'theoretisch')
