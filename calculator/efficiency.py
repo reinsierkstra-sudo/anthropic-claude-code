@@ -227,7 +227,7 @@ def get_efficiency_past_year(gallium_data, rubidium_data, indium_data, thallium_
         if record_date is None:
             continue
 
-        if record_date >= one_year_ago:
+        if record_date >= one_year_ago and record['efficiency'] is not None:
             past_year.append({
                 'date': record_date.strftime('%Y-%m-%d'),
                 'efficiency': record['efficiency'] * 100  # Convert to percentage
@@ -252,7 +252,7 @@ def get_efficiency_all_time(gallium_data, rubidium_data, indium_data, thallium_d
 
     for record in efficiency_data:
         record_date = _to_date(record['date'])
-        if record_date is None:
+        if record_date is None or record['efficiency'] is None:
             continue
 
         year = record_date.year

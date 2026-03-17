@@ -1159,7 +1159,7 @@ def create_html_dashboard(data: dict) -> str:
         output_pct = f"{record['output_percent']:.1f}%" if record.get('output_percent') is not None else "Missing"
         val1 = f"{record['value1']:.2f}" if record['value1'] is not None else "N/A"
         val2 = f"{record['value2']:.2f}" if record['value2'] is not None else "N/A"
-        identifier = str(int(record.get('identifier'))) if record.get('identifier') is not None and record.get('identifier') != 'TEST_NONE' else 'N/A'
+        identifier = str(int(float(record.get('identifier')))) if record.get('identifier') is not None and record.get('identifier') != 'TEST_NONE' else 'N/A'
         bo_target = f"{record.get('bo_targetstroom'):.2f}" if record.get('bo_targetstroom') is not None else "N/A"
         target = f"{record.get('targetstroom'):.2f}" if record.get('targetstroom') is not None else "N/A"
         opmerking = record.get('opmerking', '-') if record.get('opmerking') else '-'
