@@ -13,7 +13,7 @@ Usage::
 
     python run_all.py
 
-The loop interval is read from ``config/settings.json`` under the key
+The loop interval is read from ``config/settings.yaml`` under the key
 ``loop_interval_seconds`` (default: 60 s).  Press Ctrl+C to stop.
 """
 

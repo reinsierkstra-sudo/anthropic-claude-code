@@ -63,15 +63,19 @@ def main() -> bool:
 
         gen_shim = IsotopeDashboardGenerator.__new__(IsotopeDashboardGenerator)
         gen_shim.access_db_path = paths.get("access_db", "")
-        gen_shim.sqlite_db_path = paths.get("sqlite_db", "isotope_data.db")
+        gen_shim.sqlite_db_path = paths.get("raw_db", "data/raw.db")
 
         # Re-expose isotope data on the shim so fetch_cyclotron_data /
         # convert_bestralingen_to_gantt_format can access it.
-        for attr in (
-            "gallium_data", "rubidium_data", "indium_data",
-            "thallium_data", "iodine_data",
-        ):
-            setattr(gen_shim, attr, data.get(f"{attr.replace('_data', '')}_running", []))
+        isotope_key_map = {
+            "gallium_data":  "ga_running",
+            "rubidium_data": "rb_running",
+            "indium_data":   "in_running",
+            "thallium_data": "tl_running",
+            "iodine_data":   "io_running",
+        }
+        for attr, key in isotope_key_map.items():
+            setattr(gen_shim, attr, data.get(key, []))
 
         cyclotron_data = gen_shim.fetch_cyclotron_data()
         print(f"✓ Fetched cyclotron data ({len(cyclotron_data)} entries)")
