@@ -40,16 +40,17 @@ def _get_friday_week(d):
     return d - timedelta(days=(d.weekday() - 4) % 7)
 
 
-def get_efficiency_weeks(gallium_data, rubidium_data, indium_data, thallium_data, iodine_data, spec_settings):
+def get_efficiency_weeks(gallium_data, rubidium_data, indium_data, thallium_data, iodine_data, spec_settings, efficiency_targets=None):
     """Get last 10 weeks of efficiency data with color coding.
 
-    Uses rubidium_data records that have a non-zero 'efficiency' field.
+    Uses efficiency_targets (from ProcesGegevens) — decimal fractions 0–1
+    that are multiplied by 100 to yield percentages.
 
     Returns:
         (last_10_weeks, average) where last_10_weeks is a list of dicts with
         keys 'week', 'percentage', 'color', 'no_data', and average is a float.
     """
-    efficiency_data = rubidium_data
+    efficiency_data = efficiency_targets or []
 
     # Return empty list if no data
     if not efficiency_data:
@@ -116,7 +117,7 @@ def get_efficiency_weeks(gallium_data, rubidium_data, indium_data, thallium_data
         if (yr, wk) in week_lookup:
             effs = week_lookup[(yr, wk)]
             avg_eff = sum(effs) / len(effs)
-            percentage = avg_eff
+            percentage = avg_eff * 100
             color = "#3BB143" if avg_eff >= average else "#FF2400"
             last_10.append({
                 'week': wk,
@@ -132,15 +133,15 @@ def get_efficiency_weeks(gallium_data, rubidium_data, indium_data, thallium_data
                 'no_data': True
             })
 
-    return last_10, average
+    return last_10, average * 100
 
 
-def get_efficiency_last_year_average(gallium_data, rubidium_data, indium_data, thallium_data, iodine_data, spec_settings):
+def get_efficiency_last_year_average(gallium_data, rubidium_data, indium_data, thallium_data, iodine_data, spec_settings, efficiency_targets=None):
     """Calculate efficiency average for the last year (365 days), excluding outliers.
 
     Returns a float percentage (0–100).
     """
-    efficiency_data = rubidium_data
+    efficiency_data = efficiency_targets or []
 
     if not efficiency_data:
         return 0
@@ -166,17 +167,17 @@ def get_efficiency_last_year_average(gallium_data, rubidium_data, indium_data, t
         mean = statistics.mean(last_year_data)
         stdev = statistics.stdev(last_year_data)
         non_outliers = [e for e in last_year_data if abs(e - mean) <= 2 * stdev]
-        return statistics.mean(non_outliers) if non_outliers else 0
+        return statistics.mean(non_outliers) * 100 if non_outliers else 0
 
-    return statistics.mean(last_year_data)
+    return statistics.mean(last_year_data) * 100
 
 
-def get_efficiency_last_3months_average(gallium_data, rubidium_data, indium_data, thallium_data, iodine_data, spec_settings):
+def get_efficiency_last_3months_average(gallium_data, rubidium_data, indium_data, thallium_data, iodine_data, spec_settings, efficiency_targets=None):
     """Calculate efficiency average for the last 3 months (90 days), excluding outliers.
 
     Returns a float percentage (0–100).
     """
-    efficiency_data = rubidium_data
+    efficiency_data = efficiency_targets or []
 
     if not efficiency_data:
         return 0
@@ -202,18 +203,18 @@ def get_efficiency_last_3months_average(gallium_data, rubidium_data, indium_data
         mean = statistics.mean(last_3months_data)
         stdev = statistics.stdev(last_3months_data)
         non_outliers = [e for e in last_3months_data if abs(e - mean) <= 2 * stdev]
-        return statistics.mean(non_outliers) if non_outliers else 0
+        return statistics.mean(non_outliers) * 100 if non_outliers else 0
 
-    return statistics.mean(last_3months_data)
+    return statistics.mean(last_3months_data) * 100
 
 
-def get_efficiency_past_year(gallium_data, rubidium_data, indium_data, thallium_data, iodine_data, spec_settings):
+def get_efficiency_past_year(gallium_data, rubidium_data, indium_data, thallium_data, iodine_data, spec_settings, efficiency_targets=None):
     """Get efficiency data points for the past year (365 days).
 
     Returns a list of dicts sorted by date:
         [{'date': 'YYYY-MM-DD', 'efficiency': float_percentage}, ...]
     """
-    efficiency_data = rubidium_data
+    efficiency_data = efficiency_targets or []
 
     if not efficiency_data:
         return []
@@ -230,19 +231,19 @@ def get_efficiency_past_year(gallium_data, rubidium_data, indium_data, thallium_
         if record_date >= one_year_ago and record['efficiency'] is not None:
             past_year.append({
                 'date': record_date.strftime('%Y-%m-%d'),
-                'efficiency': record['efficiency']
+                'efficiency': record['efficiency'] * 100
             })
 
     return sorted(past_year, key=lambda x: x['date'])
 
 
-def get_efficiency_all_time(gallium_data, rubidium_data, indium_data, thallium_data, iodine_data, spec_settings):
+def get_efficiency_all_time(gallium_data, rubidium_data, indium_data, thallium_data, iodine_data, spec_settings, efficiency_targets=None):
     """Get all efficiency data grouped by quarter.
 
     Returns a list of dicts sorted by date:
         [{'date': 'YYYY-QN', 'efficiency': float_percentage}, ...]
     """
-    efficiency_data = rubidium_data
+    efficiency_data = efficiency_targets or []
 
     if not efficiency_data:
         return []
@@ -269,7 +270,7 @@ def get_efficiency_all_time(gallium_data, rubidium_data, indium_data, thallium_d
             quarter = 4
 
         quarter_key = (year, quarter)
-        quarterly_data[quarter_key]['values'].append(record['efficiency'])
+        quarterly_data[quarter_key]['values'].append(record['efficiency'] * 100)
 
     # Calculate average for each quarter
     result = []

@@ -61,6 +61,7 @@ def main() -> dict:
     ga_opb = raw_db.load_table(raw_conn, 'gallium_opbrengsten')
     in_opb = raw_db.load_table(raw_conn, 'indium_opbrengsten')
 
+    eff_targets       = raw_db.load_table(raw_conn, 'efficiency_targets')
     iba_storingen     = raw_db.load_table(raw_conn, 'iba_storingen')
     philips_storingen = raw_db.load_table(raw_conn, 'philips_storingen')
 
@@ -104,11 +105,11 @@ def main() -> dict:
     # ── Efficiency KPI ────────────────────────────────────────────────────────
     try:
         results["efficiency_weeks"], results["efficiency_average"] = \
-            eff_mod.get_efficiency_weeks(*_all5_spec)
-        results["efficiency_last_year_avg"]    = eff_mod.get_efficiency_last_year_average(*_all5_spec)
-        results["efficiency_last_3months_avg"] = eff_mod.get_efficiency_last_3months_average(*_all5_spec)
-        results["efficiency_past_year"]        = eff_mod.get_efficiency_past_year(*_all5_spec)
-        results["efficiency_all_time"]         = eff_mod.get_efficiency_all_time(*_all5_spec)
+            eff_mod.get_efficiency_weeks(*_all5_spec, efficiency_targets=eff_targets)
+        results["efficiency_last_year_avg"]    = eff_mod.get_efficiency_last_year_average(*_all5_spec, efficiency_targets=eff_targets)
+        results["efficiency_last_3months_avg"] = eff_mod.get_efficiency_last_3months_average(*_all5_spec, efficiency_targets=eff_targets)
+        results["efficiency_past_year"]        = eff_mod.get_efficiency_past_year(*_all5_spec, efficiency_targets=eff_targets)
+        results["efficiency_all_time"]         = eff_mod.get_efficiency_all_time(*_all5_spec, efficiency_targets=eff_targets)
         print("✓ Efficiency calculations complete")
     except Exception as e:
         print(f"⚠ Efficiency calculations failed: {e}")
