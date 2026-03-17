@@ -6,7 +6,7 @@ Ga-67 (Gallium), Rb-82 (Rubidium), In-111 (Indium), Tl-201 (Thallium), I-123 (Io
 
 Every 60 seconds the application collects raw data from MS Access databases, Excel
 files and an HTTP endpoint, calculates KPIs, and writes HTML dashboards to one or
-more output locations (local folder, network share, bureau screen).
+more output locations (local folder, network share, operator screen).
 
 -------------------------------------------------------------------------------
 
@@ -260,10 +260,11 @@ The application reads from five types of source:
 
 7a. Efficiency (%)
 
+    Cyclotron beam transmission efficiency: the ratio of beam current measured at the
+    target (uA on target) to the beam current measured at the source Faraday cup
+    (uA on source faraday). A higher percentage means less beam is lost in transit
+    through the cyclotron beam line.
     Source: efficiency_targets table (from ProcesGegevens Output_EfficiencyTargets).
-    Formula: (actual_mbq / target_mbq) * 100
-    The values in the source table are decimal fractions (e.g. 0.25 = 25%).
-    Thresholds: configured per isotope in spec_settings in settings.yaml.
     Displayed: last 10 weeks, 1-year average, 3-month average, all-time quarterly.
 
 7b. Within-spec (%)
@@ -299,9 +300,14 @@ The application reads from five types of source:
 
 7f. Issues / operator comments
 
-    Operators can log comments (issues) against individual production runs.
-    The dashboard shows comment counts by type for this week, last week, and
-    all time, broken down by isotope.
+    Manual issue tracking: operators log comments against individual production
+    runs to record problems or observations. The data is stored in the
+    production_comments table in raw.db and the calculator in issues.py
+    computes counts by type and by isotope.
+
+    NOTE: this section is currently commented out in the HTML renderer and is
+    therefore not visible in the dashboard. The data is still collected and
+    calculated; it can be re-enabled in renderer/dashboard_full.py when needed.
 
 -------------------------------------------------------------------------------
 
@@ -313,10 +319,12 @@ Two HTML files are generated each cycle:
     Full dashboard   -- all sections (KPI tables, production detail, charts,
                         leaderboard, Gantt, planning modals).
     Truncated dashboard -- KPI summary + current/previous week tables +
-                        shift statistics only; intended for a bureau screen.
+                        shift statistics only; intended for operators. Certain
+                        internal metrics (leaderboard, charts, issue tracking)
+                        are intentionally omitted from this version.
 
 Each file is written to all destinations configured under paths: in settings.yaml
-(local output folder, network share, bureau screen share, etc.). The renderer uses
+(local output folder, network share, operator screen share, etc.). The renderer uses
 SHA256 hashing to skip writing files that have not changed, reducing unnecessary
 network I/O.
 
@@ -342,7 +350,7 @@ paths:
     productieschema_html Path to productieschema.html (embedded modal).
     output_local         Output path for the full dashboard HTML (local).
     output_network       Output path for the full dashboard HTML (network share).
-    output_bureau        Output path for the truncated dashboard HTML.
+    output_bureau        Output path for the truncated (operator) dashboard HTML.
     (additional output destinations can be added as needed)
 
 loop_interval_seconds:
