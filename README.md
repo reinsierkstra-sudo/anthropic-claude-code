@@ -24,7 +24,7 @@ isotope-dashboard/
 │   └── derived_db.py          # SQLite schema and read/write helpers for derived.db
 │
 ├── calculator/                # Reads from data/raw.db, computes KPIs
-│   ├── efficiency.py          # Production efficiency (mCi/µAh) per week
+│   ├── efficiency.py          # Cyclotron efficiency % (from ProcesGegevens targets) and per-isotope production efficiency (mCi/µAh)
 │   ├── within_spec.py         # % productions within quality spec per week
 │   ├── otif.py                # OTIF gedraaide producties per week
 │   ├── shift_stats.py         # Shift statistics and production history
