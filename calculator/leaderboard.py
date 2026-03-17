@@ -6,10 +6,15 @@ Standalone functions for ploeg (team) performance leaderboard calculations.
 Productions are assigned proportionally to ploegen based on how many hours of
 beam time each shift contributed, using planning_data to identify which ploeg
 led each shift on each day.
+
+Also provides:
+- ``collect_ploeg_production_details`` — build per-ploeg production list
+- ``build_production_history``         — invert to per-BO lookup
 """
 
 from collections import defaultdict
 from datetime import datetime, timedelta, date, time as dt_time
+import traceback
 
 
 # ---------------------------------------------------------------------------
@@ -603,3 +608,292 @@ def calculate_last_month_winner(gallium_data, rubidium_data, indium_data,
                     }
 
     return winner
+
+
+# ============================================================================
+# collect_ploeg_production_details / build_production_history
+# ============================================================================
+
+def _to_date_lb(d):
+    if d is None:
+        return None
+    if isinstance(d, datetime):
+        return d.date()
+    if hasattr(d, 'year') and not isinstance(d, datetime):
+        return d
+    if isinstance(d, str):
+        try:
+            return datetime.strptime(d, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def _add_production_to_ploeg(ploeg_productions, production, isotope_type,
+                              start_dt, end_dt,
+                              planning_data, ploegen_data, spec_settings):
+    """Assign *production* proportionally to ploegen based on shift overlaps."""
+    total_dur = (end_dt - start_dt).total_seconds() / 3600
+    if total_dur <= 0:
+        return
+
+    from config.spec_settings import is_production_in_spec
+    in_spec   = is_production_in_spec(production, isotope_type)
+    overlaps  = _calculate_shift_overlaps(start_dt, end_dt)
+    if not overlaps:
+        return
+
+    first_shift = True
+    for _date_key, shift_name, overlap_hours in overlaps:
+        proportion = overlap_hours / total_dur
+        if _date_key not in planning_data:
+            continue
+        if shift_name not in planning_data[_date_key]:
+            continue
+        lead_person = planning_data[_date_key][shift_name]
+        if not lead_person or len(lead_person) < 2:
+            continue
+        first_two = lead_person[:2].upper()
+        if first_two not in ploegen_data:
+            continue
+        ploeg_number = ploegen_data[first_two]['ploeg_number']
+
+        shift_code = {'ochtenddienst': 'OD', 'middagdienst': 'MD', 'nachtdienst': 'ND'}.get(
+            shift_name, shift_name)
+
+        if first_shift:
+            display_time = start_dt
+            first_shift = False
+        else:
+            shift_hour = {'ochtenddienst': 7, 'middagdienst': 15, 'nachtdienst': 23}.get(shift_name, 7)
+            display_time = datetime.combine(_date_key, datetime.min.time()).replace(hour=shift_hour)
+
+        ploeg_productions[ploeg_number].append({
+            'date':       display_time.strftime('%Y-%m-%d %H:%M'),
+            'shift':      shift_code,
+            'isotope':    isotope_type,
+            'proportion': proportion * 100,
+            'in_spec':    in_spec,
+            'data':       production,
+            'sort_key':   display_time,
+        })
+
+
+def _build_eob_and_start(datum_parsed, eob_field, duur_field, fallback_hour=12):
+    """Return (start_dt, eob_dt) for a bestraling record."""
+    time_tuple = _parse_time_field(eob_field) if eob_field else None
+    if time_tuple:
+        h, m = time_tuple
+        eob_dt = datetime.combine(datum_parsed, datetime.min.time()) + timedelta(hours=h, minutes=m)
+    else:
+        eob_dt = datetime.combine(datum_parsed, datetime.min.time()) + timedelta(hours=fallback_hour)
+    duur_hours = _parse_time_duration(duur_field) if duur_field else 0
+    start_dt = eob_dt - timedelta(hours=duur_hours)
+    return start_dt, eob_dt
+
+
+def collect_ploeg_production_details(gallium_data, rubidium_data, indium_data,
+                                     thallium_data, iodine_data,
+                                     gallium_opbrengsten_data, indium_opbrengsten_data,
+                                     planning_data, ploegen_data, spec_settings,
+                                     ploegenwissel_date=None) -> dict:
+    """Collect per-ploeg production details for the last 6 months.
+
+    Returns a dict ``{ploeg_number: [prod_detail, ...], ...}``.
+    """
+    end_date   = datetime.now().date()
+    default_start = end_date - timedelta(days=180)
+    start_date = max(ploegenwissel_date, default_start) if ploegenwissel_date else default_start
+
+    ploeg_productions: dict = defaultdict(list)
+
+    # ------------------------------------------------------------------
+    # GALLIUM
+    # ------------------------------------------------------------------
+    try:
+        ga_opb = {(_to_date_lb(d['date']) if not isinstance(d['date'], (date, datetime)) else
+                   (d['date'].date() if isinstance(d['date'], datetime) else d['date'])): d
+                  for d in (gallium_opbrengsten_data or [])}
+
+        for prod in gallium_data:
+            datum_parsed = _to_date_lb(prod.get('date'))
+            if not datum_parsed or not (start_date <= datum_parsed <= end_date):
+                continue
+            start_dt, eob_dt = _build_eob_and_start(
+                datum_parsed, prod.get('eobhrmin'), prod.get('duur'))
+            opb_data = ga_opb.get(datum_parsed, {})
+            production = {
+                'date': datum_parsed.strftime('%Y-%m-%d'),
+                'bo_nummer': prod.get('identifier'),
+                'targetstroom': prod.get('targetstroom'),
+                'duur': (eob_dt - start_dt).total_seconds() / 3600,
+                'bob_time': start_dt.strftime('%Y-%m-%d %H:%M'),
+                'eob_time': eob_dt.strftime('%Y-%m-%d %H:%M'),
+                'opmerking': prod.get('opmerking'),
+                'cyclotron': prod.get('cyclotron', 'Philips'),
+                'opbrengst_mbq': opb_data.get('opbrengst_mbq'),
+            }
+            _add_production_to_ploeg(ploeg_productions, production, 'gallium',
+                                     start_dt, eob_dt, planning_data, ploegen_data, spec_settings)
+    except Exception as e:
+        print(f"✗ Error collecting Gallium ploeg details: {e}")
+        traceback.print_exc()
+
+    # ------------------------------------------------------------------
+    # RUBIDIUM
+    # ------------------------------------------------------------------
+    try:
+        for prod in rubidium_data:
+            datum_parsed = _to_date_lb(prod.get('date'))
+            if not datum_parsed or not (start_date <= datum_parsed <= end_date):
+                continue
+            start_dt, eob_dt = _build_eob_and_start(
+                datum_parsed, prod.get('eob_tijd'), prod.get('duur'))
+            production = {
+                'date': datum_parsed.strftime('%Y-%m-%d'),
+                'bo_nummer': prod.get('identifier'),
+                'stroom': prod.get('stroom'),
+                'efficiency': prod.get('efficiency'),
+                'duur': (eob_dt - start_dt).total_seconds() / 3600,
+                'bob_time': start_dt.strftime('%Y-%m-%d %H:%M'),
+                'eob_time': eob_dt.strftime('%Y-%m-%d %H:%M'),
+                'opmerking': prod.get('opmerking'),
+            }
+            _add_production_to_ploeg(ploeg_productions, production, 'rubidium',
+                                     start_dt, eob_dt, planning_data, ploegen_data, spec_settings)
+    except Exception as e:
+        print(f"✗ Error collecting Rubidium ploeg details: {e}")
+
+    # ------------------------------------------------------------------
+    # INDIUM
+    # ------------------------------------------------------------------
+    try:
+        in_opb = {(_to_date_lb(d['date']) if not isinstance(d['date'], (date, datetime)) else
+                   (d['date'].date() if isinstance(d['date'], datetime) else d['date'])): d
+                  for d in (indium_opbrengsten_data or [])}
+
+        for prod in indium_data:
+            datum_parsed = _to_date_lb(prod.get('date'))
+            if not datum_parsed or not (start_date <= datum_parsed <= end_date):
+                continue
+            start_dt, eob_dt = _build_eob_and_start(
+                datum_parsed, prod.get('eobhrmin'), prod.get('duur'))
+            opb_data = in_opb.get(datum_parsed, {})
+            production = {
+                'date': datum_parsed.strftime('%Y-%m-%d'),
+                'bo_nummer': prod.get('identifier'),
+                'targetstroom': prod.get('targetstroom'),
+                'duur': (eob_dt - start_dt).total_seconds() / 3600,
+                'bob_time': start_dt.strftime('%Y-%m-%d %H:%M'),
+                'eob_time': eob_dt.strftime('%Y-%m-%d %H:%M'),
+                'opmerking': prod.get('opmerking'),
+                'cyclotron': prod.get('cyclotron', 'Philips'),
+                'opbrengst_mbq': opb_data.get('opbrengst_mbq'),
+            }
+            _add_production_to_ploeg(ploeg_productions, production, 'indium',
+                                     start_dt, eob_dt, planning_data, ploegen_data, spec_settings)
+    except Exception as e:
+        print(f"✗ Error collecting Indium ploeg details: {e}")
+
+    # ------------------------------------------------------------------
+    # THALLIUM
+    # ------------------------------------------------------------------
+    try:
+        for prod in thallium_data:
+            datum_parsed = _to_date_lb(prod.get('date'))
+            if not datum_parsed or not (start_date <= datum_parsed <= end_date):
+                continue
+            start_dt, eob_dt = _build_eob_and_start(
+                datum_parsed, prod.get('eob_tijd'), prod.get('duur'))
+            production = {
+                'date': datum_parsed.strftime('%Y-%m-%d'),
+                'bo_nummer': prod.get('identifier'),
+                'targetstroom': prod.get('targetstroom'),
+                'kant': prod.get('kant'),
+                'duur': (eob_dt - start_dt).total_seconds() / 3600,
+                'bob_time': start_dt.strftime('%Y-%m-%d %H:%M'),
+                'eob_time': eob_dt.strftime('%Y-%m-%d %H:%M'),
+                'opmerking': prod.get('opmerking'),
+            }
+            _add_production_to_ploeg(ploeg_productions, production, 'thallium',
+                                     start_dt, eob_dt, planning_data, ploegen_data, spec_settings)
+    except Exception as e:
+        print(f"✗ Error collecting Thallium ploeg details: {e}")
+
+    # ------------------------------------------------------------------
+    # IODINE
+    # ------------------------------------------------------------------
+    try:
+        for prod in iodine_data:
+            datum_parsed = _to_date_lb(prod.get('date'))
+            if not datum_parsed or not (start_date <= datum_parsed <= end_date):
+                continue
+            stop_datum = prod.get('stop_datum')
+            stop_datum_parsed = (_to_date_lb(stop_datum) if stop_datum else None) or datum_parsed
+            start_dt, eob_dt = _build_eob_and_start(
+                stop_datum_parsed, prod.get('stop_tijd'),
+                prod.get('totale_bestralingstijd'), fallback_hour=18)
+            production = {
+                'date': datum_parsed.strftime('%Y-%m-%d'),
+                'bo_nummer': prod.get('identifier'),
+                'targetstroom': prod.get('targetstroom'),
+                'duur': (eob_dt - start_dt).total_seconds() / 3600,
+                'bob_time': start_dt.strftime('%Y-%m-%d %H:%M'),
+                'eob_time': eob_dt.strftime('%Y-%m-%d %H:%M'),
+                'opmerking': prod.get('opmerking'),
+                'yield_percent': prod.get('yield_percent'),
+                'output_percent': prod.get('output_percent'),
+                'meting_d1': prod.get('meting_d1'),
+                'verwacht': prod.get('verwacht'),
+                'totale_storingstijd': prod.get('totale_storingstijd'),
+            }
+            _add_production_to_ploeg(ploeg_productions, production, 'iodine',
+                                     start_dt, eob_dt, planning_data, ploegen_data, spec_settings)
+    except Exception as e:
+        print(f"✗ Error collecting Iodine ploeg details: {e}")
+
+    return dict(ploeg_productions)
+
+
+def build_production_history(ploeg_production_details: dict, ploegen_data: dict) -> dict:
+    """Invert ploeg_production_details from per-ploeg to per-BO number.
+
+    Returns ``{bo_nummer_str: {'isotope': ..., 'shifts': [...], 'production_data': ...}, ...}``.
+    """
+    production_history: dict = {}
+
+    for ploeg_number, productions in ploeg_production_details.items():
+        for prod in productions:
+            bo_nummer = prod['data'].get('bo_nummer')
+            if not bo_nummer:
+                continue
+            bo_str = str(bo_nummer)
+
+            if bo_str not in production_history:
+                production_history[bo_str] = {
+                    'isotope':          prod['isotope'],
+                    'shifts':           [],
+                    'production_data':  prod['data'],
+                }
+
+            ploeg_name = 'Unknown'
+            for code, info in ploegen_data.items():
+                if info['ploeg_number'] == ploeg_number:
+                    ploeg_name = info['ploeg_name']
+                    break
+
+            production_history[bo_str]['shifts'].append({
+                'date':         prod['date'],
+                'shift':        prod['shift'],
+                'ploeg_number': ploeg_number,
+                'ploeg_name':   ploeg_name,
+                'proportion':   prod['proportion'],
+                'in_spec':      prod['in_spec'],
+                'sort_key':     prod.get('sort_key'),
+            })
+
+    for bo_str in production_history:
+        production_history[bo_str]['shifts'].sort(
+            key=lambda x: x.get('sort_key') or x['date'])
+
+    return production_history

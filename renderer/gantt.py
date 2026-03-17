@@ -5,11 +5,13 @@ Standalone Gantt-chart HTML generator extracted from
 IsotopeDashboardGenerator.generate_gantt_chart_html() and the
 companion static helper _gantt_js_html() in gallium_extractor.py.
 
-The only external dependency within this package is renderer.assets
-for the CSS constant.
+Also provides ``convert_bestralingen_to_gantt_format`` which converts
+the five isotope bestraling lists to the gantt-chart dict format that
+``generate_gantt_chart_html`` consumes.
 """
 
 import json
+from datetime import datetime, timedelta
 
 from renderer.assets import _GANTT_CSS
 
@@ -432,3 +434,190 @@ def generate_gantt_chart_html(cyclotron_data: list) -> str:
         + _GANTT_CSS
         + _gantt_js_html(cyclotron_json)
     )
+
+
+# ---------------------------------------------------------------------------
+# Bestralingen → Gantt conversion
+# ---------------------------------------------------------------------------
+
+def _parse_eobhrmin(eobhrmin_str):
+    """Parse an EOB time value to a ``(hours, minutes)`` tuple or ``None``."""
+    if eobhrmin_str is None or eobhrmin_str == '':
+        return None
+    if hasattr(eobhrmin_str, 'hour') and hasattr(eobhrmin_str, 'minute'):
+        return (eobhrmin_str.hour, eobhrmin_str.minute)
+    if isinstance(eobhrmin_str, (int, float)):
+        hours = int(eobhrmin_str)
+        if not (0 <= hours <= 23):
+            return None
+        minutes = round((eobhrmin_str - int(eobhrmin_str)) * 100)
+        if not (0 <= minutes <= 59):
+            return None
+        return (hours, minutes)
+    try:
+        s = str(eobhrmin_str).strip()
+        if ':' in s:
+            parts = s.split(':')
+            h, m = int(parts[0]), int(parts[1])
+            return (h, m) if 0 <= h <= 23 and 0 <= m <= 59 else None
+        if len(s) >= 3:
+            h = int(s[:2]) if len(s) == 4 else int(s[0])
+            m = int(s[2:4]) if len(s) == 4 else int(s[1:])
+            return (h, m) if 0 <= h <= 23 and 0 <= m <= 59 else None
+    except Exception:
+        pass
+    return None
+
+
+def _get_eob_time_gantt(item):
+    """Return parsed ``(hours, minutes)`` EOB time from an item dict."""
+    eob_value = (item.get('eobhrmin') or item.get('eob_tijd') or
+                 item.get('eob_time') or item.get('stop_tijd') or
+                 item.get('start_tijd'))
+    if not eob_value and eob_value != 0:
+        return None
+    return _parse_eobhrmin(eob_value)
+
+
+def _create_end_datetime(item_date, eob_time):
+    """Build a datetime from a *date* and ``(hours, minutes)`` tuple."""
+    if not eob_time:
+        return None
+    try:
+        h, m = eob_time
+        return datetime.combine(item_date, datetime.min.time()).replace(hour=h, minute=m)
+    except (ValueError, OverflowError, TypeError):
+        return None
+
+
+def _parse_duur_hours_gantt(duur):
+    """Convert a Duur value (HH.MM float/string) to decimal hours, or 0."""
+    if duur is None:
+        return 0.0
+    try:
+        s = str(duur).strip()
+        if ':' in s:
+            h, m = s.split(':')
+            return float(h) + float(m) / 60.0
+        if '.' in s:
+            parts = s.split('.', 1)
+            return float(parts[0]) + float(parts[1].ljust(2, '0')) / 60.0
+        return float(s)
+    except Exception:
+        return 0.0
+
+
+def _map_cyclotron_name(cyclotron, bonr):
+    """Map a cyclotron string and BO number to P0/P1/P2."""
+    bonr_str = str(bonr) if bonr else ''
+    c = str(cyclotron) if cyclotron else ''
+    if c.startswith('IBA'):
+        if 'IBA 2' in c:
+            return 'P2'
+        if 'IBA 1' in c:
+            return 'P1'
+        first = bonr_str[0] if bonr_str else '0'
+        return 'P1' if first == '1' else ('P2' if first == '2' else 'P1')
+    if c == 'Philips':
+        return 'P0'
+    if c in ('P1', 'P2', 'P0'):
+        return c
+    return 'P0'
+
+
+def _to_date_gantt(d):
+    if d is None:
+        return None
+    if isinstance(d, datetime):
+        return d.date()
+    if hasattr(d, 'year') and not isinstance(d, datetime):
+        return d
+    if isinstance(d, str):
+        try:
+            return datetime.strptime(d, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def _convert_isotope_entries(data, product_code, cutoff):
+    entries = []
+    for item in data:
+        item_date = _to_date_gantt(item.get('date'))
+        if item_date is None or item_date < cutoff:
+            continue
+        eob_time = _get_eob_time_gantt(item)
+        if not eob_time:
+            continue
+        end_dt = _create_end_datetime(item_date, eob_time)
+        if not end_dt:
+            continue
+        duur_h = _parse_duur_hours_gantt(item.get('duur'))
+        if not duur_h:
+            continue
+        start_dt = end_dt - timedelta(hours=duur_h)
+        entries.append({
+            'cyclotron':     _map_cyclotron_name(item.get('cyclotron', 'Philips'), item.get('identifier')),
+            'bonr':          str(item.get('identifier', '')),
+            'order':         '',
+            'product':       product_code,
+            'startDate':     start_dt.strftime('%Y-%m-%d'),
+            'startTime':     start_dt.strftime('%H:%M'),
+            'endDate':       end_dt.strftime('%Y-%m-%d'),
+            'endTime':       end_dt.strftime('%H:%M'),
+            'duration':      str(item.get('duur', '')),
+            'activity':      '',
+            'totalActivity': '',
+            'type':          'Data',
+        })
+    return entries
+
+
+def convert_bestralingen_to_gantt_format(gallium_data, rubidium_data,
+                                         indium_data, thallium_data,
+                                         iodine_data):
+    """Convert all five isotope bestraling lists to gantt-chart dicts.
+
+    Only records from the last 180 days are included.
+
+    Returns a list of dicts in the format expected by
+    :func:`generate_gantt_chart_html`.
+    """
+    cutoff = (datetime.now() - timedelta(days=180)).date()
+
+    gantt = []
+    gantt.extend(_convert_isotope_entries(gallium_data,  'GA067', cutoff))
+    gantt.extend(_convert_isotope_entries(rubidium_data, 'RB081', cutoff))
+    gantt.extend(_convert_isotope_entries(indium_data,   'IN111', cutoff))
+    gantt.extend(_convert_isotope_entries(thallium_data, 'TL201', cutoff))
+
+    # Iodine uses stop_datum/stop_tijd + start_tijd instead of eobhrmin/duur
+    for item in iodine_data:
+        stop_datum = item.get('stop_datum') or item.get('date')
+        item_date  = _to_date_gantt(stop_datum)
+        if item_date is None or item_date < cutoff:
+            continue
+        eob_time   = _parse_eobhrmin(item.get('stop_tijd'))
+        start_time = _parse_eobhrmin(item.get('start_tijd'))
+        if not eob_time or not start_time:
+            continue
+        end_dt   = _create_end_datetime(item_date, eob_time)
+        start_dt = _create_end_datetime(item_date, start_time)
+        if not end_dt or not start_dt:
+            continue
+        gantt.append({
+            'cyclotron':     _map_cyclotron_name(item.get('cyclotron', 'P1'), item.get('identifier')),
+            'bonr':          str(item.get('identifier', '')),
+            'order':         '',
+            'product':       'I123',
+            'startDate':     start_dt.strftime('%Y-%m-%d'),
+            'startTime':     start_dt.strftime('%H:%M'),
+            'endDate':       end_dt.strftime('%Y-%m-%d'),
+            'endTime':       end_dt.strftime('%H:%M'),
+            'duration':      str(item.get('totale_bestralingstijd', '')),
+            'activity':      '',
+            'totalActivity': '',
+            'type':          'Data',
+        })
+
+    return gantt

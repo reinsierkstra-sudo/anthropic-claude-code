@@ -58,33 +58,26 @@ def main() -> bool:
     print(f"✓ Loaded {len(data)} KPIs from derived.db")
 
     # ── Phase 2: fetch cyclotron / gantt data ─────────────────────────────
+    from collector.http_reader import fetch_cyclotron_data
+    from renderer.gantt import convert_bestralingen_to_gantt_format
+
+    cyclotron_url = paths.get("cyclotron_planning",
+                              "http://pett-webw02p/procdashboard/cyclotron.asp")
     try:
-        from gallium_extractor import IsotopeDashboardGenerator
-
-        gen_shim = IsotopeDashboardGenerator.__new__(IsotopeDashboardGenerator)
-        gen_shim.access_db_path = paths.get("access_db", "")
-        gen_shim.sqlite_db_path = paths.get("raw_db", "data/raw.db")
-
-        # Re-expose isotope data on the shim so fetch_cyclotron_data /
-        # convert_bestralingen_to_gantt_format can access it.
-        isotope_key_map = {
-            "gallium_data":  "ga_running",
-            "rubidium_data": "rb_running",
-            "indium_data":   "in_running",
-            "thallium_data": "tl_running",
-            "iodine_data":   "io_running",
-        }
-        for attr, key in isotope_key_map.items():
-            setattr(gen_shim, attr, data.get(key, []))
-
-        cyclotron_data = gen_shim.fetch_cyclotron_data()
+        cyclotron_data = fetch_cyclotron_data(cyclotron_url)
         print(f"✓ Fetched cyclotron data ({len(cyclotron_data)} entries)")
     except Exception as e:
         print(f"⚠ Could not fetch cyclotron data: {e}")
         cyclotron_data = []
 
     try:
-        bestralingen_gantt = gen_shim.convert_bestralingen_to_gantt_format()
+        bestralingen_gantt = convert_bestralingen_to_gantt_format(
+            data.get("ga_all", []),
+            data.get("rb_all", []),
+            data.get("in_all", []),
+            data.get("tl_all", []),
+            data.get("io_all", []),
+        )
         print(f"✓ Converted bestralingen to gantt format ({len(bestralingen_gantt)} entries)")
     except Exception as e:
         print(f"⚠ Could not convert bestralingen to gantt format: {e}")
@@ -104,11 +97,6 @@ def main() -> bool:
     ]
     combined_gantt_data = bestralingen_gantt + deduplicated_planning
     data["cyclotron_data"] = combined_gantt_data
-
-    # ── Phase 3: inject extra data needed only by the renderer ────────────
-    data.setdefault("vsm_data",                   getattr(gen_shim, "vsm_data", None))
-    data.setdefault("planning_html_content",       getattr(gen_shim, "planning_html_content", None))
-    data.setdefault("productieschema_html_content", getattr(gen_shim, "productieschema_html_content", None))
 
     # ── Phase 4: render full dashboard ───────────────────────────────────
     local_path      = paths.get("local_html",   "isotope_dashboard.html")

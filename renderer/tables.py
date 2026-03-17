@@ -7,8 +7,8 @@ IsotopeDashboardGenerator class in gallium_extractor.py.
 All functions are pure: they accept data arguments and return HTML
 strings.  No class state is required.
 
-SPEC_SETTINGS is imported from the top-level gallium_extractor module
-so that colour-threshold logic stays in one canonical location.
+SPEC_SETTINGS is imported from config.spec_settings so that colour-threshold
+logic stays in one canonical location.
 """
 
 from __future__ import annotations
@@ -16,24 +16,16 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# ---------------------------------------------------------------------------
-# Spec settings — imported from the source module so thresholds live in one
-# place.  The ``try`` block allows this module to be imported even when the
-# monolithic source is not on sys.path (e.g. in unit tests).
-# ---------------------------------------------------------------------------
-try:
-    from gallium_extractor import SPEC_SETTINGS, _fmt_bo
-except ImportError:
-    # Fallback defaults — keep in sync with gallium_extractor.py
-    SPEC_SETTINGS: dict = {}
+from config.spec_settings import SPEC_SETTINGS
 
-    def _fmt_bo(bo):
-        """Format a BO number: strip trailing .0 and dashes."""
-        if bo is None:
-            return None
-        if str(bo).replace('.', '').replace('-', '').isdigit():
-            return str(int(float(bo)))
-        return bo
+
+def _fmt_bo(bo):
+    """Format a BO number: strip trailing .0 and dashes."""
+    if bo is None:
+        return None
+    if str(bo).replace('.', '').replace('-', '').isdigit():
+        return str(int(float(bo)))
+    return bo
 
 
 # ---------------------------------------------------------------------------

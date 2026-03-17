@@ -9,30 +9,37 @@ Responsibilities
 - Open a connection and ensure all tables exist (``connect``).
 - Insert / update rows from a list of dicts (``store``).
 - Load all rows from a table as a list of dicts (``load_table``).
+- Store / load JSON blobs by key (``store_blob`` / ``load_blob``).
+- Store / load simple JSON-serialisable lists (``store_json_list`` /
+  ``load_json_list``).
 """
 
+import json
 import sqlite3
 from datetime import datetime
 
 
 # ---------------------------------------------------------------------------
-# Table schemas (verbatim from IsotopeDashboardGenerator._TABLE_SCHEMAS)
+# Table schemas
 # ---------------------------------------------------------------------------
 
 _TABLE_SCHEMAS = {
+    # ------------------------------------------------------------------
+    # Isotope production records
+    # ------------------------------------------------------------------
     'iodine_data': {
         'columns': [
-            ('date', 'TEXT'), ('value1', 'REAL'), ('value2', 'REAL'),
-            ('efficiency', 'REAL'), ('efficiency_raw', 'REAL'),
-            ('identifier', 'TEXT'), ('bo_targetstroom', 'REAL'),
-            ('targetstroom', 'REAL'), ('yield_percent', 'REAL'),
-            ('output_percent', 'REAL'), ('cyclotron', 'TEXT'),
-            ('totale_dosis', 'REAL'), ('meting_d1', 'REAL'),
-            ('meting_waste', 'REAL'), ('verwacht', 'REAL'),
-            ('stop_datum', 'TEXT'), ('stop_tijd', 'TEXT'),
-            ('start_tijd', 'TEXT'), ('totale_bestralingstijd', 'REAL'),
-            ('totale_storingstijd', 'REAL'), ('opmerking', 'TEXT'),
-            ('extracted_at', 'TEXT'),
+            ('date',                   'TEXT'), ('value1',                'REAL'),
+            ('value2',                 'REAL'), ('efficiency',            'REAL'),
+            ('efficiency_raw',         'REAL'), ('identifier',            'TEXT'),
+            ('bo_targetstroom',        'REAL'), ('targetstroom',          'REAL'),
+            ('yield_percent',          'REAL'), ('output_percent',        'REAL'),
+            ('cyclotron',              'TEXT'), ('totale_dosis',          'REAL'),
+            ('meting_d1',              'REAL'), ('meting_waste',          'REAL'),
+            ('verwacht',               'REAL'), ('stop_datum',            'TEXT'),
+            ('stop_tijd',              'TEXT'), ('start_tijd',            'TEXT'),
+            ('totale_bestralingstijd', 'REAL'), ('totale_storingstijd',   'REAL'),
+            ('opmerking',              'TEXT'), ('extracted_at',          'TEXT'),
         ],
         'alter_add': [
             ('yield_percent', 'REAL'), ('output_percent', 'REAL'), ('cyclotron', 'TEXT'),
@@ -45,15 +52,52 @@ _TABLE_SCHEMAS = {
     },
     'rubidium_data': {
         'columns': [
-            ('date', 'TEXT'), ('value1', 'REAL'), ('value2', 'REAL'),
-            ('efficiency', 'REAL'), ('identifier', 'TEXT'),
-            ('stroom', 'REAL'), ('extracted_at', 'TEXT'),
+            ('date',         'TEXT'), ('value1',       'REAL'),
+            ('value2',       'REAL'), ('efficiency',   'REAL'),
+            ('identifier',   'TEXT'), ('cyclotron',    'TEXT'),
+            ('stroom',       'REAL'), ('duur',         'REAL'),
+            ('eob_tijd',     'TEXT'), ('opmerking',    'TEXT'),
+            ('extracted_at', 'TEXT'),
+        ],
+        'alter_add': [
+            ('cyclotron', 'TEXT'), ('duur', 'REAL'), ('eob_tijd', 'TEXT'), ('opmerking', 'TEXT'),
         ],
     },
     'gallium_data': {
         'columns': [
-            ('date', 'TEXT'), ('targetstroom', 'REAL'),
-            ('identifier', 'TEXT'), ('extracted_at', 'TEXT'),
+            ('date',         'TEXT'), ('targetstroom', 'REAL'),
+            ('identifier',   'TEXT'), ('cyclotron',    'TEXT'),
+            ('duur',         'REAL'), ('eobhrmin',     'TEXT'),
+            ('opmerking',    'TEXT'), ('extracted_at', 'TEXT'),
+        ],
+        'alter_add': [
+            ('cyclotron', 'TEXT'), ('duur', 'REAL'), ('eobhrmin', 'TEXT'), ('opmerking', 'TEXT'),
+        ],
+    },
+    'indium_data': {
+        'columns': [
+            ('date',              'TEXT'), ('targetstroom',        'REAL'),
+            ('identifier',        'TEXT'), ('cyclotron',           'TEXT'),
+            ('bestralingspositie','TEXT'), ('duur',                'REAL'),
+            ('eobhrmin',          'TEXT'), ('opmerking',           'TEXT'),
+            ('extracted_at',      'TEXT'),
+        ],
+        'alter_add': [
+            ('cyclotron', 'TEXT'), ('bestralingspositie', 'TEXT'),
+            ('duur', 'REAL'), ('eobhrmin', 'TEXT'), ('opmerking', 'TEXT'),
+        ],
+    },
+    'thallium_data': {
+        'columns': [
+            ('date',         'TEXT'), ('targetstroom', 'REAL'),
+            ('identifier',   'TEXT'), ('cyclotron',    'TEXT'),
+            ('kant',         'TEXT'), ('duur',         'REAL'),
+            ('eob_tijd',     'TEXT'), ('opmerking',    'TEXT'),
+            ('extracted_at', 'TEXT'),
+        ],
+        'alter_add': [
+            ('cyclotron', 'TEXT'), ('kant', 'TEXT'), ('duur', 'REAL'),
+            ('eob_tijd', 'TEXT'), ('opmerking', 'TEXT'),
         ],
     },
     '__default__': {
@@ -64,9 +108,34 @@ _TABLE_SCHEMAS = {
     },
 }
 
-# indium and thallium share the gallium schema
-_TABLE_SCHEMAS['indium_data']   = _TABLE_SCHEMAS['gallium_data']
-_TABLE_SCHEMAS['thallium_data'] = _TABLE_SCHEMAS['gallium_data']
+
+# ---------------------------------------------------------------------------
+# Schemas for auxiliary tables with date-only uniqueness
+# ---------------------------------------------------------------------------
+
+_AUX_DATE_SCHEMAS = {
+    'gallium_opbrengsten': [
+        ('date', 'TEXT'), ('opbrengst_mbq', 'REAL'), ('extracted_at', 'TEXT'),
+    ],
+    'indium_opbrengsten': [
+        ('date', 'TEXT'), ('opbrengst_mbq', 'REAL'), ('extracted_at', 'TEXT'),
+    ],
+    'efficiency_targets': [
+        ('date', 'TEXT'), ('efficiency', 'REAL'), ('extracted_at', 'TEXT'),
+    ],
+}
+
+# Schemas for storingen tables with (storingsnummer, datum) uniqueness
+_STORINGEN_SCHEMAS = {
+    'iba_storingen': [
+        ('storingsnummer', 'TEXT'), ('datum', 'TEXT'), ('storing', 'TEXT'),
+        ('extracted_at', 'TEXT'),
+    ],
+    'philips_storingen': [
+        ('storingsnummer', 'TEXT'), ('datum', 'TEXT'), ('storing', 'TEXT'),
+        ('extracted_at', 'TEXT'),
+    ],
+}
 
 
 # ---------------------------------------------------------------------------
@@ -74,25 +143,10 @@ _TABLE_SCHEMAS['thallium_data'] = _TABLE_SCHEMAS['gallium_data']
 # ---------------------------------------------------------------------------
 
 def connect(db_path: str) -> sqlite3.Connection:
-    """Open a SQLite connection to *db_path* and ensure all required tables exist.
-
-    Creates the ``excel_cache`` and ``production_comments`` helper tables as
-    well as every isotope data table defined in ``_TABLE_SCHEMAS``.
-
-    Parameters
-    ----------
-    db_path : str
-        Filesystem path to the SQLite database file.  The file is created
-        automatically if it does not yet exist.
-
-    Returns
-    -------
-    sqlite3.Connection
-        An open connection with all schema migrations applied.
-    """
+    """Open a SQLite connection to *db_path* and ensure all required tables exist."""
     conn = sqlite3.connect(db_path)
 
-    # --- excel_cache table (used by excel_reader caching helpers) -----------
+    # excel_cache
     conn.execute('''
         CREATE TABLE IF NOT EXISTS excel_cache (
             cache_key TEXT PRIMARY KEY,
@@ -102,7 +156,7 @@ def connect(db_path: str) -> sqlite3.Connection:
         )
     ''')
 
-    # --- production_comments table ------------------------------------------
+    # production_comments
     conn.execute('''
         CREATE TABLE IF NOT EXISTS production_comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -115,13 +169,21 @@ def connect(db_path: str) -> sqlite3.Connection:
         )
     ''')
 
-    # --- isotope data tables ------------------------------------------------
+    # blobs key-value store
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS blobs (
+            key        TEXT PRIMARY KEY,
+            value_json TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    ''')
+
+    # Isotope tables (UNIQUE on identifier + date)
     for table_name, schema in _TABLE_SCHEMAS.items():
         if table_name == '__default__':
             continue
-
         col_defs = schema['columns']
-        col_sql = ',\n                    '.join(f'{name} {typ}' for name, typ in col_defs)
+        col_sql  = ', '.join(f'{n} {t}' for n, t in col_defs)
         conn.execute(f'''
             CREATE TABLE IF NOT EXISTS {table_name} (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,13 +191,38 @@ def connect(db_path: str) -> sqlite3.Connection:
                 UNIQUE(identifier, date)
             )
         ''')
-
-        # Apply any ALTER TABLE migrations for columns added after original schema
         for _col, _typ in schema.get('alter_add', []):
             try:
                 conn.execute(f'ALTER TABLE {table_name} ADD COLUMN {_col} {_typ}')
             except Exception:
-                pass  # column already exists
+                pass
+
+    # Opbrengsten / efficiency_targets (UNIQUE on date only)
+    for table_name, cols in _AUX_DATE_SCHEMAS.items():
+        col_sql = ', '.join(f'{n} {t}' for n, t in cols)
+        conn.execute(f'''
+            CREATE TABLE IF NOT EXISTS {table_name} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                {col_sql},
+                UNIQUE(date)
+            )
+        ''')
+        for _col, _typ in cols[1:]:   # migrate any new columns
+            try:
+                conn.execute(f'ALTER TABLE {table_name} ADD COLUMN {_col} {_typ}')
+            except Exception:
+                pass
+
+    # Storingen (UNIQUE on storingsnummer + datum)
+    for table_name, cols in _STORINGEN_SCHEMAS.items():
+        col_sql = ', '.join(f'{n} {t}' for n, t in cols)
+        conn.execute(f'''
+            CREATE TABLE IF NOT EXISTS {table_name} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                {col_sql},
+                UNIQUE(storingsnummer, datum)
+            )
+        ''')
 
     conn.commit()
     return conn
@@ -149,36 +236,18 @@ def store(conn: sqlite3.Connection, table_name: str, data: list,
     to write.  For each record the function checks whether a row with the same
     ``(identifier, date)`` pair already exists; if so it updates the non-key
     columns, otherwise it inserts a new row.
-
-    The optional *extra_col_names* positional arguments mirror the ``col1`` /
-    ``col2`` parameters of the original ``store_in_sqlite`` method and are
-    accepted for call-site compatibility but are not used internally — the
-    schema already enumerates all columns.
-
-    Parameters
-    ----------
-    conn : sqlite3.Connection
-        An open SQLite connection (typically returned by :func:`connect`).
-    table_name : str
-        The target table, must be a key in ``_TABLE_SCHEMAS``.
-    data : list[dict]
-        Records to persist.  Each dict must contain at least ``'date'`` and
-        ``'identifier'`` keys.
-    *extra_col_names
-        Ignored — kept for backwards-compatible call signatures.
     """
     if table_name not in _TABLE_SCHEMAS:
         raise ValueError(f"Unknown table: {table_name!r}")
 
     cursor = conn.cursor()
 
-    schema = _TABLE_SCHEMAS.get(table_name, _TABLE_SCHEMAS['__default__'])
-    col_defs = schema['columns']
+    schema    = _TABLE_SCHEMAS.get(table_name, _TABLE_SCHEMAS['__default__'])
+    col_defs  = schema['columns']
     col_names = [c[0] for c in col_defs]
-    str_cols = schema.get('str_cols', set())
+    str_cols  = schema.get('str_cols', set())
 
-    # Ensure the table and its migrations exist (idempotent)
-    col_sql = ',\n                    '.join(f'{name} {typ}' for name, typ in col_defs)
+    col_sql = ', '.join(f'{n} {t}' for n, t in col_defs)
     cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS {table_name} (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -186,31 +255,11 @@ def store(conn: sqlite3.Connection, table_name: str, data: list,
             UNIQUE(identifier, date)
         )
     ''')
-
     for _col, _typ in schema.get('alter_add', []):
         try:
             cursor.execute(f'ALTER TABLE {table_name} ADD COLUMN {_col} {_typ}')
         except Exception:
-            pass  # column already exists
-
-    # Rebuild with UNIQUE constraint if missing (handles pre-constraint databases)
-    try:
-        idx_info = cursor.execute(f"PRAGMA index_list({table_name})").fetchall()
-        if not any('uq_' in str(row) for row in idx_info):
-            cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {table_name}_dedup AS
-                SELECT * FROM {table_name}
-                WHERE id IN (SELECT MIN(id) FROM {table_name} GROUP BY identifier, date)
-            ''')
-            cursor.execute(f'DROP TABLE {table_name}')
-            cursor.execute(f'ALTER TABLE {table_name}_dedup RENAME TO {table_name}')
-            cursor.execute(f'''
-                CREATE UNIQUE INDEX IF NOT EXISTS uq_{table_name}_identifier_date
-                ON {table_name} (identifier, date)
-            ''')
-            conn.commit()
-    except Exception:
-        pass  # Non-critical
+            pass
 
     extracted_at = datetime.now().isoformat()
 
@@ -242,33 +291,85 @@ def store(conn: sqlite3.Connection, table_name: str, data: list,
         ).fetchone()
 
         if existing:
-            update_vals = tuple(_val(record, c, date_str, identifier) for c in update_cols)
+            vals = tuple(_val(record, c, date_str, identifier) for c in update_cols)
             cursor.execute(
                 f'UPDATE {table_name} SET {set_sql} WHERE identifier=? AND date=?',
-                update_vals + (identifier, date_str)
+                vals + (identifier, date_str)
             )
         else:
-            insert_vals = tuple(_val(record, c, date_str, identifier) for c in col_names)
-            cursor.execute(insert_sql, insert_vals)
+            vals = tuple(_val(record, c, date_str, identifier) for c in col_names)
+            cursor.execute(insert_sql, vals)
 
     conn.commit()
     cursor.close()
 
 
+def store_opbrengsten(conn: sqlite3.Connection, table_name: str, data: list) -> None:
+    """Insert or update opbrengsten / efficiency_targets rows (UNIQUE on date only)."""
+    if table_name not in _AUX_DATE_SCHEMAS:
+        raise ValueError(f"Not an aux-date table: {table_name!r}")
+    cols = [c[0] for c in _AUX_DATE_SCHEMAS[table_name]]
+    extracted_at = datetime.now().isoformat()
+    cursor = conn.cursor()
+    for record in data:
+        raw_date = record.get('date')
+        date_str = (raw_date.strftime('%Y-%m-%d') if isinstance(raw_date, datetime)
+                    else str(raw_date) if raw_date else None)
+        if not date_str:
+            continue
+        row = {c: record.get(c) for c in cols}
+        row['date']         = date_str
+        row['extracted_at'] = extracted_at
+        cursor.execute(
+            f"INSERT OR REPLACE INTO {table_name} ({', '.join(cols)}) "
+            f"VALUES ({', '.join('?' * len(cols))})",
+            tuple(row[c] for c in cols)
+        )
+    conn.commit()
+    cursor.close()
+
+
+def store_storingen(conn: sqlite3.Connection, table_name: str, data: list) -> None:
+    """Insert or update storingen rows (UNIQUE on storingsnummer + datum)."""
+    if table_name not in _STORINGEN_SCHEMAS:
+        raise ValueError(f"Not a storingen table: {table_name!r}")
+    cols = [c[0] for c in _STORINGEN_SCHEMAS[table_name]]
+    extracted_at = datetime.now().isoformat()
+    cursor = conn.cursor()
+    for record in data:
+        row = {c: record.get(c) for c in cols}
+        row['extracted_at'] = extracted_at
+        cursor.execute(
+            f"INSERT OR REPLACE INTO {table_name} ({', '.join(cols)}) "
+            f"VALUES ({', '.join('?' * len(cols))})",
+            tuple(row[c] for c in cols)
+        )
+    conn.commit()
+    cursor.close()
+
+
+def store_blob(conn: sqlite3.Connection, key: str, value) -> None:
+    """Serialise *value* as JSON and upsert under *key* in the blobs table."""
+    conn.execute(
+        'INSERT OR REPLACE INTO blobs (key, value_json, updated_at) VALUES (?, ?, ?)',
+        (key, json.dumps(value, default=str), datetime.now().isoformat())
+    )
+    conn.commit()
+
+
+def load_blob(conn: sqlite3.Connection, key: str, default=None):
+    """Return the deserialised value stored under *key*, or *default* if absent."""
+    try:
+        row = conn.execute('SELECT value_json FROM blobs WHERE key=?', (key,)).fetchone()
+        if row:
+            return json.loads(row[0])
+    except Exception:
+        pass
+    return default
+
+
 def get_max_date(conn: sqlite3.Connection, table_name: str) -> str | None:
-    """Return the most recent ``date`` value stored in *table_name*, or ``None``.
-
-    Used by the collector to determine the starting point for incremental
-    extraction.  Returns a ``'YYYY-MM-DD'`` string, or ``None`` if the table
-    is empty or does not exist.
-
-    Parameters
-    ----------
-    conn : sqlite3.Connection
-        An open SQLite connection.
-    table_name : str
-        The name of the table to inspect.
-    """
+    """Return the most recent ``date`` value stored in *table_name*, or ``None``."""
     try:
         row = conn.execute(f"SELECT MAX(date) FROM {table_name}").fetchone()
         return row[0] if row and row[0] else None
@@ -277,21 +378,7 @@ def get_max_date(conn: sqlite3.Connection, table_name: str) -> str | None:
 
 
 def load_table(conn: sqlite3.Connection, table_name: str) -> list:
-    """Return all rows from *table_name* as a list of dicts.
-
-    Parameters
-    ----------
-    conn : sqlite3.Connection
-        An open SQLite connection.
-    table_name : str
-        The name of the table to query.
-
-    Returns
-    -------
-    list[dict]
-        One dict per row, keyed by column name.  Returns an empty list if the
-        table does not exist or contains no rows.
-    """
+    """Return all rows from *table_name* as a list of dicts."""
     try:
         cursor = conn.execute(f'SELECT * FROM {table_name}')
         col_names = [desc[0] for desc in cursor.description]
