@@ -1113,7 +1113,7 @@ def create_html_dashboard(data: dict) -> str:
         eff = f"{record['efficiency']:.2f}%" if record['efficiency'] is not None else "Missing"
         val1 = f"{record['value1']:.2f}" if record['value1'] is not None else "N/A"
         val2 = f"{record['value2']:.2f}" if record['value2'] is not None else "N/A"
-        identifier = str(int(record.get('identifier'))) if record.get('identifier') is not None else 'N/A'
+        identifier = str(int(float(record.get('identifier')))) if record.get('identifier') is not None else 'N/A'
         stroom = f"{record.get('stroom'):.2f}" if record.get('stroom') is not None else "N/A"
         opmerking = record.get('opmerking', '-') if record.get('opmerking') else '-'
 

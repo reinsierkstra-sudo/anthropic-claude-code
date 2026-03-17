@@ -39,9 +39,21 @@ class _DateEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
+def _prepare_keys(obj):
+    """Recursively convert datetime.date/datetime keys to ISO strings."""
+    if isinstance(obj, dict):
+        return {
+            (k.isoformat() if isinstance(k, (date, datetime)) else k): _prepare_keys(v)
+            for k, v in obj.items()
+        }
+    if isinstance(obj, list):
+        return [_prepare_keys(v) for v in obj]
+    return obj
+
+
 def _encode(value) -> str:
     """Serialise *value* to a JSON string."""
-    return json.dumps(value, cls=_DateEncoder)
+    return json.dumps(_prepare_keys(value), cls=_DateEncoder)
 
 
 def _decode(text: str):

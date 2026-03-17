@@ -56,7 +56,7 @@ def get_efficiency_weeks(gallium_data, rubidium_data, indium_data, thallium_data
         return [], 0
 
     # Filter out zeros (already done in extract)
-    valid_data = [d for d in efficiency_data if d['efficiency'] != 0]
+    valid_data = [d for d in efficiency_data if d['efficiency'] is not None and d['efficiency'] != 0]
 
     if not valid_data:
         return [], 0
@@ -155,7 +155,7 @@ def get_efficiency_last_year_average(gallium_data, rubidium_data, indium_data, t
         if record_date is None:
             continue
 
-        if record_date >= one_year_ago and record['efficiency'] != 0:
+        if record_date >= one_year_ago and record['efficiency'] is not None and record['efficiency'] != 0:
             last_year_data.append(record['efficiency'])
 
     if not last_year_data:
@@ -191,7 +191,7 @@ def get_efficiency_last_3months_average(gallium_data, rubidium_data, indium_data
         if record_date is None:
             continue
 
-        if record_date >= three_months_ago and record['efficiency'] != 0:
+        if record_date >= three_months_ago and record['efficiency'] is not None and record['efficiency'] != 0:
             last_3months_data.append(record['efficiency'])
 
     if not last_3months_data:
