@@ -18,6 +18,9 @@ lxml>=4.9
 # ── Excel file reading ────────────────────────────────────────────────────
 openpyxl>=3.0
 
+# ── YAML config parsing ───────────────────────────────────────────────────
+pyyaml>=6.0
+
 # ── Standard library modules used (no install needed) ────────────────────
 # sqlite3, json, os, shutil, hashlib, stat, re, statistics,
 # traceback, time, datetime, collections — all part of the Python stdlib.
