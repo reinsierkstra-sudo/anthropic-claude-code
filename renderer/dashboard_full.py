@@ -1721,7 +1721,7 @@ def create_html_dashboard(data: dict) -> str:
         </div>
     </div>
 
-    <!-- ISSUE TRACKING SECTION -->
+    <!-- ISSUE TRACKING SECTION
     <div class="isotope-section">
         <h2>Productieverstoringenanalyse</h2>
         <div class="chart-row-three">
@@ -1740,13 +1740,13 @@ def create_html_dashboard(data: dict) -> str:
         </div>
     </div>
 
-    <!-- ISOTOPE COMPARISON SECTION -->
+    ISOTOPE COMPARISON SECTION
     <div class="isotope-section">
         <h2>Verstoringen per isotoop</h2>
         <div class="section">
             <div class="chart-container"><canvas id="isotopeComparisonChart"></canvas></div>
         </div>
-    </div>
+    </div> -->
 
     <!-- GALLIUM PRODUCTION EFFICIENCY SECTION -->
     {gallium_production_efficiency_table}
