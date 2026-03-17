@@ -46,7 +46,7 @@ def main() -> bool:
     print(f"✓ SQLite database: {raw_db_path}")
 
     # ── Primary bestralingen database ─────────────────────────────────────
-    access_conn = access_reader.connect_access(paths.get("access_db", ""))
+    access_conn = access_reader.connect_access(paths.get("bestralingen_db", ""))
     if access_conn is None:
         print("✗ Could not connect to bestralingen Access database — aborting.")
         raw_conn.close()
@@ -108,7 +108,7 @@ def main() -> bool:
             print("⚠ Could not connect to ProcesGegevens — efficiency data skipped")
 
     # ── IBA storingen ─────────────────────────────────────────────────────
-    stor_iba_path = paths.get("storingen_db", "")
+    stor_iba_path = paths.get("storingen_iba_db", "")
     if stor_iba_path:
         iba_conn = access_reader.connect_storingen_iba(stor_iba_path)
         if iba_conn:
@@ -124,7 +124,7 @@ def main() -> bool:
             print("⚠ Could not connect to Storingen IBA database")
 
     # ── Philips storingen ─────────────────────────────────────────────────
-    stor_ph_path = paths.get("philips_storingen_db", "")
+    stor_ph_path = paths.get("storingen_philips_db", "")
     if stor_ph_path:
         ph_conn = access_reader.connect_storingen_philips(stor_ph_path)
         if ph_conn:

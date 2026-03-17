@@ -37,6 +37,7 @@ def main() -> bool:
     """
     cfg = load_settings()
     paths = cfg.get("paths", {})
+    urls  = cfg.get("urls",  {})
 
     print("=" * 60)
     print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] run_renderer — HTML generation")
@@ -61,8 +62,8 @@ def main() -> bool:
     from collector.http_reader import fetch_cyclotron_data
     from renderer.gantt import convert_bestralingen_to_gantt_format
 
-    cyclotron_url = paths.get("cyclotron_planning",
-                              "http://pett-webw02p/procdashboard/cyclotron.asp")
+    cyclotron_url = urls.get("cyclotron_planning",
+                             "http://pett-webw02p/procdashboard/cyclotron.asp")
     try:
         cyclotron_data = fetch_cyclotron_data(cyclotron_url)
         print(f"✓ Fetched cyclotron data ({len(cyclotron_data)} entries)")
@@ -99,7 +100,7 @@ def main() -> bool:
     data["cyclotron_data"] = combined_gantt_data
 
     # ── Phase 4: render full dashboard ───────────────────────────────────
-    local_path      = paths.get("local_html",   "isotope_dashboard.html")
+    local_path      = paths.get("output_local",  "isotope_dashboard.html")
     local_hash_path = local_path + ".hash"
 
     # Check integrity before overwriting.
@@ -147,7 +148,7 @@ def main() -> bool:
     print("✓ Full dashboard written (local)")
 
     # ── Phase 7: write truncated dashboard (network) ─────────────────────
-    network_path      = paths.get("network_html", r"\\TUPETT-FI01\Data$\Malshare\Cyclotron\Dashboard Cyclotron\isotope_dashboard.html")
+    network_path      = paths.get("output_network", r"\\TUPETT-FI01\Data$\Malshare\Cyclotron\Dashboard Cyclotron\isotope_dashboard.html")
     network_hash_path = network_path + ".hash"
     try:
         net_dir = os.path.dirname(network_path)
@@ -164,7 +165,7 @@ def main() -> bool:
         print(f"⚠ Could not write network dashboard: {e}")
 
     # ── Phase 8: write full dashboard (bureau) ────────────────────────────
-    bureau_path      = paths.get("bureau_html", r"X:\Cyclotron Bureau\Productie dashboard.html")
+    bureau_path      = paths.get("output_bureau", r"X:\Cyclotron Bureau\Productie dashboard.html")
     bureau_hash_path = bureau_path + ".hash"
     try:
         bureau_dir = os.path.dirname(bureau_path)
