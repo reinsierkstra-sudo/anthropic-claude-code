@@ -148,8 +148,10 @@ def main() -> dict:
 
     # ── Issue counts ──────────────────────────────────────────────────────────
     try:
-        results["issue_counts"]   = issue_mod.get_issue_counts(*_all5_spec)
-        results["isotope_issues"] = issue_mod.get_isotope_issue_counts(*_all5_spec)
+        _issue_conn = raw_db.connect(sqlite_db)
+        results["issue_counts"]   = issue_mod.get_issue_counts(_issue_conn)
+        results["isotope_issues"] = issue_mod.get_isotope_issue_counts(_issue_conn)
+        _issue_conn.close()
         print("✓ Issue counts complete")
     except Exception as e:
         print(f"⚠ Issue counts failed: {e}")

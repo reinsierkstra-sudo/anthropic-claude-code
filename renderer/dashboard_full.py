@@ -1773,7 +1773,7 @@ def create_html_dashboard(data: dict) -> str:
         {generate_monthly_winner_html(monthly_winner)}
 
         <!-- PLOEG PERFORMANCE SECTION -->
-        {generate_shift_tables_html(shift_stats_this_week, shift_stats_last_week, this_week_friday, last_week_friday, ploeg_6month, ploeg_3month, ploeg_monthly)}
+        {generate_shift_tables_html(shift_stats_this_week, shift_stats_last_week, this_week_friday, last_week_friday, ploeg_6month, ploeg_3month, ploeg_monthly, ploegen_data)}
 
         <!-- PLOEG ROLLING AVERAGE CHARTS -->
         {generate_ploeg_rolling_charts_html(ploeg_rolling, ploegen_data)}
