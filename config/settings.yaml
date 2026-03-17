@@ -1,0 +1,110 @@
+# ==============================================================================
+# Isotope Dashboard — Central Configuration
+# ==============================================================================
+# All paths, thresholds, and network addresses live here.
+# No need to touch Python code when moving to a new machine or server.
+# ==============================================================================
+
+
+# ------------------------------------------------------------------------------
+# Database & file paths
+# ------------------------------------------------------------------------------
+paths:
+  # SQLite databases (relative to project root, or use absolute paths)
+  raw_db:      data/raw.db
+  derived_db:  data/derived.db
+
+  # MS Access — bestralingen (main isotope productions)
+  bestralingen_db: '\\TUPETT-FI01\Data$\Malshare\Proc\Metrics\thalliumproces\bestralingen.mdb'
+
+  # MS Access — process data (efficiency & yield)
+  proces_db: 'W:\Maximo\ProcesGegevens.accdb'
+
+  # MS Access — equipment downtime
+  storingen_iba_db:    '\\NLPT-FILE01P\Dept$\NLCYC\Storingen IBA\Storingen_IBA.accdb'
+  storingen_philips_db: '\\NLPT-FILE01P\Dept$\NLCYC\Storingen Philips\Storingen_Philips.accdb'
+
+  # Excel files
+  ploegen_excel:   'C:\Users\Reinder.sierkstra\Desktop\Dosis_overzichten\Ploegen.xlsx'
+  planning_excel:  'W:\Afdelingsplanning Cyclotron\Planning & Control Cyclotron.xlsm'
+  vsm_excel:       'C:\Users\Reinder.sierkstra\OneDrive - CURIUM\Niet onedrive spullen\Desktop\Targetstroom daily management VSM cyclotron.xlsx'
+
+  # HTML planning documents (embedded in dashboard)
+  planning_html:        'W:\Afdelingsplanning Cyclotron\planning.html'
+  productieschema_html: 'W:\Desktop Settings\Cyclotron formulieren\0 (BETA) Cyclotron productieplanning.html'
+
+  # Dashboard output destinations
+  output_local:   output/isotope_dashboard.html
+  output_network: '\\TUPETT-FI01\Data$\Malshare\Cyclotron\Dashboard Cyclotron\isotope_dashboard.html'
+  output_bureau:  'X:\Cyclotron Bureau\Productie dashboard.html'
+
+
+# ------------------------------------------------------------------------------
+# External URLs
+# ------------------------------------------------------------------------------
+urls:
+  cyclotron_planning: 'http://pett-webw02p/procdashboard/cyclotron.asp'
+
+
+# ------------------------------------------------------------------------------
+# Dashboard loop interval (seconds)
+# ------------------------------------------------------------------------------
+loop_interval_seconds: 60
+
+
+# ------------------------------------------------------------------------------
+# Within-spec thresholds per isotope
+# ------------------------------------------------------------------------------
+# These define whether a production is "passing" quality criteria.
+# For gallium and indium, Philips and IBA cyclotrons have different nominals.
+# For iodine, BOTH output_percent AND targetstroom must pass.
+spec:
+
+  gallium:
+    metric: targetstroom
+    unit: µA
+    philips: {min: 75, max: 85}
+    iba:     {min: 130, max: 140}
+
+  rubidium:
+    metric: efficiency
+    unit: '%'
+    min: 95
+    max: 105
+
+  indium:
+    metric: targetstroom
+    unit: µA
+    philips: {min: 75, max: 85}
+    iba:     {min: 130, max: 140}
+
+  thallium:
+    metric: targetstroom
+    unit: µA
+    min: 166
+    max: 174
+
+  iodine:
+    within_spec:
+      output:
+        metric: output_percent
+        unit: '%'
+        min: 78
+        max: 114.9
+      targetstroom:
+        metric: targetstroom
+        unit: µA
+        min: 96
+        max: 124
+    chart_colors:
+      yield:
+        metric: yield_percent
+        unit: '%'
+        min: 80
+        max: null   # No maximum — higher is always better
+
+
+# ------------------------------------------------------------------------------
+# OTIF threshold — percentage at or above which a week is considered "green"
+# ------------------------------------------------------------------------------
+otif_green_threshold: 97
