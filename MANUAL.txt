@@ -1689,3 +1689,236 @@ Modal toggles: showPloegDetails(ploegNumber), filterPloegData(period),
              showSFModal(sfCode, count).
 
 ===============================================================================
+12. Configuration Reference, Deployment & Troubleshooting
+===========================================================
+
+12.1  Configuration file  (config/settings.yaml)
+--------------------------------------------------
+All runtime settings live in a single YAML file loaded by config/loader.py.
+The table below lists every key, its default value, and what it controls.
+
+paths section:
+┌────────────────────────┬──────────────────────────────────────────────────┐
+│ paths.raw_db           │ data/raw.db                                      │
+│                        │ SQLite database for raw production records.      │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.derived_db       │ data/derived.db                                  │
+│                        │ SQLite database for computed KPIs.               │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.bestralingen_db  │ \\TUPETT-FI01\Data$\Malshare\Proc\Metrics\       │
+│                        │   thalliumproces\bestralingen.mdb                │
+│                        │ MS Access — primary isotope production records.  │
+│                        │ REQUIRED: pipeline aborts if unreachable.        │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.proces_db        │ W:\Maximo\ProcesGegevens.accdb                   │
+│                        │ MS Access — efficiency targets and yield data.   │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.storingen_iba_db │ \\NLPT-FILE01P\Dept$\NLCYC\Storingen IBA\        │
+│                        │   Storingen_IBA.accdb                            │
+│                        │ MS Access — IBA cyclotron downtime records.      │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.storingen_       │ \\NLPT-FILE01P\Dept$\NLCYC\Storingen Philips\    │
+│   philips_db           │   Storingen_Philips.accdb                        │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.ploegen_excel    │ C:\Users\Reinder.sierkstra\Desktop\              │
+│                        │   Dosis_overzichten\Ploegen.xlsx                 │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.planning_excel   │ W:\Afdelingsplanning Cyclotron\                  │
+│                        │   Planning & Control Cyclotron.xlsm             │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.vsm_excel        │ C:\Users\Reinder.sierkstra\OneDrive - CURIUM\   │
+│                        │   Niet onedrive spullen\Desktop\                 │
+│                        │   Targetstroom daily management VSM cyclotron   │
+│                        │   .xlsx                                          │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.planning_html    │ W:\Afdelingsplanning Cyclotron\planning.html     │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.productieschema_ │ W:\Desktop Settings\Cyclotron formulieren\       │
+│   html                 │   0 (BETA) Cyclotron productieplanning.html      │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.output_local     │ output/isotope_dashboard.html                    │
+│                        │ Local filesystem output for full dashboard.      │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.output_network   │ \\TUPETT-FI01\Data$\Malshare\Cyclotron\          │
+│                        │   Dashboard Cyclotron\isotope_dashboard.html     │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.output_bureau    │ X:\Cyclotron Bureau\Productie dashboard.html     │
+└────────────────────────┴──────────────────────────────────────────────────┘
+
+Scheduler:
+    loop_interval_seconds   60    Seconds to sleep between pipeline cycles.
+
+Specification limits (see §7 for details):
+    spec.gallium.philips.min / .max       75 / 85 µA
+    spec.gallium.iba.min / .max           130 / 140 µA
+    spec.rubidium.min / .max              95 / 105 %
+    spec.indium.philips.min / .max        75 / 85 µA
+    spec.indium.iba.min / .max            130 / 140 µA
+    spec.thallium.min / .max              166 / 174 µA
+    spec.iodine.within_spec.output.min / .max         78 / 114.9 %
+    spec.iodine.within_spec.targetstroom.min / .max   96 / 124 µA
+    spec.iodine.chart_colors.yield.min                80 %
+
+OTIF threshold:
+    otif_green_threshold    97    Weekly OTIF % at or above which the bar
+                                  is coloured green.
+
+URL:
+    urls.cyclotron_planning   http://pett-webw02p/procdashboard/cyclotron.asp
+
+
+12.2  Runtime dependencies  (requirements.txt)
+-----------------------------------------------
+    pyodbc        >=4.0   MS Access / ODBC connectivity
+    requests      >=2.28  HTTP requests (cyclotron planning page)
+    beautifulsoup4>=4.11  HTML parsing (fallback scraper)
+    lxml          >=4.9   Fast HTML parser for BeautifulSoup
+    openpyxl      >=3.0   Excel file reading (.xlsx / .xlsm)
+    pyyaml        >=6.0   YAML configuration parsing
+
+Standard library modules used (no install required):
+    sqlite3, json, os, shutil, hashlib, stat, re, statistics,
+    traceback, time, datetime, collections
+
+
+12.3  System requirements
+---------------------------
+Operating system:  Windows (required for MS Access ODBC driver and UNC
+                   network paths).
+Python:            3.9 or higher.
+ODBC driver:       Microsoft Access Database Engine 2016 Redistributable.
+                   The bitness (32 or 64-bit) MUST match the Python
+                   installation.  Mixed bitness causes a "[Microsoft]
+                   [ODBC Driver Manager] Data source name not found" error.
+Network drives:    The W: drive and X: drive must be mapped before the
+                   application starts.  UNC paths to TUPETT-FI01 and
+                   NLPT-FILE01P must be reachable.
+
+
+12.4  Deployment — running the pipeline
+-----------------------------------------
+Start the continuous loop:
+    python run_all.py
+
+The loop runs collect → calculate → render every 60 seconds (configurable)
+and prints timestamped status lines:
+
+    [2024-03-01 08:00:00] === Loop 1 ===
+    ✓ Collector finished.
+    ✓ Calculator finished.
+    ✓ Renderer finished.
+    Next update in 60 seconds.
+
+Stop with Ctrl+C.  The loop handles KeyboardInterrupt gracefully.
+
+Run individual phases for debugging:
+    python run_collector.py      — collect data only, write to raw.db
+    python run_calculator.py     — read raw.db, write KPIs to derived.db
+    python run_renderer.py       — read derived.db, write HTML files
+
+No web server is needed.  The output HTML files are static and can be opened
+directly in any browser from the network share or local output path.
+
+
+12.5  File structure
+----------------------
+    config/
+        settings.yaml          All runtime settings
+        loader.py              Config loader
+
+    collector/
+        access_reader.py       MS Access reader
+        excel_reader.py        Excel reader
+        http_reader.py         HTTP/JSON scraper
+        html_reader.py         Static HTML loader
+        raw_db.py              raw.db API
+        derived_db.py          derived.db API
+
+    calculator/
+        efficiency.py          Efficiency KPI calculations
+        within_spec.py         Within-spec KPI calculations
+        otif.py                OTIF KPI calculations
+        shift_stats.py         Shift statistics
+        leaderboard.py         Ploeg leaderboard
+        issues.py              Operator comment counts
+        isotope_data.py        Shared helper functions
+        spec_settings.py       Specification limit constants
+
+    renderer/
+        dashboard_full.py      Full dashboard HTML generator
+        dashboard_truncated.py Truncated dashboard HTML generator
+        gantt.py               Gantt chart builder
+        helpers.py             HTML fragment helpers
+        tables.py              Cell colour helpers
+        assets.py              Embedded CSS/JS strings
+        file_protection.py     SHA-256 + read-only protection
+
+    data/                      Created automatically at runtime
+        raw.db                 Production records (append-only)
+        derived.db             KPIs (replaced every cycle)
+
+    output/                    Created automatically at runtime
+        isotope_dashboard.html Local copy of full dashboard
+        isotope_dashboard.html.hash  SHA-256 integrity file
+
+    run_all.py                 Main loop orchestrator
+    run_collector.py           Phase 1 runner
+    run_calculator.py          Phase 2 runner
+    run_renderer.py            Phase 3 runner
+    requirements.txt           Python dependencies
+
+
+12.6  Console output conventions
+-----------------------------------
+    ✓   Successful step
+    ⚠   Non-fatal warning (pipeline continues)
+    ✗   Error (may abort pipeline depending on severity)
+    Timestamps format: [YYYY-MM-DD HH:MM:SS]
+
+
+12.7  Troubleshooting
+-----------------------
+"Could not connect to bestralingen Access database — aborting."
+    The primary MS Access database is unreachable.  Check:
+    • Network connectivity to \\TUPETT-FI01.
+    • ODBC driver installed and bitness matches Python.
+    • The .mdb file is not exclusively locked by another process.
+
+"[Microsoft][ODBC Driver Manager] Data source name not found"
+    The Access ODBC driver is not installed or the Python and driver
+    bitness do not match.  Install the matching Access Database Engine
+    Redistributable.
+
+"⚠ Could not load ploegen/planning data — skipping leaderboard"
+    The Excel files at paths.ploegen_excel or paths.planning_excel are
+    missing or the W: drive is not mapped.  The leaderboard section will
+    be absent from the dashboard until the files become available.
+
+"⚠ Could not load from JSON database"
+    The shared JSON file at \\pett-fs01p\nucleair\…\productions_database.json
+    is absent or unreadable.  The renderer will fall back to the live HTTP
+    endpoint.
+
+"⚠ planning.html kon niet worden geladen"
+    The W: drive is not mapped or the file at paths.planning_html does not
+    exist.  A warning placeholder is shown in the dashboard modal instead.
+
+"FILE TAMPERED: HTML file has been manually modified!"
+    The SHA-256 hash stored in the .hash file does not match the current
+    HTML file.  The HTML was edited outside the pipeline.  The next render
+    will regenerate the file and display the tampering warning banner.
+
+Dashboard not updating on the network share
+    • Verify that paths.output_network is accessible and writable.
+    • Check that the .hash file is writable (the pipeline must remove the
+      read-only flag before overwriting).
+    • Inspect the console for ✗ lines indicating write errors.
+
+Efficiency / within-spec values seem wrong
+    • Check that the spec limits in config/settings.yaml are correct.
+    • Verify that raw.db contains recent data: open raw.db with a SQLite
+      browser and inspect the max(date) in the relevant isotope table.
+    • Run python run_calculator.py alone and watch the ⚠ output for any
+      calculator failures.
+
+===============================================================================
