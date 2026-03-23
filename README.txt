@@ -484,3 +484,20 @@ To recompute everything from scratch:
 To recollect all historical data:
     - Delete data/raw.db (this will trigger a full re-import on next collect cycle).
     - Run python run_collector.py. This may take longer than usual on first run.
+
+-------------------------------------------------------------------------------
+
+14. Contact / Maintainer
+------------------------
+
+This application was designed and built by:
+
+    R.A.F. Sierkstra  (SIE)
+    Process Reliability Engineer
+    Curium Netherlands B.V. — Petten
+
+    Extension  :  7062
+    E-mail     :  reinder.sierkstra@curiumpharma.com
+
+For questions about the codebase, data sources, or deployment, contact the
+maintainer above or raise a ticket through the internal service desk.

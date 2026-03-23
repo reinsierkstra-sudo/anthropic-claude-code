@@ -222,7 +222,7 @@ def _add_footer(doc):
         fld2 = OxmlElement("w:fldChar")
         fld2.set(qn("w:fldCharType"), "end")
         run_f._r.append(fld2)
-        run_f2 = p_f.add_run("  |  Isotope Dashboard — Technical Manual  |  Confidential")
+        run_f2 = p_f.add_run("  |  Isotope Dashboard — Technical Manual  |  R.A.F. Sierkstra (SIE)  |  Confidential")
         _set_font(run_f2, size=Pt(8), color=GRAY_TEXT)
 
         # Purple top border on footer
@@ -379,6 +379,48 @@ def _add_title_page(doc: Document, logo_bytes: bytes):
         _para_spacing(pm, before=Pt(2), after=Pt(2))
         rm = pm.add_run(m)
         _set_font(rm, size=Pt(10), color=GRAY_TEXT)
+
+    # Author / contact block  ─ 2-column borderless table, left-aligned labels
+    doc.add_paragraph()   # small spacer
+    atbl = doc.add_table(rows=3, cols=2)
+    atbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    # Remove all borders
+    atbl_elem = atbl._tbl
+    atPr = atbl_elem.find(qn("w:tblPr"))
+    if atPr is None:
+        atPr = OxmlElement("w:tblPr")
+        atbl_elem.insert(0, atPr)
+    atBdr = OxmlElement("w:tblBorders")
+    for side in ("top","left","bottom","right","insideH","insideV"):
+        b = OxmlElement(f"w:{side}")
+        b.set(qn("w:val"), "none")
+        atBdr.append(b)
+    atPr.append(atBdr)
+
+    rows_data = [
+        ("Author",   "R.A.F. Sierkstra  (SIE)"),
+        ("Function", "Process Reliability Engineer"),
+        ("Contact",  "ext. 7062  ·  reinder.sierkstra@curiumpharma.com"),
+    ]
+    for i, (label, value) in enumerate(rows_data):
+        lbl_cell = atbl.cell(i, 0)
+        val_cell = atbl.cell(i, 1)
+        # Fixed label-column width
+        lbl_cell._tc.get_or_add_tcPr().append(
+            OxmlElement("w:tcW"))
+        lbl_cell._tc.get_or_add_tcPr().find(qn("w:tcW")).set(qn("w:w"), "1200")
+        lbl_cell._tc.get_or_add_tcPr().find(qn("w:tcW")).set(qn("w:type"), "dxa")
+
+        lp = lbl_cell.paragraphs[0]
+        lp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        _para_spacing(lp, before=Pt(1), after=Pt(1))
+        rl = lp.add_run(label)
+        _set_font(rl, size=Pt(9), bold=True, color=PURPLE)
+
+        vp = val_cell.paragraphs[0]
+        _para_spacing(vp, before=Pt(1), after=Pt(1))
+        rv = vp.add_run("  " + value)
+        _set_font(rv, size=Pt(9), color=GRAY_TEXT)
 
     # Page break
     doc.add_page_break()
