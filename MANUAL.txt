@@ -753,3 +753,94 @@ Returned as:  (otif_kpi_data list, otif_table_data dict)
 Stored in:    blobs table under key 'otif'
 
 ===============================================================================
+4. Data Collection — HTTP/JSON & HTML
+=======================================
+
+Source files:  collector/http_reader.py
+               collector/html_reader.py
+Writes to:     data/raw.db  (blobs table)
+
+4.1  Cyclotron production planning  (http_reader.py)
+-----------------------------------------------------
+Config key:  urls.cyclotron_planning
+             http://pett-webw02p/procdashboard/cyclotron.asp
+
+Entry point:  fetch_cyclotron_data(url: str) -> list
+
+This function uses a two-source strategy with automatic fallback:
+
+PRIMARY SOURCE — shared JSON database on the network:
+    Path:  \\pett-fs01p\nucleair\Isotopen productie\Cyclotron formulieren\
+           productions_database.json
+    Maintained externally by Productieplanning.py.
+    If the file exists and contains a non-empty 'productions' dict, the
+    values are returned directly as a list.  No HTTP request is made.
+
+FALLBACK SOURCE — live ASP page:
+    Used only when the JSON file is absent or unreadable.
+    requests.get(url, verify=False, timeout=10)
+    SSL verification is disabled because the server uses a self-signed cert.
+    The raw HTML is passed to parse_cyclotron_data().
+
+Error handling:
+    Both sources are wrapped in try/except Exception blocks.  Failures
+    print a [WARNING] message and fall through to the next source.
+    If both sources fail the function returns an empty list; the renderer
+    will continue with whatever historical data is already available.
+    There is no retry loop.
+
+NOTE: cyclotron planning data is NOT stored in raw.db.  It is fetched
+fresh during each rendering cycle and merged in memory with historical
+bestralingen records before the Gantt chart is assembled.
+
+
+4.2  HTML parsing of the cyclotron ASP page  (http_reader.py)
+--------------------------------------------------------------
+Function:  parse_cyclotron_data(html_content: str) -> list
+
+Parses <table id="custom_table"> using BeautifulSoup('html.parser').
+
+Row filtering rules:
+    • Rows whose only content is a cyclotron identifier ('P1', 'P2', 'P0')
+      are treated as group headers and skipped.
+    • Rows containing a cell with a colspan attribute and empty text are
+      informational spacers and are skipped.
+    • Only rows whose first text cell equals 'P1', 'P2', or 'P0' and that
+      have at least 11 remaining cells are processed.
+
+Column mapping (0-indexed after the cyclotron identifier cell):
+    0   cyclotron   Cyclotron identifier ('P1', 'P2', 'P0')
+    1   bonr        BO (batch order) number
+    2   order       Order number
+    3   product     Product name (e.g. 'Tl-201', 'I-123', 'Pauze')
+    4   startDate   Start date, format DD.MM
+    5   startTime   Start time, format HH:MM
+    6   endDate     End date, format DD.MM
+    7   endTime     End time, format HH:MM
+    8   duration    Duration string (hours.minutes)
+    9   activity    Activity (MBq)
+   10   totalActivity  Total activity (MBq)
+    –   type        Derived: 'Pauze' if 'Pauze' in product, else 'Data'
+
+After parsing, rows are deduplicated by bonr (first occurrence wins).
+Only rows with type 'Data' or 'Pauze' are retained.
+
+
+4.3  Static HTML files  (html_reader.py)
+-----------------------------------------
+Two functions load pre-rendered or externally generated HTML fragments that
+are embedded verbatim into the dashboard:
+
+    load_planning_html(path: str) -> str | None
+        Reads the planning overview HTML file from disk.
+        Returns the file contents as a string, or None on any read error.
+
+    load_productieschema_html(path: str) -> str | None
+        Reads the production schema HTML file from disk.
+        Returns the file contents as a string, or None on any read error.
+
+Both files are stored in raw.db (blobs table) under keys 'planning_html'
+and 'productieschema_html' respectively so that the renderer can retrieve
+them from the database without knowing their file paths.
+
+===============================================================================
