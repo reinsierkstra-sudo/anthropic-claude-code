@@ -249,3 +249,315 @@ and return empty lists rather than propagating, so a single failed database
 does not block the others.
 
 ===============================================================================
+
+2. Data Collection — MS Access Databases
+==========================================
+
+Source file:  collector/access_reader.py
+Writes to:    data/raw.db
+
+All MS Access databases are opened as read-only connections via pyodbc using
+the "Microsoft Access Driver (*.mdb, *.accdb)" ODBC driver.  The connection
+string is built in connect_access() and looks like:
+
+    DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=<path>;ReadOnly=1;
+
+If the connection fails (wrong path, driver missing, network unavailable) the
+function prints an error and returns None.  Callers that receive None return
+an empty list, so a single unavailable database does not block the others.
+
+
+2.1  Incremental import
+------------------------
+To avoid re-reading the entire history every 60 seconds, each isotope
+extraction function accepts an optional since_date parameter.  When provided,
+the SQL query adds a WHERE clause that limits results to records on or after
+that date:
+
+    WHERE [EOB datum] >= #MM/DD/YYYY#
+
+Note the MS Access date-literal format: month/day/year surrounded by # signs,
+which differs from the ISO format used everywhere else in the codebase.
+
+The since_date value is determined by the caller (run_collector.py): it reads
+the most recent date already stored in raw.db for each isotope table and passes
+it as since_date, so only new or recently updated records are fetched.  On the
+very first run (empty raw.db) since_date is None and the full history is loaded.
+
+
+2.2  bestralingen.mdb — main production database
+--------------------------------------------------
+Path setting:  paths.bestralingen_db
+
+This is the primary source of production records.  It contains one Access
+table per isotope.  All five tables are queried by extract_gallium_data(),
+extract_rubidium_data(), extract_indium_data(), extract_thallium_data(), and
+extract_iodine_data().
+
+──────────────────────────────────────────────────────────────────────────────
+2.2a  Galliumbestralingen  →  raw.db: gallium_data
+──────────────────────────────────────────────────────────────────────────────
+
+Columns read from Access:
+
+    [EOB datum]               Date of end-of-bombardment (the production date).
+    [Targetstroom]            Beam current at the target in µA.
+    [BO nummer]               Production order number (used as the record
+                              identifier for deduplication).
+    [Cyclotron]               Text field: "Philips" or empty for Philips
+                              cyclotron productions; any other value signals IBA.
+    [Duur]                    Bombardment duration in HH.MM format (see 2.6).
+    [EOBhrmin]                End-of-bombardment time as HH.MM or HH:MM (see 2.7).
+    [Target nr + Opmerking]   Free-text operator remarks.
+    [IBA Bestralingspositie]  IBA beam position string (e.g. "IBA 2.1", "IBA 1.2").
+
+Cyclotron determination for Gallium:
+    - If [Cyclotron] == "Philips" or [IBA Bestralingspositie] is empty
+      → cyclotron = "Philips"
+    - Otherwise → cyclotron = the full IBA position string (e.g. "IBA 2.1").
+      This distinction matters for within-spec checking, where Philips and IBA
+      have different targetstroom ranges (75–85 µA vs 130–140 µA).
+
+Stored in raw.db as:
+    date, targetstroom, identifier (BO nummer), cyclotron, duur, eobhrmin,
+    opmerking
+
+──────────────────────────────────────────────────────────────────────────────
+2.2b  Rubidiumbestralingen  →  raw.db: rubidium_data
+──────────────────────────────────────────────────────────────────────────────
+
+Columns read from Access:
+
+    [EOB datum]                    Production date.
+    [Activiteit MBq]               Measured activity at end of bombardment (MBq).
+    [Benodigde activiteit volgens BO]  Required activity per order (mCi).
+    [BO nummer]                    Production order identifier.
+    [stroom]                       Beam current in µA (equivalent of targetstroom).
+    [duur]                         Bombardment duration in HH.MM format.
+    [EOB tijd]                     End-of-bombardment time.
+    [Opmerking]                    Operator remarks.
+
+Derived field computed during extraction:
+    efficiency = (Activiteit MBq / (Benodigde activiteit mCi × 37)) × 100
+
+    The factor 37 converts mCi to MBq (1 mCi = 37 MBq), allowing the
+    measured activity to be compared against the ordered activity as a
+    percentage.  If either value is missing or the ordered activity is zero,
+    efficiency is stored as None.
+
+Cyclotron: Rubidium is always produced on Kant 2 of the Philips cyclotron.
+    cyclotron is hardcoded to 'P2'.
+
+Stored in raw.db as:
+    date, value1 (Activiteit MBq), value2 (Benodigde activiteit mCi),
+    efficiency (computed %), identifier (BO nummer), cyclotron ('P2'),
+    stroom, duur, eob_tijd, opmerking
+
+──────────────────────────────────────────────────────────────────────────────
+2.2c  Indiumbestralingen  →  raw.db: indium_data
+──────────────────────────────────────────────────────────────────────────────
+
+Columns read from Access:
+
+    [EOB datum]            Production date.
+    [Targetstroom]         Beam current at the target in µA.
+    [BO nummer]            Production order identifier.
+    [Bestralingspositie]   Beam position: "Philips", "IBA 2.1", "IBA 1.2", etc.
+    [Duur]                 Bombardment duration in HH.MM format.
+    [EOBhrmin]             End-of-bombardment time.
+    [Opmerking]            Operator remarks.
+
+Cyclotron determination for Indium:
+    The full [Bestralingspositie] value is stored as both cyclotron and
+    bestralingspositie.  The Gantt chart renderer later calls
+    map_cyclotron_name() to convert this to a short display name.
+    The within-spec calculator checks whether cyclotron starts with "IBA"
+    (case-insensitive) to apply IBA vs Philips thresholds.
+
+Stored in raw.db as:
+    date, targetstroom, identifier (BO nummer), cyclotron (bestralingspositie),
+    bestralingspositie, duur, eobhrmin, opmerking
+
+──────────────────────────────────────────────────────────────────────────────
+2.2d  Thalliumbestralingen  →  raw.db: thallium_data
+──────────────────────────────────────────────────────────────────────────────
+
+Columns read from Access:
+
+    [EOB datum]      Production date.
+    [Targetstroom]   Beam current in µA.
+    [BO nummer]      Production order identifier.
+    [Duur]           Bombardment duration in HH.MM format.
+    [EOB tijd]       End-of-bombardment time.
+    [Opmerking]      Operator remarks.
+
+Cyclotron / kant determination for Thallium:
+    Thallium has no explicit cyclotron column.  Instead, the first digit of
+    the BO number determines which side (kant) of the Philips cyclotron was
+    used:
+
+        BO starts with '1'  →  kant = '1.2',  cyclotron = 'P1'
+        BO starts with '2'  →  kant = '2.1',  cyclotron = 'P2'
+        anything else       →  kant = 'Unknown', cyclotron = 'P1' (default)
+
+Stored in raw.db as:
+    date, targetstroom, identifier (BO nummer), cyclotron, kant, duur,
+    eob_tijd, opmerking
+
+──────────────────────────────────────────────────────────────────────────────
+2.2e  Iodine 123  →  raw.db: iodine_data
+──────────────────────────────────────────────────────────────────────────────
+
+Iodine-123 is structurally different from the other isotopes.  Its production
+involves a multi-day growth period, so the date field is the growth end date
+([BO ingroei tot datum]) rather than an EOB date.  The table also contains
+more measurement columns.
+
+Columns read from Access:
+
+    [BO ingroei tot datum]              Growth end date (used as the record date).
+    [*Meting D1 opbrengst I-123]        Activity measured in the product fraction (MBq).
+    [*Meting Waste]                     Activity measured in the waste fraction (MBq).
+    [*verwacht opbrengst I-123 bij 120 uAh]  Expected yield at 120 µAh (MBq).
+    [BO nummer]                         Production order identifier.
+    [BO Targetstroom]                   Planned (nominal) beam current per order (µA).
+    [@Gemiddelde targetstroom]          Actual average beam current during bombardment (µA).
+    [@Totale dosis]                     Total beam dose delivered (µAh).
+    [@Stop datum bestraling]            Date bombardment ended.
+    [@Stop tijd bestraling]             Time bombardment ended.
+    [BO starttijd bestraling]           Time bombardment started.
+    [@Totale bestralingstijd]           Total bombardment duration (hours).
+    [@Totale storingstijd]              Total downtime during bombardment (hours).
+    [@Opmerkingen tijdens bestraling]   Operator remarks.
+
+Two percentages are computed during extraction:
+
+    yield_percent  = Meting D1 / (Meting D1 + Meting Waste) × 100
+        The fraction of total measured activity that ended up in the product.
+        A higher yield means less activity was lost to the waste stream.
+
+    output_percent = (Meting D1 + Meting Waste) × 75 / verwacht opbrengst
+        How much of the expected output was actually produced, expressed as a
+        percentage.  The factor 75 converts from µAh-normalised expected yield
+        to the actual dose delivered.  Both output_percent and targetstroom
+        (the actual average beam current) must fall within their respective
+        spec ranges for a production to count as within-spec.
+
+Cyclotron: Iodine is always produced on Kant 1 of the Philips cyclotron.
+    cyclotron is hardcoded to 'P1'.
+
+Stored in raw.db as:
+    date, value1 (meting_d1), value2 (meting_waste), efficiency (= yield_percent),
+    yield_percent, output_percent, identifier (BO nummer), cyclotron ('P1'),
+    bo_targetstroom, targetstroom (actual), totale_dosis, meting_d1,
+    meting_waste, verwacht, stop_datum, stop_tijd, start_tijd,
+    totale_bestralingstijd, totale_storingstijd, opmerking
+
+──────────────────────────────────────────────────────────────────────────────
+2.2f  Galliumopbrengsten / Indiumopbrengsten  →  raw.db: gallium_opbrengsten /
+      indium_opbrengsten
+──────────────────────────────────────────────────────────────────────────────
+
+Both tables have the same structure.  They record daily post-separation yield
+totals for Gallium and Indium respectively.
+
+Columns read from Access:
+
+    [Datum Tweede Scheiding]   Date of the second separation step.
+    [Opbrengst (MBq)]          Total yield for that day in MBq.
+
+These records are used only to compute per-isotope production efficiency
+(mCi/µAh).  The opbrengst value on the day immediately after an EOB date is
+matched to that production run (bisect_right lookup on sorted dates).
+
+Stored in raw.db as:  date, opbrengst_mbq
+
+
+2.3  ProcesGegevens.accdb — efficiency targets
+------------------------------------------------
+Path setting:  paths.proces_db
+
+Table read:  Output_EfficiencyTargets
+
+Columns:
+
+    [Datum]               Date of the measurement.
+    [Efficiency targets]  Beam transmission efficiency as a decimal fraction
+                          (0.0–1.0).  The value 0.72 means 72% efficiency.
+
+The collector filters out rows where the efficiency is NULL or zero.
+Stored values are multiplied by 100 in the calculator to yield percentages.
+
+Stored in raw.db as:  date, efficiency (the raw 0–1 decimal)
+
+
+2.4  Storingen_IBA.accdb — IBA cyclotron downtime
+---------------------------------------------------
+Path setting:  paths.storingen_iba_db
+
+Table read:  001MTO Niet opgeloste storingen voor onderhoudsplanning
+
+Because this table's column names can vary slightly between database versions,
+the extractor uses a dynamic column-name lookup rather than fixed positional
+indices.  It searches the column name list for names containing 'storingsnummer',
+'datum', and exactly matching 'storing'.
+
+Columns captured:
+
+    storingsnummer   Unique fault-report number.
+    datum            Date of the fault (formatted as YYYY-MM-DD on storage).
+    storing          Description of the fault.
+
+Stored in raw.db as:  storingsnummer, datum, storing
+Unique constraint:  (storingsnummer, datum)
+
+
+2.5  Storingen_Philips.accdb — Philips cyclotron downtime
+----------------------------------------------------------
+Path setting:  paths.storingen_philips_db
+
+Table read:  001MTO Niet opgeloste storingen voor onderhoudsplanning
+
+Same structure as the IBA storingen table.  This database uses fixed column
+names (Storingsnummer, Datum, Storing) so positional access is used directly.
+
+Stored in raw.db as:  storingsnummer, datum, storing
+Unique constraint:  (storingsnummer, datum)
+
+Currently the storingen data is collected and stored but is not yet displayed
+in the dashboard HTML.  The tables are available in raw.db for future use.
+
+
+2.6  Duration parsing — the HH.MM format
+-----------------------------------------
+Access stores bombardment durations in a non-standard HH.MM format where the
+decimal part represents minutes, not fractions of an hour.
+
+    9.05  →  9 hours 5 minutes  →  9.0833 decimal hours
+    12.30 →  12 hours 30 minutes → 12.5 decimal hours
+    10.45 →  10 hours 45 minutes → 10.75 decimal hours
+
+The critical rule: a stored value of 10.3 means 10:30 (10 hours 30 minutes),
+NOT 10 hours and 0.3 of an hour (10:18).  The minute string is left-justified
+and padded to two characters ('3' → '30') before division by 60.
+
+The parse_time_duration() function in access_reader.py handles this format as
+well as the HH:MM colon-separated variant and plain integer hours.  It is also
+used by the calculator when computing µAh (beam current × hours).
+
+
+2.7  EOBhrmin parsing — end-of-bombardment time
+-------------------------------------------------
+The EOBhrmin field in Galliumbestralingen and Indiumbestralingen stores the
+end-of-bombardment time.  It can arrive in any of four formats:
+
+    - A Python time object (from pyodbc's native time parsing)
+    - A float using the same HH.MM encoding as duration (e.g. 14.35 = 14:35)
+    - A colon-separated string ('14:35')
+    - A compact integer string ('1435' or '435')
+
+The parse_eobhrmin() function normalises all of these to a (hours, minutes)
+tuple, or None if parsing fails.  Values outside the valid ranges (0–23 hours,
+0–59 minutes) are rejected and return None.
+
+===============================================================================
