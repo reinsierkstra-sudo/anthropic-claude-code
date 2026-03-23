@@ -998,3 +998,319 @@ Not populated by the automated collector; written by the web UI layer.
         Returns [] if the table does not exist.
 
 ===============================================================================
+6. KPI Calculations — Efficiency
+==================================
+
+Source file:  calculator/efficiency.py
+Reads from:   data/raw.db
+Writes to:    data/derived.db
+
+Efficiency measures how much isotope activity is produced per unit of
+cyclotron beam charge delivered.  The unit is mCi per µAh (micro-ampere-
+hour).  Each isotope uses a slightly different formula because the available
+raw data columns differ.
+
+
+6.1  Week definition
+---------------------
+All "weekly" views use a Friday–Thursday week:
+    Week N opens on Friday and closes on Thursday.
+    The week label used in derived.db is the ISO week number of that Thursday.
+A helper get_last_friday() returns the most recent Friday strictly before
+today (if today is Friday the previous Friday is returned, so the current
+partial week is not contaminated).
+
+
+6.2  Per-isotope efficiency formulas
+--------------------------------------
+Gallium (gallium_data × gallium_opbrengsten):
+    µAh = targetstroom × (duur_hours)
+    efficiency = (opbrengst_mbq / 37) / µAh        [mCi/µAh]
+    Join on date.  Skip rows where targetstroom or duur is None.
+
+Indium (indium_data × indium_opbrengsten):
+    Same formula as Gallium.
+    Join on date.  Skip rows where targetstroom or duur is None.
+
+Rubidium (rubidium_data):
+    Only productions with 3 ≤ duration ≤ 6 hours are used.
+    µAh = stroom × duur_hours
+    efficiency = (value1 / 37) / µAh               [mCi/µAh]
+    Skip rows where stroom or duur is None or µAh ≤ 0.
+
+Iodine (iodine_data):
+    Only productions where beam_hours = totale_dosis / targetstroom ≥ 10
+    are used.
+    efficiency = ((meting_d1 + meting_waste) / 37) / totale_dosis  [mCi/µAh]
+    totale_dosis is the total beam charge in µAh from the Access record.
+    Skip rows where targetstroom, totale_dosis, meting_d1, or meting_waste
+    is None.
+
+Duration parsing:
+    The duur column is stored in "HH.MM" format (not decimal hours).
+    Conversion: hours = int(duur)  +  (duur % 1 * 100) / 60
+    Example: 9.05 → 9 hours 5 minutes → 9.0833 hours.
+    Values outside valid ranges (0–23 h, 0–59 min) are rejected.
+
+
+6.3  Outlier filtering
+------------------------
+After collecting all data points for a time window the loader computes the
+mean and standard deviation.  Points more than 2 standard deviations from
+the mean are excluded before the final average is reported.  Individual
+scatter-plot points are returned unfiltered so the user can see outliers
+on the chart.
+
+
+6.4  Time windows produced
+----------------------------
+get_efficiency_weeks()
+    Last 10 complete Friday–Thursday weeks.
+    Each week: efficiency average, week_number, friday date, color.
+    color = green (#3BB143) if week avg ≥ overall 10-week avg, else red.
+
+get_efficiency_last_year_average()
+    Trailing 365 days from today.
+    Returns single float: mean efficiency (after outlier removal).
+
+get_efficiency_last_3months_average()
+    Trailing 90 days from today.
+    Returns single float.
+
+get_efficiency_past_year()
+    All individual data points in the past 365 days.
+    Used for the scatter / trend chart.
+
+get_efficiency_all_time()
+    All data grouped by calendar quarter.
+    Q1 = months 1–3, Q2 = 4–6, Q3 = 7–9, Q4 = 10–12.
+    Returns list of {year, quarter, average_efficiency} dicts.
+
+===============================================================================
+7. KPI Calculations — Within-Spec
+===================================
+
+Source file:  calculator/within_spec.py
+              calculator/spec_settings.py
+Reads from:   data/raw.db
+Writes to:    data/derived.db
+
+Within-spec measures what fraction of completed productions had a beam
+current (targetstroom) or efficiency value inside the product specification
+window.  The result is expressed as a percentage 0–100.
+
+
+7.1  Specification limits  (spec_settings.py)
+----------------------------------------------
+Limits differ per isotope and, for some isotopes, per cyclotron type:
+
+    Gallium
+        Philips cyclotron:  75 ≤ targetstroom ≤ 85 µA
+        IBA cyclotron:     130 ≤ targetstroom ≤ 140 µA
+        Cyclotron type determined from the cyclotron column of gallium_data.
+
+    Indium
+        Philips cyclotron:  75 ≤ targetstroom ≤ 85 µA
+        IBA cyclotron:     130 ≤ targetstroom ≤ 140 µA
+
+    Thallium
+        166 ≤ targetstroom ≤ 174 µA  (no cyclotron variants)
+
+    Rubidium
+        95 ≤ efficiency ≤ 105 %
+
+    Iodine  (both conditions must be satisfied)
+         78 ≤ output_percent  ≤ 114.9 %
+         96 ≤ targetstroom    ≤ 124 µA
+
+Rows where the tested metric is None are excluded from the count entirely
+(neither numerator nor denominator).
+
+
+7.2  Calculation per week
+--------------------------
+For each Friday–Thursday week:
+    within_spec  = count of qualifying productions where metric is in spec
+    total        = count of qualifying productions in that week
+    percentage   = (within_spec / total) × 100  if total > 0 else None
+
+Weeks with total = 0 are omitted from trend lines but may still appear
+as grey bars in the chart (color = #aaa).
+
+
+7.3  Time windows produced
+----------------------------
+Within-spec uses the same four time windows as efficiency:
+    Last 10 weeks  — bar chart, one bar per week
+    Last 365 days  — scalar average
+    Last 90 days   — scalar average
+    All-time       — grouped by ISO quarter (weeks 1–13, 14–26, 27–39, 40–52)
+
+Color coding:
+    green (#3BB143) if week percentage ≥ overall 10-week average
+    red   (#FF2400) if below
+    grey  (#aaa)    if no data
+
+===============================================================================
+8. KPI Calculations — OTIF (Gedraaide Producties)
+===================================================
+
+Source file:  calculator/otif.py
+              calculator/spec_settings.py
+Reads from:   data/raw.db
+Writes to:    data/derived.db
+
+OTIF (On Time In Full) here measures whether the actual beam current
+delivered was equal to or above the nominal target current for each
+isotope.  A score > 100 % means the production exceeded the nominal.
+The 97 % threshold is used as the pass/fail boundary for colour coding.
+
+
+8.1  Nominal target currents
+------------------------------
+Each isotope has a single nominal value derived from the midpoint of its
+Philips-cyclotron specification:
+
+    Gallium   Philips nominal: 80 µA   IBA nominal: 135 µA
+    Indium    Philips nominal: 80 µA   IBA nominal: 135 µA
+    Thallium  nominal: 170 µA
+    Rubidium  nominal: 70 µA  (fixed, not derived from spec window)
+    Iodine    nominal: bo_targetstroom (the customer-ordered target current)
+
+For Gallium and Indium the appropriate nominal is chosen by reading the
+cyclotron column of the data row and checking whether it indicates a
+Philips or IBA machine.
+
+
+8.2  Per-production OTIF score
+--------------------------------
+    score = (actual_targetstroom / nominal) × 100
+
+If actual_targetstroom is None the production is assigned 0 %.
+Iodine uses bo_targetstroom as the denominator if it is non-null, otherwise
+the default nominal of 100 µA.
+
+
+8.3  Weekly OTIF aggregation
+------------------------------
+Within each Friday–Thursday week all qualifying productions are scored and
+the simple mean of scores is taken as the weekly OTIF percentage.
+
+Time windows produced:
+    Last 10 weeks  — bar chart
+    Last 365 days  — scalar average
+    Last 90 days   — scalar average
+
+Color coding (97 % threshold):
+    green (#3BB143) if weekly OTIF ≥ 97 %
+    red   (#FF2400) if below 97 %
+
+The separate OTIF data from the OTIF week Excel workbook (Section 3.5) is
+also surfaced on the dashboard as a per-product weekly table, but that data
+is loaded from the blobs table (key 'otif') rather than recalculated here.
+
+===============================================================================
+9. KPI Calculations — Shift & Ploeg Statistics
+================================================
+
+Source files:  calculator/shift_stats.py
+               calculator/leaderboard.py
+Reads from:    data/raw.db  (isotope tables + blobs 'ploegen' + blobs 'planning')
+Writes to:     data/derived.db
+
+Shift and ploeg KPIs attribute production quality to the shift team that
+operated the cyclotron during each production run.
+
+
+9.1  Shift definitions
+-----------------------
+Three shifts per calendar day (Dutch names):
+    Ochtenddienst   07:00 – 15:00
+    Middagdienst    15:00 – 23:00
+    Nachtdienst     23:00 – 07:00 (next calendar day)
+
+A production that spans multiple shifts is split proportionally:
+
+    proportion = shift_overlap_hours / total_production_hours
+
+The proportional share is applied to both the total count and the
+in-spec count for that shift, so a production lasting 8 hours that
+spans 4 h of ochtenddienst and 4 h of middagdienst contributes 0.5 to
+each shift.
+
+
+9.2  Production time reconstruction
+--------------------------------------
+Each isotope record contains:
+    duur          production duration (HH.MM format, see §6.2)
+    eob_tijd or eobhrmin   end-of-beam time (HH:MM string)
+
+The start time is reconstructed as:
+    start_datetime = eob_datetime − duration
+
+For Iodine the stop_datum and stop_tijd columns are used together to form
+the end datetime, and totale_bestralingstijd + totale_storingstijd form the
+total elapsed time.
+
+The parse_time() helper (utils/time_utils.py) converts HH:MM strings to
+(hours, minutes) tuples; invalid strings return None and the production
+is skipped.
+
+
+9.3  Ploeg assignment
+----------------------
+The planning Excel (loaded via blobs key 'planning') maps each calendar
+date and shift name to a shift-lead person name.
+
+The ploegen Excel (loaded via blobs key 'ploegen') maps the first two
+uppercase characters of each member name to a ploeg number (1–5) and
+team name.
+
+For each production–shift overlap:
+    1. Look up planning_data[date][shift_name] → lead_person string
+    2. Take lead_person[:2].upper() as the lookup key
+    3. Look up ploegen_data[key] → ploeg_number, ploeg_name
+    4. Add the proportional production hours and in-spec status to that
+       ploeg's running totals.
+
+Productions for dates before ploegenwissel_date (the team rotation date
+stored in cell Q1 of Ploegen.xlsx) use historical planning data; only
+data from Q1 onwards is trusted for the current team composition.
+
+
+9.4  Leaderboard (leaderboard.py)
+-----------------------------------
+Entry point:  calculate_ploeg_leaderboard(raw_conn, n_days=30)
+
+For the trailing n_days the function collects all proportional
+shift–ploeg contributions and computes per-ploeg:
+
+    percentage = (in_spec_hours / total_hours) × 100
+
+Results are sorted by percentage descending, then by total_hours descending
+as a tie-breaker.
+
+Rolling averages (calculate_ploeg_rolling_averages):
+    A 30-day sliding window is computed for every day in the past 6 months.
+    This produces a time series of daily percentage values per ploeg used
+    to draw trend lines on the leaderboard chart.
+
+Fixed period summaries (calculate_ploeg_statistics):
+    Separate averages are computed for the last 1 month, 3 months, and
+    6 months to display alongside the leaderboard table.
+
+Monthly winner (calculate_last_month_winner):
+    The ploeg with the highest percentage in the last completed calendar
+    month is identified and stored for display in the header banner.
+
+Production details (collect_ploeg_production_details):
+    For each ploeg the last 6 months of individual productions are
+    collected with their shift proportions and in-spec flags.  This feeds
+    the per-ploeg detail drill-down panel on the dashboard.
+
+Color coding for leaderboard ranks:
+    > 2 % above the inter-ploeg average → green
+    > 2 % below the inter-ploeg average → red
+    within ± 2 %                        → black (neutral)
+
+===============================================================================
