@@ -13,19 +13,17 @@ For a quick-start guide (installation, paths, running the app) see README.txt.
 Contents
 --------
   1. System overview and pipeline
-  2. Data collection — MS Access databases          (coming next)
-  3. Data collection — Excel files                  (coming next)
-  4. Data collection — HTTP / JSON and static HTML  (coming next)
-  5. Raw database (raw.db) — schema and storage     (coming next)
-  6. KPI calculations — Cyclotron efficiency        (coming next)
-  7. KPI calculations — Within-spec                 (coming next)
-  8. KPI calculations — OTIF gedraaide producties   (coming next)
-  9. KPI calculations — Shift / ploeg statistics    (coming next)
- 10. Derived database (derived.db) — schema and KPI keys  (coming next)
- 11. Dashboard rendering — full and truncated       (coming next)
- 12. Configuration reference                        (coming next)
- 13. Deployment and multi-machine setup             (coming next)
- 14. Troubleshooting                                (coming next)
+  2. Data collection — MS Access databases
+  3. Data collection — Excel files
+  4. Data collection — HTTP / JSON and static HTML
+  5. Raw database (raw.db) — schema and storage API
+  6. KPI calculations — Efficiency
+  7. KPI calculations — Within-spec
+  8. KPI calculations — OTIF (gedraaide producties)
+  9. KPI calculations — Shift and ploeg statistics
+ 10. Derived database (derived.db) — schema and KPI keys
+ 11. Dashboard rendering
+ 12. Configuration reference, deployment and troubleshooting
 
 ===============================================================================
 
@@ -184,33 +182,33 @@ to the HTML output.
     bestralingen.mdb
       Galliumbestralingen    --> gallium_data        --> efficiency_weeks
                                                          within_spec_weeks
-                                                         otif_weeks
+                                                         otif_gedraaide_weeks
                                                          ga_running / ga_previous
       Rubidiumbestralingen   --> rubidium_data       --> (same KPIs)
       Indiumbestralingen     --> indium_data         --> (same KPIs)
       Thalliumbestralingen   --> thallium_data       --> (same KPIs)
       Iodine 123             --> iodine_data         --> (same KPIs)
-      Galliumopbrengsten     --> gallium_opbrengsten --> ga_prod_efficiency_weeks
-      Indiumopbrengsten      --> indium_opbrengsten  --> in_prod_efficiency_weeks
+      Galliumopbrengsten     --> gallium_opbrengsten --> gallium_eff_weeks
+      Indiumopbrengsten      --> indium_opbrengsten  --> indium_eff_weeks
 
     ProcesGegevens.accdb
       Output_EfficiencyTargets --> efficiency_targets --> efficiency_weeks (%)
 
     Storingen_IBA.accdb
-      001MTO ...             --> iba_storingen       --> iba_storingen (display)
+      001MTO ...             --> iba_storingen       --> iba_storingen_data
 
     Storingen_Philips.accdb
-      001MTO ...             --> philips_storingen   --> philips_storingen
+      001MTO ...             --> philips_storingen   --> philips_storingen_data
 
-    Ploegen.xlsx             --> excel_cache (blobs) --> ploeg_leaderboard
-    Planning & Control.xlsm --> excel_cache (blobs) --> shift assignment
+    Ploegen.xlsx             --> excel_cache         --> ploegen_data / leaderboard
+    Planning & Control.xlsm --> excel_cache         --> shift_stats / leaderboard
     VSM targetstroom.xlsx    --> blobs (vsm)         --> vsm_data
-    OTIF week*.xlsx          --> blobs (otif)        --> otif_kpi_data
+    OTIF week*.xlsx          --> blobs (otif)        --> otif_kpi_data / otif_table_data
 
-    productions_database.json
-      or cyclotron.asp (HTTP) --> blobs (cyclotron)  --> gantt_data
-    planning.html             --> blobs              --> planning modal
-    productieschema.html      --> blobs              --> schema modal
+    productions_database.json                            NOT stored in raw.db;
+      or cyclotron.asp (HTTP)  (fetched live)        --> cyclotron_data (in memory)
+    planning.html             --> blobs              --> planning_html_content
+    productieschema.html      --> blobs              --> productieschema_html_content
 
 
 1.6  Persistence model
@@ -1091,7 +1089,7 @@ get_efficiency_all_time()
 ===================================
 
 Source file:  calculator/within_spec.py
-              calculator/spec_settings.py
+              config/spec_settings.py
 Reads from:   data/raw.db
 Writes to:    data/derived.db
 
@@ -1156,7 +1154,7 @@ Color coding:
 ===================================================
 
 Source file:  calculator/otif.py
-              calculator/spec_settings.py
+              config/spec_settings.py
 Reads from:   data/raw.db
 Writes to:    data/derived.db
 
@@ -1543,7 +1541,8 @@ Templating approach:
 -----------------------------------------------------
 Entry point:  create_truncated_dashboard(data) → str
 
-A lightweight version intended for quick reference.  Includes:
+A lightweight version written to the network share (paths.output_network)
+for fast loading on shared operator workstations.  Includes:
     • Efficiency KPI table (current 10 weeks only)
     • Within-spec KPI table
     • OTIF (gedraaide producties) KPI table
@@ -1622,19 +1621,25 @@ renderer/assets.py
 
 11.6  Output files
 --------------------
-Three copies of isotope_dashboard.html are written after each render:
+After each render three destinations are written.  The full and truncated
+dashboards are NOT written to the same destinations:
 
-    Local filesystem (paths.output_local)
+    Local filesystem (paths.output_local)   ← FULL dashboard
         isotope_dashboard.html
         isotope_dashboard.html.hash
 
-    Network share (paths.output_network)
+    Network share (paths.output_network)    ← TRUNCATED dashboard
         isotope_dashboard.html
         isotope_dashboard.html.hash
 
-    Bureau directory (paths.output_bureau)
+    Bureau directory (paths.output_bureau)  ← FULL dashboard
         Productie dashboard.html
         Productie dashboard.html.hash
+
+The network share receives the lightweight truncated dashboard so that
+operators on shared workstations see a fast-loading summary.  The local
+and bureau copies receive the full dashboard with all charts and detail
+sections.
 
 In addition, dosisoverzicht.png is copied to each output directory so
 the image modal can display it.
@@ -1651,8 +1656,8 @@ tampering warning banner is rendered into the new HTML.
 11.7  Embedded HTML content
 ------------------------------
 planning_html_content and productieschema_html_content are loaded from
-the blobs table of raw.db (keys 'planning_html' and
-'productieschema_html_content').
+the blobs table of raw.db under keys 'planning_html' and
+'productieschema_html' respectively.
 
 Both are embedded in modal <iframe> elements using the srcdoc attribute:
     content.replace('&', '&amp;').replace('"', '&quot;')
@@ -1825,6 +1830,7 @@ directly in any browser from the network share or local output path.
     config/
         settings.yaml          All runtime settings
         loader.py              Config loader
+        spec_settings.py       Specification limit constants (colour coding)
 
     collector/
         access_reader.py       MS Access reader
@@ -1842,7 +1848,6 @@ directly in any browser from the network share or local output path.
         leaderboard.py         Ploeg leaderboard
         issues.py              Operator comment counts
         isotope_data.py        Shared helper functions
-        spec_settings.py       Specification limit constants
 
     renderer/
         dashboard_full.py      Full dashboard HTML generator
