@@ -1314,3 +1314,155 @@ Color coding for leaderboard ranks:
     within ± 2 %                        → black (neutral)
 
 ===============================================================================
+10. Derived Database (derived.db) — Schema & KPI Keys
+=======================================================
+
+File:  data/derived.db   (SQLite 3)
+API:   collector/derived_db.py
+Populated by:  run_calculator.py
+
+derived.db uses a single key-value table to store all computed KPI results.
+This design means the schema never needs to change when new KPIs are added.
+
+
+10.1  Table schema
+--------------------
+    CREATE TABLE IF NOT EXISTS kpis (
+        key         TEXT PRIMARY KEY,
+        value       TEXT NOT NULL,
+        computed_at TEXT NOT NULL
+    )
+
+key         Logical KPI name string (see §10.3).
+value       JSON-serialised Python object.
+computed_at ISO timestamp set at the moment save_kpis() is called.
+
+One implicit index exists on the PRIMARY KEY column.
+
+
+10.2  Serialisation helpers
+-----------------------------
+_DateEncoder (json.JSONEncoder subclass)
+    Converts datetime.date / datetime.datetime objects to ISO strings.
+    Converts defaultdict to plain dict.
+
+_prepare_keys(obj)
+    Recursively converts date/datetime keys in nested dicts to ISO strings
+    before serialisation.  This handles the case where dict keys are dates.
+
+_encode(value) → str
+    Applies _prepare_keys then json.dumps with _DateEncoder.
+
+_decode(text) → object
+    json.loads wrapper.  Dates come back as ISO strings; callers are
+    responsible for converting them if needed.
+
+
+10.3  Public API
+-----------------
+connect(db_path) → sqlite3.Connection
+    Creates parent directory if absent, creates the kpis table, returns
+    the open connection.
+
+save_kpis(conn, data: dict) → None
+    Iterates through all items in data.  Each value is encoded with
+    _encode().  Failures per-key are logged and skipped (the pipeline
+    does not abort).  All successful rows are upserted in one batch with
+    INSERT OR REPLACE.
+
+load_kpis(conn) → dict
+    SELECT key, value FROM kpis, deserialise each value with _decode().
+    Failures per-key are logged and skipped.
+    Returns a flat dict of all stored KPIs.
+
+
+10.4  Key inventory
+---------------------
+The following keys are written by run_calculator.py and read by
+run_renderer.py.
+
+Aggregate KPIs (all-isotope combined):
+    efficiency_weeks              list — 10 weekly efficiency averages
+    efficiency_average            float — 10-week average
+    efficiency_last_year_avg      float — 365-day average
+    efficiency_last_3months_avg   float — 90-day average
+    efficiency_past_year          list — individual data points (365 days)
+    efficiency_all_time           list — quarterly averages
+
+    within_spec_weeks             list — 10 weekly percentages
+    within_spec_average           float
+    within_spec_last_year_avg     float
+    within_spec_last_3months_avg  float
+    within_spec_past_year         list
+    within_spec_all_time          list
+
+    otif_gedraaide_weeks          list — 10 weekly OTIF percentages
+    otif_gedraaide_average        float
+    otif_gedraaide_last_year_avg  float
+    otif_gedraaide_last_3months_avg float
+
+Issue tracking:
+    issue_counts                  dict: {this_week, last_week, all_time}
+    isotope_issues                dict keyed by isotope name
+
+Per-isotope cyclotron efficiency (mCi/µAh):
+    gallium_eff_weeks / gallium_eff_avg / gallium_eff_all_time /
+    gallium_eff_year / gallium_eff_3months
+    (same five keys for indium_, rubidium_, iodine_)
+
+Per-isotope production data:
+    ga_running / ga_monthly / ga_previous
+    rb_running / rb_monthly / rb_previous
+    in_running / in_monthly / in_previous
+    tl_running / tl_monthly_12 / tl_monthly_21 / tl_previous
+    io_running / io_monthly / io_previous
+
+Shift (ploeg) KPIs:
+    this_week_friday              date — Friday opening the current week
+    last_week_friday              date — Friday opening the previous week
+    shift_stats_this_week         dict: date → shift_name → {total, in_spec}
+    shift_stats_last_week         dict: same structure for prior week
+    ploeg_6month                  dict: ploeg stats for last 6 months
+    ploeg_3month                  dict: last 3 months
+    ploeg_monthly                 dict: last 1 month
+    ploeg_rolling                 dict: daily rolling 30-day values per ploeg
+    leaderboard                   list: ranked ploeg entries
+    monthly_winner                the winning ploeg for the last full month
+    ploeg_production_details      dict: per-ploeg production list (6 months)
+    production_history            dict: per-BO-number lookup
+
+Pass-through data (loaded from raw.db, stored unchanged):
+    ploegen_data                  dict — ploeg membership from Ploegen.xlsx
+    iba_storingen_data            dict — IBA equipment downtime records
+    philips_storingen_data        dict — Philips equipment downtime records
+    otif_kpi_data                 list — weekly OTIF % per isotope
+    otif_table_data               dict — missed-order counts per product/week
+    vsm_data                      list — VSM targetstroom rows + week_avg_otif
+    planning_html_content         str | None — planning HTML fragment
+    productieschema_html_content  str | None — productieschema HTML fragment
+    tampering_warning             None (reserved for future integrity checks)
+
+
+10.5  Calculation order (run_calculator.py)
+--------------------------------------------
+The calculator orchestrator runs in this sequence:
+
+    1. Load all raw isotope tables and auxiliary data from raw.db.
+    2. Calculate aggregate efficiency KPIs.
+    3. Calculate aggregate within-spec KPIs.
+    4. Calculate aggregate OTIF (gedraaide producties) KPIs.
+    5. Calculate issue counts.
+    6. Calculate per-isotope cyclotron efficiency.
+    7. Collect per-isotope running/previous/monthly production data.
+    8. Calculate this-week and last-week shift statistics.
+    9. Calculate all-time shift statistics (180-day lookback or since
+       ploegenwissel_date, whichever is more recent).
+   10. Calculate ploeg leaderboard, rolling averages, monthly winner,
+       and per-ploeg production details.
+   11. Append pass-through data directly to the results dict.
+   12. Call save_kpis(derived_conn, results) to write everything at once.
+
+Each numbered step is wrapped in try/except; a failure inserts a safe
+default value for that key and the pipeline continues.
+
+===============================================================================
