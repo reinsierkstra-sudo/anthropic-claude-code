@@ -561,3 +561,195 @@ tuple, or None if parsing fails.  Values outside the valid ranges (0–23 hours,
 0–59 minutes) are rejected and return None.
 
 ===============================================================================
+
+3. Data Collection — Excel Files
+==================================
+
+Source file:  collector/excel_reader.py
+Writes to:    data/raw.db  (excel_cache table and blobs table)
+
+Excel files are parsed with openpyxl.  Because the planning file is an
+.xlsm macro-enabled workbook, every file is first saved to a temporary .xlsx
+copy (which strips VBA macros) before being read, then the temp file is
+deleted in a finally block.  This prevents openpyxl from choking on macro
+content.
+
+
+3.1  Mtime-based SQLite cache
+------------------------------
+Re-parsing a large Excel file on every 60-second cycle would be wasteful.
+Instead, each loader follows this pattern before doing any file I/O:
+
+    1. Read the file's current modification time with os.path.getmtime().
+    2. Look up the stored mtime in the excel_cache table of raw.db.
+    3. If the two values match (within 0.001 s), deserialise and return the
+       cached JSON data immediately — no file parsing.
+    4. If they differ (file was updated), parse the file, store the new
+       result back into excel_cache with the new mtime, and return the data.
+
+The cache is keyed by a logical name ('ploegen', 'vsm', 'planning', 'otif').
+Each entry stores: cache_key, mtime (REAL), data_json (TEXT), saved_at (TEXT).
+
+
+3.2  Ploegen.xlsx  →  raw.db: excel_cache ('ploegen')
+-------------------------------------------------------
+Path setting:  paths.ploegen_excel
+Loader:        load_ploegen_definitions(excel_path, sqlite_conn)
+
+This file defines the shift teams (ploegen) and their members.
+
+Layout:
+    Columns L–P  (5 columns, one per ploeg)
+        Each column contains the names of all members of that team,
+        starting from row 1.  Reading stops at the first empty cell.
+    Cell Q1
+        The ploegenwissel date — the date of the most recent team rotation.
+        Used as a cutoff: only planning data from Q1 onwards is used when
+        assigning productions to shift teams.
+
+Parsing logic:
+    For each column L through P the loader reads every non-empty cell from
+    row 1 downward.  It builds an index keyed by the first two uppercase
+    characters of each member name (e.g. "Re" for "Reinder").  This two-
+    letter abbreviation is the same format used in the planning file so the
+    two can be cross-referenced.
+
+    Each member maps to a dict:
+        ploeg_number  (1–5, corresponding to column order L–P)
+        ploeg_name    (all members joined by ", ")
+        members       (list of all member name strings)
+
+Returned as:  (ploegen_data dict, ploegenwissel_date)
+Stored in:    excel_cache table under key 'ploegen'
+
+
+3.3  Planning & Control Cyclotron.xlsm  →  raw.db: excel_cache ('planning')
+-----------------------------------------------------------------------------
+Path setting:  paths.planning_excel
+Loader:        load_planning_data(excel_path, sqlite_conn)
+
+This macro-enabled workbook contains the daily shift roster: which person
+leads each of the three daily shifts on each calendar day.
+
+Sheet read:  Verlof  (starting at row 7, column B)
+
+Layout per row:
+    B         Date of the shift day.
+    F, G, H, I    Ochtenddienst (morning shift, 07:00–15:00): the first
+                  non-empty cell in this range is taken as the shift lead.
+    J, K, L, M    Middagdienst (afternoon shift, 15:00–23:00): first
+                  non-empty cell.
+    Q, R, S, T    Nachtdienst (night shift, 23:00–07:00): first non-empty cell.
+
+The loader reads rows 7 through 5000, stopping when it encounters an empty
+date cell.  Each date maps to a dict:
+
+    {
+        'ochtenddienst': <name or None>,
+        'middagdienst':  <name or None>,
+        'nachtdienst':   <name or None>,
+    }
+
+The name strings are the same format as member names in Ploegen.xlsx
+(first two characters are the ploeg lookup key).
+
+Returned as:  dict keyed by datetime.date
+Stored in:    excel_cache table under key 'planning'
+              (date keys are serialised to ISO strings for JSON storage)
+
+
+3.4  VSM targetstroom Excel  →  raw.db: blobs ('vsm')
+------------------------------------------------------
+Path setting:  paths.vsm_excel
+Loader:        load_vsm_data(excel_path, sqlite_conn)
+
+The VSM (Value Stream Management) daily management sheet tracks actual beam
+currents per isotope group each day and computes an OTIF percentage.
+
+Sheet:  active sheet (first sheet)
+
+Layout:
+    Row 1     Header row (A = date, B–K = isotope columns, M = OTIF)
+    Rows 2+   One row per production day.
+
+Columns B–K map to isotope groups:
+    B–F  Tl1–Tl5    (five Thallium channels)
+    G    Ga          (Gallium)
+    H    In          (Indium)
+    I–J  Rb1–Rb2     (two Rubidium channels)
+    K    I123         (Iodine-123)
+
+OTIF% computation per row:
+    For each isotope group the average of non-null values is divided by the
+    group's nominal target current to give a group OTIF percentage:
+
+        Thallium  nominal: 170.0 µA
+        Gallium   nominal:  80.0 µA
+        Indium    nominal:  80.0 µA
+        Rubidium  nominal:  70.0 µA  (applied to each Rb channel separately)
+        Iodine    nominal: 100.0 µA
+
+    The row OTIF% is the simple average of all active group percentages
+    (groups with at least one non-null value contribute; empty groups are
+    excluded from the average).
+
+    A week-average OTIF is also computed across all parsed rows with a
+    non-null OTIF value.
+
+Returned as:
+    {
+        'rows':          [ {date, tl1..tl5, ga, in_, rb1, rb2, i123, otif}, ... ],
+        'week_avg_otif': float or None
+    }
+Stored in:    blobs table under key 'vsm'
+
+
+3.5  OTIF week*.xlsx  →  raw.db: blobs ('otif')
+-------------------------------------------------
+Path setting:  (hardcoded search in X:\Cyclotron Bureau\OTIF\)
+Loader:        load_otif_data(sqlite_conn)
+
+The OTIF tracking workbook is found by a glob search for
+"X:\Cyclotron Bureau\OTIF\OTIF week*.xlsx".  The first match is used.
+If no file is found the function returns ([], {}) and prints a warning.
+
+Two sheets are parsed:
+
+────────────────────────────────────────────────────
+Sheet: "7 KPI Week" — weekly OTIF KPI per isotope
+────────────────────────────────────────────────────
+Columns read (0-indexed):
+    A (0)   Week label, format "YYYYwWW" (e.g. "2024W03").
+    G (6)   Gallium OTIF %
+    H (7)   I-123 OTIF %
+    J (9)   Indium OTIF %
+    K (10)  Thallium OTIF %
+    L (11)  Rubidium/Krypton OTIF %
+
+Values are stored as decimals 0–1 in the sheet; the loader normalises them
+to 0–100 percentages.  Only the last 52 weeks are kept (older rows are
+discarded).  Rows are sorted by (year, ISO week) before storage.
+
+────────────────────────────────────────────────────
+Sheet: "1Log" — individual missed-order records
+────────────────────────────────────────────────────
+Data starts at row 3 (row 2 is the header).
+Columns read (0-indexed):
+    D (3)   Week label
+    G (6)   Missed-order count
+    I (8)   Product name
+    K (10)  Reason code
+
+Rows are filtered to only include known products and reasons:
+
+    Products:  Gallium, I-123, Indium, Krypton, Thallium
+    Reasons:   Production, Equipment failure Petten,
+               Bulk shortage, Production Petten
+
+The result is a nested dict:
+    { product: { week_label: missed_count } }
+
+Returned as:  (otif_kpi_data list, otif_table_data dict)
+Stored in:    blobs table under key 'otif'
+
+===============================================================================
