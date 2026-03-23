@@ -1,0 +1,251 @@
+Isotope Dashboard — Technical Manual
+=====================================
+
+This manual describes the internal workings of the Isotope Dashboard in
+detail: where each piece of data comes from, what transformations are applied
+to it, and how it is shown on the dashboard.  It is intended for developers
+and advanced users who need to understand, maintain, or extend the system.
+
+For a quick-start guide (installation, paths, running the app) see README.txt.
+
+-------------------------------------------------------------------------------
+
+Contents
+--------
+  1. System overview and pipeline
+  2. Data collection — MS Access databases          (coming next)
+  3. Data collection — Excel files                  (coming next)
+  4. Data collection — HTTP / JSON and static HTML  (coming next)
+  5. Raw database (raw.db) — schema and storage     (coming next)
+  6. KPI calculations — Cyclotron efficiency        (coming next)
+  7. KPI calculations — Within-spec                 (coming next)
+  8. KPI calculations — OTIF gedraaide producties   (coming next)
+  9. KPI calculations — Shift / ploeg statistics    (coming next)
+ 10. Derived database (derived.db) — schema and KPI keys  (coming next)
+ 11. Dashboard rendering — full and truncated       (coming next)
+ 12. Configuration reference                        (coming next)
+ 13. Deployment and multi-machine setup             (coming next)
+ 14. Troubleshooting                                (coming next)
+
+===============================================================================
+
+1. System Overview and Pipeline
+================================
+
+1.1  Purpose
+------------
+The Isotope Dashboard is an automated production-monitoring tool for a
+cyclotron facility that produces five radioisotopes:
+
+    Ga-67   Gallium-67
+    Rb-82   Rubidium-82
+    In-111  Indium-111
+    Tl-201  Thallium-201
+    I-123   Iodine-123
+
+The dashboard answers three operational questions every minute:
+
+    1. How well did the cyclotrons perform this week and over recent weeks?
+       (Efficiency KPI, Within-spec KPI, OTIF KPI)
+    2. Which shift team is performing best?
+       (Ploeg leaderboard)
+    3. What is planned and what happened today / this week?
+       (Production tables, Gantt chart)
+
+
+1.2  The three-stage pipeline
+------------------------------
+Every 60 seconds (configurable) the application runs three stages in sequence:
+
+    ┌─────────────┐     ┌──────────────┐     ┌──────────────┐
+    │   COLLECT   │────>│   CALCULATE  │────>│    RENDER    │
+    └─────────────┘     └──────────────┘     └──────────────┘
+         │                     │                     │
+    Reads external         Reads raw.db          Reads derived.db
+    sources, writes        Computes KPIs,        Generates HTML,
+    to raw.db              writes derived.db     copies to outputs
+
+Stage 1 — Collect (run_collector.py / collector/)
+    Connects to MS Access databases, Excel files, an HTTP/JSON endpoint and
+    static HTML files.  New or changed records are upserted into raw.db
+    (SQLite).  This database is append-only and is the source of truth;
+    deleting derived.db or output files is always safe, but raw.db should
+    only be deleted deliberately.
+
+Stage 2 — Calculate (run_calculator.py / calculator/)
+    Reads all production records from raw.db, computes every KPI, and stores
+    the results as JSON values in derived.db.  Because derived.db is fully
+    regenerated on every cycle it can safely be deleted and recreated.
+
+Stage 3 — Render (run_renderer.py / renderer/)
+    Reads all KPI values from derived.db and builds two self-contained HTML
+    files (full dashboard and truncated dashboard).  Each file is written to
+    every output destination configured in settings.yaml.  A SHA-256 hash
+    check skips writes when the file has not changed, avoiding unnecessary
+    network traffic.
+
+
+1.3  Entry points
+-----------------
+There are four Python entry-point scripts in the project root.
+
+    run_all.py
+        Starts the infinite collect → calculate → render loop.
+        This is the normal production mode.  Stop with Ctrl+C.
+
+            python run_all.py
+
+    run_collector.py
+        Runs the collection stage once and exits.  Useful to verify
+        that all databases are reachable and to populate raw.db before
+        the first full run.
+
+            python run_collector.py
+
+    run_calculator.py
+        Reads raw.db and recomputes all KPIs, writing derived.db.
+        Run this after editing any file in calculator/ to test your
+        changes without waiting for new production data.
+
+            python run_calculator.py
+
+    run_renderer.py
+        Reads derived.db and regenerates both HTML files.
+        Run this after editing any file in renderer/ to preview the
+        dashboard immediately without recollecting or recalculating.
+
+            python run_renderer.py
+
+Typical development workflow:
+
+    1. python run_collector.py       (collect data once)
+    2. edit calculator/*.py
+    3. python run_calculator.py      (recalculate)
+    4. python run_renderer.py        (re-render, open output HTML in browser)
+    -- repeat steps 2-4 as needed without waiting for new data
+
+
+1.4  Project layout
+-------------------
+    isotope-dashboard/
+    │
+    ├── config/
+    │   ├── settings.yaml       All paths, thresholds, and settings
+    │   ├── loader.py           Reads settings.yaml (used by all modules)
+    │   └── spec_settings.py    Helper: colour-coding based on spec ranges
+    │
+    ├── collector/              Stage 1 — reads external sources
+    │   ├── access_reader.py    MS Access: isotope bestralingen, efficiency,
+    │   │                         storingen
+    │   ├── excel_reader.py     Excel: ploegen, planning, VSM, OTIF
+    │   ├── http_reader.py      HTTP/JSON: cyclotron production schedule
+    │   ├── html_reader.py      Static HTML: planning and productieschema
+    │   ├── raw_db.py           SQLite schema + read/write helpers (raw.db)
+    │   └── derived_db.py       SQLite schema + read/write helpers (derived.db)
+    │
+    ├── calculator/             Stage 2 — computes KPIs from raw.db
+    │   ├── efficiency.py       Cyclotron beam efficiency % + mCi/µAh
+    │   ├── within_spec.py      % productions within quality spec per week
+    │   ├── otif.py             OTIF: actual vs nominal targetstroom per week
+    │   ├── shift_stats.py      Per-shift production assignment and stats
+    │   ├── leaderboard.py      Ploeg leaderboard and rolling averages
+    │   ├── issues.py           Operator comment / issue counts
+    │   └── isotope_data.py     Shared helpers: weekly slices, monthly data
+    │
+    ├── renderer/               Stage 3 — generates HTML from derived.db
+    │   ├── assets.py           Shared CSS and JavaScript constants
+    │   ├── file_protection.py  SHA-256 hash-based skip-if-unchanged logic
+    │   ├── gantt.py            Gantt chart HTML builder
+    │   ├── tables.py           Reusable HTML table builders
+    │   ├── helpers.py          Leaderboard, shift table, chart HTML builders
+    │   ├── dashboard_full.py   Full dashboard renderer
+    │   └── dashboard_truncated.py  Truncated (operator) dashboard renderer
+    │
+    ├── data/                   Created automatically on first run
+    │   ├── raw.db              Collected records — source of truth
+    │   └── derived.db          Calculated KPIs — safe to delete
+    │
+    ├── output/                 Local copy of generated HTML files
+    │
+    ├── run_all.py              Entry point: full pipeline loop
+    ├── run_collector.py        Entry point: collect only
+    ├── run_calculator.py       Entry point: calculate only
+    ├── run_renderer.py         Entry point: render only
+    └── requirements.txt
+
+
+1.5  Data flow summary
+-----------------------
+The diagram below shows how each external source flows through the pipeline
+to the HTML output.
+
+    External source              raw.db table(s)       derived.db key(s)
+    ─────────────────────────────────────────────────────────────────────
+    bestralingen.mdb
+      Galliumbestralingen    --> gallium_data        --> efficiency_weeks
+                                                         within_spec_weeks
+                                                         otif_weeks
+                                                         ga_running / ga_previous
+      Rubidiumbestralingen   --> rubidium_data       --> (same KPIs)
+      Indiumbestralingen     --> indium_data         --> (same KPIs)
+      Thalliumbestralingen   --> thallium_data       --> (same KPIs)
+      Iodine 123             --> iodine_data         --> (same KPIs)
+      Galliumopbrengsten     --> gallium_opbrengsten --> ga_prod_efficiency_weeks
+      Indiumopbrengsten      --> indium_opbrengsten  --> in_prod_efficiency_weeks
+
+    ProcesGegevens.accdb
+      Output_EfficiencyTargets --> efficiency_targets --> efficiency_weeks (%)
+
+    Storingen_IBA.accdb
+      001MTO ...             --> iba_storingen       --> iba_storingen (display)
+
+    Storingen_Philips.accdb
+      001MTO ...             --> philips_storingen   --> philips_storingen
+
+    Ploegen.xlsx             --> excel_cache (blobs) --> ploeg_leaderboard
+    Planning & Control.xlsm --> excel_cache (blobs) --> shift assignment
+    VSM targetstroom.xlsx    --> blobs (vsm)         --> vsm_data
+    OTIF week*.xlsx          --> blobs (otif)        --> otif_kpi_data
+
+    productions_database.json
+      or cyclotron.asp (HTTP) --> blobs (cyclotron)  --> gantt_data
+    planning.html             --> blobs              --> planning modal
+    productieschema.html      --> blobs              --> schema modal
+
+
+1.6  Persistence model
+-----------------------
+raw.db
+    Written by the collector. Never recalculated. Every row has an
+    AUTOINCREMENT primary key and a UNIQUE constraint on (identifier, date)
+    so re-running the collector never creates duplicate rows (INSERT OR
+    REPLACE upsert strategy). Deleting this file forces a full re-import on
+    the next collect cycle, which may take longer than usual.
+
+derived.db
+    Written by the calculator. Fully overwritten on every cycle. The entire
+    database is a single key-value table (`kpis`) where each row stores one
+    KPI as a JSON string. This design means adding a new KPI never requires
+    a schema migration.  Deleting derived.db is always safe.
+
+Excel cache (excel_cache table inside raw.db)
+    Each Excel file is compared against its stored modification time on every
+    cycle. If the mtime matches the cached value the file is not re-parsed,
+    reducing I/O on every cycle. Only when the file changes is it re-parsed
+    and the cache updated.
+
+
+1.7  Loop interval and error handling
+--------------------------------------
+The loop interval defaults to 60 seconds and is set in settings.yaml:
+
+    loop_interval_seconds: 60
+
+If any stage raises an unhandled exception the error is printed and the loop
+continues after the normal sleep interval. This means a temporary network
+failure (e.g. a UNC path becoming unreachable) only causes one missed update,
+not a crash. Individual extraction functions also catch their own exceptions
+and return empty lists rather than propagating, so a single failed database
+does not block the others.
+
+===============================================================================
