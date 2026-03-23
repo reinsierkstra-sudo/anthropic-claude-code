@@ -35,61 +35,11 @@ H3_SIZE    = Pt(11)
 CODE_SIZE  = Pt(9)
 
 
-# ── Logo builder (Pillow) ─────────────────────────────────────────────────────
+# ── Logo loader ───────────────────────────────────────────────────────────────
 def _build_logo_png() -> bytes:
-    """
-    Render an approximation of the Curium logo as PNG bytes.
-    Layout: "curium™" in dark purple with a hot-pink wave,
-            "LIFE FORWARD" in grey below.
-    """
-    from PIL import Image, ImageDraw, ImageFont
-    import math
-
-    W, H = 600, 200
-    img = Image.new("RGBA", (W, H), (255, 255, 255, 0))
-    draw = ImageDraw.Draw(img)
-
-    # Try to load a system font; fall back to default
-    try:
-        font_big  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 90)
-        font_tag  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 28)
-        font_tm   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
-    except OSError:
-        font_big  = ImageFont.load_default()
-        font_tag  = font_big
-        font_tm   = font_big
-
-    # "curium" in purple
-    text   = "curium"
-    draw.text((20, 20), text, font=font_big, fill=(0x4B, 0x1E, 0x52, 255))
-
-    # Get width of "curium" text
-    bbox = draw.textbbox((20, 20), text, font=font_big)
-    text_right = bbox[2]
-
-    # "™" in pink, superscript position
-    draw.text((text_right + 4, 22), "™", font=font_tm, fill=(0xE5, 0x06, 0x95, 255))
-
-    # Pink wave — a bezier-approximated arc beneath the right side of the word
-    wave_x0 = text_right - 120
-    wave_y0  = 110
-    # Draw a smooth arc / wave using polyline
-    pts = []
-    for i in range(80):
-        t = i / 79.0
-        x = wave_x0 + t * 140
-        # sine wave: rises then falls, like the Curium swoosh
-        y = wave_y0 + 30 * math.sin(t * math.pi)
-        pts.append((x, y))
-    draw.line(pts, fill=(0xE5, 0x06, 0x95, 255), width=8)
-
-    # "LIFE FORWARD" tagline in grey, spaced out
-    tagline = "L I F E   F O R W A R D"
-    draw.text((22, 145), tagline, font=font_tag, fill=(0x80, 0x80, 0x80, 255))
-
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
+    """Return the official Curium logo PNG bytes from logo.png in the repo root."""
+    logo_path = Path(__file__).parent / "logo.png"
+    return logo_path.read_bytes()
 
 
 # ── docx helpers ──────────────────────────────────────────────────────────────
