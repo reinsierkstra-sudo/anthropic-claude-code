@@ -65,6 +65,7 @@ current/previous week tables, and shift statistics -- suitable for a bureau scre
     +-- config/
     |   +-- settings.yaml          # All paths, thresholds, and settings
     |   +-- loader.py              # Reads settings.yaml; used by all other modules
+    |   +-- spec_settings.py       # Colour-coding helpers based on spec ranges
     |
     +-- collector/                 # Reads external sources, writes to data/raw.db
     |   +-- access_reader.py       # MS Access: bestralingen, procesgegevens, storingen
@@ -89,6 +90,7 @@ current/previous week tables, and shift statistics -- suitable for a bureau scre
     |   +-- file_protection.py     # SHA256 hash-based read-only file protection
     |   +-- gantt.py               # Gantt chart HTML builder
     |   +-- tables.py              # Reusable HTML table builders (KPI, production, etc.)
+    |   +-- helpers.py             # Leaderboard, shift table, chart HTML builders
     |   +-- dashboard_full.py      # Full dashboard renderer
     |   +-- dashboard_truncated.py # Truncated dashboard renderer
     |
@@ -155,8 +157,9 @@ Minimum paths to update:
       ploegen_excel:        \\SERVER\Share\Ploegen.xlsx
       planning_excel:       \\SERVER\Share\Planning & Control Cyclotron.xlsm
       vsm_excel:            \\SERVER\Share\Targetstroom daily management VSM cyclotron.xlsx
-      output_local:         output\dashboard.html
-      output_network:       \\SERVER\Share\dashboard.html
+      output_local:         output\isotope_dashboard.html        # full dashboard (local)
+      output_network:       \\SERVER\Share\isotope_dashboard.html # truncated (network share)
+      output_bureau:        X:\Bureau\Productie dashboard.html    # full dashboard (bureau screen)
 
 Step 3 -- Run (see section 5).
 
@@ -280,8 +283,9 @@ The application reads from five types of source:
 7c. OTIF -- gedraaide producties (%)
 
     On Time In Full for actual beam current vs the nominal (planned) value.
-    A production scores as "in" if targetstroom / nominal_targetstroom >= the
-    configured OTIF threshold (default 97%).
+    Each production scores (actual targetstroom / nominal targetstroom) x 100.
+    The weekly OTIF is the average of all production scores in that week.
+    Bars are coloured green if >= otif_green_threshold (default 97), red otherwise.
     Displayed: last 10 weeks, 1-year average, 3-month average.
 
 7d. Production efficiency (mCi/uAh)
@@ -318,15 +322,20 @@ Two HTML files are generated each cycle:
 
     Full dashboard   -- all sections (KPI tables, production detail, charts,
                         leaderboard, Gantt, planning modals).
-    Truncated dashboard -- KPI summary + current/previous week tables +
-                        shift statistics only; intended for operators. Certain
-                        internal metrics (leaderboard, charts, issue tracking)
-                        are intentionally omitted from this version.
+    Truncated dashboard -- KPI summary + current/previous week tables only;
+                        intended for shared operator workstations where fast
+                        page load matters. Charts, leaderboard, Gantt, and
+                        detail sections are intentionally omitted.
 
-Each file is written to all destinations configured under paths: in settings.yaml
-(local output folder, network share, operator screen share, etc.). The renderer uses
-SHA256 hashing to skip writing files that have not changed, reducing unnecessary
-network I/O.
+Each file is written to a specific destination:
+
+    output_local    <- full dashboard   (local filesystem copy)
+    output_network  <- truncated dashboard   (network share)
+    output_bureau   <- full dashboard   (bureau operator screen)
+
+The renderer protects output files with SHA256 hashes and sets them read-only
+after writing. If a file is manually edited between cycles a warning banner
+appears in the regenerated dashboard.
 
 -------------------------------------------------------------------------------
 
@@ -349,27 +358,27 @@ paths:
     planning_html        Path to planning.html (embedded modal).
     productieschema_html Path to productieschema.html (embedded modal).
     output_local         Output path for the full dashboard HTML (local).
-    output_network       Output path for the full dashboard HTML (network share).
-    output_bureau        Output path for the truncated (operator) dashboard HTML.
-    (additional output destinations can be added as needed)
+    output_network       Output path for the truncated dashboard HTML (network share).
+    output_bureau        Output path for the full dashboard HTML (bureau screen).
 
 loop_interval_seconds:
     How many seconds to sleep between pipeline cycles. Default: 60.
 
-spec_settings:
+spec:
     Per-isotope quality thresholds. Example:
         gallium:
-          philips:
-            min_targetstroom: 75
-            max_targetstroom: 85
-          iba:
-            min_targetstroom: 130
-            max_targetstroom: 140
+          philips: {min: 75, max: 85}
+          iba:     {min: 130, max: 140}
+        thallium: {min: 166, max: 174}
+        iodine:
+          within_spec:
+            output:       {min: 78,  max: 114.9}
+            targetstroom: {min: 96,  max: 124}
     Thresholds are used by the within-spec and OTIF calculators.
     Change these when production specifications change -- no code edits needed.
 
-otif_threshold:
-    Minimum targetstroom ratio (0-100) for a production to count as "in" for OTIF.
+otif_green_threshold:
+    Weekly OTIF percentage at or above which the bar is coloured green.
     Default: 97.
 
 -------------------------------------------------------------------------------
