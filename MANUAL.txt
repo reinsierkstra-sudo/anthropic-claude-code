@@ -844,3 +844,157 @@ and 'productieschema_html' respectively so that the renderer can retrieve
 them from the database without knowing their file paths.
 
 ===============================================================================
+5. Raw Database (raw.db) — Schema & Storage API
+=================================================
+
+File:  data/raw.db   (SQLite 3)
+API:   collector/raw_db.py
+
+All tables are created (if they do not already exist) by connect(db_path).
+Columns that were added to tables after the initial schema are applied with
+ALTER TABLE … ADD COLUMN; the call is silently ignored if the column already
+exists, so the migration is safe to re-run.
+
+
+5.1  Isotope production tables
+--------------------------------
+One table per isotope, all with the same structure:
+
+    CREATE TABLE IF NOT EXISTS <table> (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        <columns>,
+        UNIQUE(identifier, date)
+    )
+
+identifier is a BO number string; date is a TEXT in 'YYYY-MM-DD' format.
+The composite UNIQUE constraint means each BO/date pair can only appear once.
+SQLite implicitly creates a covering index on (identifier, date).
+
+Table-specific columns:
+┌────────────────┬──────────────────────────────────────────────────────────┐
+│ iodine_data    │ date, value1, value2, efficiency, efficiency_raw,        │
+│                │ identifier, bo_targetstroom, targetstroom, yield_percent,│
+│                │ output_percent, cyclotron, totale_dosis, meting_d1,      │
+│                │ meting_waste, verwacht, stop_datum, stop_tijd,           │
+│                │ start_tijd, totale_bestralingstijd, totale_storingstijd, │
+│                │ opmerking, extracted_at                                  │
+├────────────────┼──────────────────────────────────────────────────────────┤
+│ rubidium_data  │ date, value1, value2, efficiency, identifier, cyclotron, │
+│                │ stroom, duur, eob_tijd, opmerking, extracted_at          │
+├────────────────┼──────────────────────────────────────────────────────────┤
+│ gallium_data   │ date, targetstroom, identifier, cyclotron, duur,         │
+│                │ eobhrmin, opmerking, extracted_at                        │
+├────────────────┼──────────────────────────────────────────────────────────┤
+│ indium_data    │ date, targetstroom, identifier, cyclotron,               │
+│                │ bestralingspositie, duur, eobhrmin, opmerking,           │
+│                │ extracted_at                                             │
+├────────────────┼──────────────────────────────────────────────────────────┤
+│ thallium_data  │ date, targetstroom, identifier, cyclotron, kant, duur,   │
+│                │ eob_tijd, opmerking, extracted_at                        │
+└────────────────┴──────────────────────────────────────────────────────────┘
+
+Write function:  store(conn, table_name, data, *extra_col_names)
+    data is a list of dicts.  For each row:
+      1. The date field is normalised to 'YYYY-MM-DD'.
+      2. SELECT checks whether (identifier, date) already exists.
+      3. If it does  → UPDATE all non-key columns.
+      4. If it does not → INSERT full row.
+    extracted_at is set to the current UTC ISO timestamp automatically.
+    stop_datum, stop_tijd, and start_tijd in iodine_data are always cast to
+    str to avoid type mismatches from the Access driver.
+
+
+5.2  Auxiliary date-keyed tables
+----------------------------------
+    UNIQUE(date)   — one row per calendar day.
+
+    gallium_opbrengsten   (date, opbrengst_mbq, extracted_at)
+    indium_opbrengsten    (date, opbrengst_mbq, extracted_at)
+    efficiency_targets    (date, efficiency, extracted_at)
+
+Write function:  store_opbrengsten(conn, table_name, data)
+    Uses INSERT OR REPLACE (SQLite upsert on the UNIQUE date column).
+    date is normalised to 'YYYY-MM-DD' before insert.
+
+
+5.3  Storingen (downtime) tables
+----------------------------------
+    UNIQUE(storingsnummer, datum)   — one row per incident/date pair.
+
+    iba_storingen      (storingsnummer, datum, storing, extracted_at)
+    philips_storingen  (storingsnummer, datum, storing, extracted_at)
+
+Write function:  store_storingen(conn, table_name, data)
+    Uses INSERT OR REPLACE on the composite unique key.
+
+
+5.4  Blob store  (blobs table)
+--------------------------------
+    CREATE TABLE IF NOT EXISTS blobs (
+        key        TEXT PRIMARY KEY,
+        value_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+
+Used for large structured objects that do not fit the relational schema.
+
+    store_blob(conn, key, value)
+        Serialises value with json.dumps(default=str) and upserts the
+        row.  updated_at is set to the current ISO timestamp.
+
+    load_blob(conn, key, default=None)
+        Returns the deserialised Python object, or default if the key is
+        absent or the JSON is malformed.
+
+Keys stored at runtime:
+    'ploegen'           — ploeg definitions dict from Ploegen.xlsx
+    'planning'          — shift roster dict from Planning .xlsm
+    'vsm'               — VSM targetstroom rows + week_avg_otif
+    'otif'              — tuple (otif_kpi_data, otif_table_data)
+    'planning_html'     — raw HTML fragment for the planning panel
+    'productieschema_html' — raw HTML fragment for the productieschema panel
+
+
+5.5  Excel cache  (excel_cache table)
+----------------------------------------
+    CREATE TABLE IF NOT EXISTS excel_cache (
+        cache_key TEXT PRIMARY KEY,
+        mtime     REAL NOT NULL,
+        data_json TEXT NOT NULL,
+        saved_at  TEXT NOT NULL
+    )
+
+cache_key is a logical name ('ploegen', 'vsm', 'planning', 'otif').
+mtime is the os.path.getmtime() float of the Excel file at parse time.
+data_json holds the full parsed result as JSON.
+Loader functions check mtime before re-parsing; if the stored mtime
+matches the current file mtime (within 0.001 s) the cached data is used.
+
+
+5.6  Production comments table
+--------------------------------
+    CREATE TABLE IF NOT EXISTS production_comments (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        isotope_type     TEXT,
+        production_date  TEXT,
+        bo_number        TEXT,
+        comment_type     TEXT,
+        created_at       TEXT,
+        UNIQUE(isotope_type, production_date, bo_number)
+    )
+
+Stores user-entered annotations attached to individual productions.
+Not populated by the automated collector; written by the web UI layer.
+
+
+5.7  Query helpers
+--------------------
+    get_max_date(conn, table_name) -> str | None
+        Returns SELECT MAX(date) for incremental Access queries.
+        Returns None if the table is empty or does not exist.
+
+    load_table(conn, table_name) -> list of dicts
+        Returns every row in a table as a list of dicts.
+        Returns [] if the table does not exist.
+
+===============================================================================
