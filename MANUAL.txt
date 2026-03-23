@@ -1466,3 +1466,226 @@ Each numbered step is wrapped in try/except; a failure inserts a safe
 default value for that key and the pipeline continues.
 
 ===============================================================================
+11. Dashboard Rendering
+========================
+
+Source files:  run_renderer.py
+               renderer/dashboard_full.py
+               renderer/dashboard_truncated.py
+               renderer/gantt.py
+               renderer/helpers.py
+               renderer/tables.py
+               renderer/assets.py
+               renderer/file_protection.py
+
+
+11.1  Entry point — run_renderer.py
+--------------------------------------
+Function:  main() → bool
+
+Sequence:
+    1. Load settings with load_settings().
+    2. Open derived.db, call load_kpis() to retrieve all computed KPIs.
+    3. Call fetch_cyclotron_data(url) for live planning entries.
+    4. Call convert_bestralingen_to_gantt_format(ga, rb, in_, tl, io) to
+       convert historical bestralingen records (last 180 days) to the same
+       dict format as planning entries.
+    5. Deduplicate: for each bonr that appears in both sets the historical
+       record replaces the planning record (actual data wins over planned).
+    6. Store the merged list in data['cyclotron_data'].
+    7. Render the full dashboard:
+           html = dashboard_full.create_html_dashboard(data)
+    8. Render the truncated dashboard:
+           short_html = dashboard_truncated.create_truncated_dashboard(data)
+    9. Write output files (see §11.6).
+
+
+11.2  Full dashboard  (dashboard_full.py)
+-------------------------------------------
+Entry point:  create_html_dashboard(data) → str
+
+Returns a single self-contained HTML string (~25 000+ lines when rendered).
+All CSS and JavaScript is embedded inline; no external files are required
+except the CDN-hosted Chart.js library.
+
+Sections included:
+    • Efficiency, within-spec, and OTIF KPI tables
+    • Gantt chart (cyclotron production timeline, §11.4)
+    • Current-week and previous-week production summary tables
+    • Per-isotope detail sections: Gallium, Rubidium, Indium, Thallium,
+      Iodine — each with an individual production record table (with
+      dropdown comment fields), a monthly average chart, and a current-
+      week chart
+    • OTIF Cyclotron section: missed-order table + six per-product KPI
+      line charts (Gallium, I-123, Indium, Krypton, Thallium, Rubidium)
+    • Per-isotope cyclotron efficiency tables (mCi/µAh)
+    • Ploeg performance tables, rolling-average charts, leaderboard
+    • Monthly winner banner
+    • Storingen tables (IBA and Philips)
+    • Seven modal dialogs (see below)
+
+Modal dialogs:
+    roosterModal           Planning HTML embedded via <iframe srcdoc>
+    productieschemaModal   Production schema HTML via <iframe srcdoc>
+    ploegModal             Per-ploeg production details (filterable by period)
+    productionHistoryModal Shift-level breakdown for a single BO number
+    sfModal                List of productions affected by a storingsnummer
+    dosisoverzichtModal    Image viewer for dosis overview PNG
+    dmVsmModal             DM VSM table (daily targetstroom + OTIF%)
+
+Templating approach:
+    No Jinja2 or template files.  Every section is built as a Python
+    f-string and concatenated.  Chart data is embedded as JSON literals
+    assigned to JavaScript variables inside <script> blocks.
+
+
+11.3  Truncated dashboard  (dashboard_truncated.py)
+-----------------------------------------------------
+Entry point:  create_truncated_dashboard(data) → str
+
+A lightweight version intended for quick reference.  Includes:
+    • Efficiency KPI table (current 10 weeks only)
+    • Within-spec KPI table
+    • OTIF (gedraaide producties) KPI table
+    • Current-week and previous-week production summary tables
+
+Excludes all isotope detail sections, charts, OTIF cyclotron section,
+ploeg content, storingen tables, and modals.
+
+
+11.4  Gantt chart  (gantt.py)
+-------------------------------
+Entry point:  generate_gantt_chart_html(cyclotron_data) → str
+
+convert_bestralingen_to_gantt_format(ga, rb, in_, tl, io) → list
+    Converts raw bestralingen records to the planning-dict format:
+        bonr, product, cyclotron, startDate, startTime, endDate, endTime,
+        duration, type ('Data' or 'Pauze')
+    Only records from the last 180 days are included.
+    EOB time is taken from eob_tijd / eobhrmin; start time is derived
+    by subtracting the parsed duration.
+
+Gantt HTML structure:
+    <div id="ganttLabels">   — sticky left column: "Kant 1", "Kant 2",
+                               "Philips" lane labels
+    <div id="ganttWrapper">  — horizontally scrollable timeline area
+    <div id="ganttChart">    — populated by embedded JavaScript
+
+Isotope colour mapping (JavaScript):
+    GA067 / Ga-067   blue   #0000ff
+    RB081 / Rb-082   red    #FF0000
+    IN111 / In-111   cyan   #00ffff
+    TL201 / Tl-201   yellow #FFDE21
+    I123  / I-123    green  #00FF00
+    Pauze            grey   #CCCCCC
+
+JavaScript features:
+    Renders hourly time grid labels.
+    Renders production blocks with tooltips on hover.
+    Draws a red "NOW" vertical line at the current time.
+    Provides a "Spring naar Nu" (Jump to Now) button.
+    Persists horizontal scroll position in sessionStorage across the
+    60-second auto-reload.
+
+
+11.5  Helper modules
+----------------------
+renderer/helpers.py — HTML fragment builders
+    fmt_bo(bo)                    Strip trailing .0 and dashes from BO numbers.
+    fmt_date_str(d)               Format as YYYY-MM-DD.
+    fmt_targetstroom_cell(...)    Coloured <td> with clickable BO link.
+    fmt_rb_cell(...)              Rubidium cell: efficiency% + beam current µA.
+    fmt_io_cell(...)              Iodine cell: yield% / output% + beam current µA.
+    build_week_table_rows(...)    Assemble one week's production summary row.
+    fmt_kpi_table(...)            Full KPI table HTML (10 weeks + averages).
+    generate_ploegen_table_html(...)   Ploeg performance table.
+    generate_shift_tables_html(...)    Shift statistics tables.
+    generate_leaderboard_html(...)     Ranked leaderboard list.
+    generate_monthly_winner_html(...)  Champion banner.
+    generate_ploeg_rolling_charts_html(...)  Rolling-average line charts.
+
+renderer/tables.py — cell colour helpers
+    _get_targetstroom_color(ts, isotope, cyclotron)
+        Returns '#3BB143' (green) or '#FF2400' (red) based on whether ts
+        is inside the spec window for that isotope and cyclotron type.
+    _get_efficiency_color(efficiency)
+        Green if 95 ≤ efficiency ≤ 105, else red.
+    _get_rb_stroom_color(stroom)
+        Green if 67 ≤ stroom ≤ 72, else red.
+    _get_iodine_yield_color(yield_pct)
+    _get_iodine_output_color(output_pct)
+
+renderer/assets.py
+    _GANTT_CSS — complete Gantt chart CSS (injected inline into every
+                 page that contains a Gantt section).
+
+
+11.6  Output files
+--------------------
+Three copies of isotope_dashboard.html are written after each render:
+
+    Local filesystem (paths.output_local)
+        isotope_dashboard.html
+        isotope_dashboard.html.hash
+
+    Network share (paths.output_network)
+        isotope_dashboard.html
+        isotope_dashboard.html.hash
+
+    Bureau directory (paths.output_bureau)
+        Productie dashboard.html
+        Productie dashboard.html.hash
+
+In addition, dosisoverzicht.png is copied to each output directory so
+the image modal can display it.
+
+After writing each file the renderer:
+    1. Sets the file to read-only (removes S_IWUSR | S_IWGRP | S_IWOTH).
+    2. Computes a SHA-256 hash and saves it to the .hash file.
+
+At the start of the next render cycle the hash of the existing file is
+checked.  If it does not match (the file was manually edited) a
+tampering warning banner is rendered into the new HTML.
+
+
+11.7  Embedded HTML content
+------------------------------
+planning_html_content and productieschema_html_content are loaded from
+the blobs table of raw.db (keys 'planning_html' and
+'productieschema_html_content').
+
+Both are embedded in modal <iframe> elements using the srcdoc attribute:
+    content.replace('&', '&amp;').replace('"', '&quot;')
+    <iframe srcdoc="<escaped_content>"
+            sandbox="allow-scripts allow-same-origin">
+
+If the content is None or empty a warning paragraph is shown instead:
+    "⚠️ planning.html kon niet worden geladen.
+     Controleer of het W:-station beschikbaar is."
+
+
+11.8  Browser-side JavaScript
+--------------------------------
+Charts: Chart.js 3.9.1 (CDN) with chartjs-adapter-date-fns 3.0.0.
+        Chart types: bar (weekly KPI bars) and line (trend charts).
+        Reference lines added as Chart.js annotation plugin datasets
+        (dashed horizontal lines at spec limits).
+
+Auto-reload: Page reloads every 60 seconds via setTimeout, unless a
+             modal is open (checked by CSS .modal.open selector).
+
+Session persistence: Scroll positions for each section are saved in
+             sessionStorage before the reload and restored afterwards.
+
+Comment dropdowns: Each production row contains a <select> with reason
+             codes for out-of-spec deviations.  Selecting a value calls
+             saveComment(isotope, date, boNumber, commentType) which:
+               1. Saves to localStorage immediately.
+               2. POSTs to /save_comment on the local server.
+             On page load all saved comments are restored from localStorage.
+
+Modal toggles: showPloegDetails(ploegNumber), filterPloegData(period),
+             showProductionHistory(boNummer, date, isotope),
+             showSFModal(sfCode, count).
+
+===============================================================================
