@@ -37,9 +37,38 @@ CODE_SIZE  = Pt(9)
 
 # ── Logo loader ───────────────────────────────────────────────────────────────
 def _build_logo_png() -> bytes:
-    """Return the official Curium logo PNG bytes from logo.png in the repo root."""
+    """
+    Load logo.png and flatten RGBA transparency to a white background.
+    Word cannot reliably render RGBA PNGs; flattening to RGB fixes this.
+    """
+    from PIL import Image
     logo_path = Path(__file__).parent / "logo.png"
-    return logo_path.read_bytes()
+    img = Image.open(logo_path).convert("RGBA")
+    bg  = Image.new("RGBA", img.size, (255, 255, 255, 255))
+    bg.paste(img, mask=img.split()[3])          # paste over white using alpha channel
+    rgb = bg.convert("RGB")
+    buf = io.BytesIO()
+    rgb.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+# ── Drawing-id counter (must be unique across all parts in the document) ──────
+_DRAWING_ID = 0
+
+def _next_drawing_id() -> int:
+    global _DRAWING_ID
+    _DRAWING_ID += 1
+    return _DRAWING_ID
+
+
+def _fix_drawing_ids(container):
+    """
+    After adding pictures, rewrite every wp:docPr/@id so they are globally unique.
+    python-docx always starts each part's id counter at 1, causing Word to drop
+    duplicate-id drawings silently.
+    """
+    for el in container._element.iter(qn("wp:docPr")):
+        el.set("id", str(_next_drawing_id()))
 
 
 # ── docx helpers ──────────────────────────────────────────────────────────────
@@ -124,6 +153,7 @@ def _add_header(doc, logo_bytes: bytes):
     p_logo = cell_logo.paragraphs[0]
     run_logo = p_logo.add_run()
     run_logo.add_picture(io.BytesIO(logo_bytes), width=Cm(5))
+    _fix_drawing_ids(header)
 
     # Right cell: document meta
     cell_meta = tbl.cell(0, 1)
@@ -159,6 +189,7 @@ def _add_header(doc, logo_bytes: bytes):
     p2.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     run2 = p2.add_run()
     run2.add_picture(io.BytesIO(logo_bytes), width=Cm(3))
+    _fix_drawing_ids(header2)
     # Rule
     pPr2  = p2._p.get_or_add_pPr()
     pBdr2 = OxmlElement("w:pBdr")
@@ -305,6 +336,7 @@ def _add_title_page(doc: Document, logo_bytes: bytes):
     _para_spacing(p_logo, before=Pt(60), after=Pt(24))
     run_logo = p_logo.add_run()
     run_logo.add_picture(io.BytesIO(logo_bytes), width=Cm(8))
+    _fix_drawing_ids(doc)
 
     # Main title
     p_title = doc.add_paragraph()
