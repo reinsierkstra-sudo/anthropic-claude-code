@@ -300,3 +300,76 @@ Looking at them side by side can pinpoint the root cause:
         process change that affected all parameters.
 
 ===============================================================================
+
+5. Ploeg Leaderboard: Team Performance
+========================================
+
+The ploeg leaderboard ranks the five shift teams by the percentage of
+productions they oversaw that were within specification.  It is one of the
+most directly actionable sections for a manager: it shows not just how the
+facility is doing overall, but which teams are driving performance and which
+may need support.
+
+
+5.1  What is a ploeg?
+----------------------
+The cyclotron runs 24 hours a day, seven days a week, split into three shifts:
+
+    Ochtenddienst   Morning shift    07:00 – 15:00
+    Middagdienst    Afternoon shift  15:00 – 23:00
+    Nachtdienst     Night shift      23:00 – 07:00
+
+Five rotating teams (ploegen, numbered 1–5) cover these shifts on a rolling
+schedule.  Each production run is attributed to the shift team that operated
+the cyclotron during that run.  If a production spans two shifts, credit is
+split proportionally between the two teams.
+
+
+5.2  The leaderboard table
+----------------------------
+The leaderboard shows each team's within-spec percentage over the last 30
+days, ranked from best to worst.  The colour coding follows the convention
+described in Section 2.3 (green = more than 2% above average, red = more
+than 2% below, black = within 2%).
+
+Below the leaderboard, three additional columns show performance over longer
+periods: last 1 month, last 3 months, and last 6 months.  Use these to tell
+apart a team that has recently improved from one that has been consistently
+strong.
+
+
+5.3  The rolling-average trend chart
+--------------------------------------
+Below the table is a line chart showing each team's 30-day rolling average
+over the past six months.  Each team has its own coloured line.
+
+How to read it as a manager:
+    • A line trending upward indicates improving performance.
+    • A line trending downward indicates declining performance.
+    • Lines that are closely grouped indicate consistent parity between teams.
+    • A single line pulling away from the rest (up or down) indicates one
+      team performing notably differently — worth understanding why.
+
+
+5.4  Monthly winner banner
+----------------------------
+At the top of the leaderboard section a banner highlights the team with the
+highest within-spec percentage in the most recently completed calendar month.
+This is intended as a recognition signal and a quick reference for monthly
+performance reviews.
+
+
+5.5  Viewing a team's individual productions
+---------------------------------------------
+Clicking on a team row in the leaderboard opens a detail panel (pop-up)
+showing the individual productions attributed to that team over the selected
+period.  You can filter by period (1 month, 3 months, 6 months) using the
+buttons at the top of the panel.
+
+Each row shows the isotope, date, BO number, and whether the production was
+within spec.  This lets you see whether a team's low score is driven by one
+isotope or by a broader pattern across all products.
+
+Close the panel by clicking the X in the top-right corner.
+
+===============================================================================
