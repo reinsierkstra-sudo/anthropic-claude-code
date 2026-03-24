@@ -107,7 +107,7 @@ know it, you can read any section at a glance.
 Each KPI has its own threshold for what counts as green:
 
     Efficiency      Green when the weekly average is at or above the
-                    10-week running average.  In other words, the bar is
+                    10-week running average.  In other words, the cell is
                     green when this week is at least as good as recent
                     history.
 
@@ -115,7 +115,7 @@ Each KPI has its own threshold for what counts as green:
                     10-week running average.
 
     OTIF            Green when the weekly score is 97% or higher.
-                    Below 97% the bar turns red regardless of history.
+                    Below 97% the cell turns red regardless of history.
 
 
 2.2  Colour in the production tables
@@ -143,34 +143,37 @@ Team (ploeg) rankings use a slightly different scale:
 3. The Three KPIs: Efficiency, Within-Spec, OTIF
 ==================================================
 
-The top section of the dashboard shows three KPI tables side by side.  Each
-covers all five isotopes combined and displays performance week by week.
+The top section of the dashboard shows three KPI tables, stacked one below
+the other.  Each covers all five isotopes combined and displays performance
+week by week.
 
 Each table has the same layout:
-    • A row of coloured bars, one per week, covering the last 10 weeks.
+    • One row of coloured cells covering the last 10 weeks, one cell per week.
+      Each cell shows the percentage value for that week.
     • Three scalar averages to the right: last 10 weeks, last 3 months,
       last 12 months.
     • The most recent week is on the right; older weeks are to the left.
 
 
-3.1  Efficiency — are we getting the most out of beam time?
-------------------------------------------------------------
+3.1  Efficiency — how much of the beam reaches the target?
+-----------------------------------------------------------
 What it measures:
-    How much radioactive product (in millicuries) is produced for every
-    micro-ampere-hour (µAh) of beam charge delivered by the cyclotron.
-    A higher number means more product from the same amount of beam time.
+    Beam transmission efficiency: the ratio of µA measured at the target
+    faraday to µA measured at the source faraday, expressed as a percentage.
+    A higher percentage means more of the generated beam is reaching the
+    target; less is being lost in transit.
 
 In plain language:
-    Think of it as miles per gallon for the cyclotron.  If the number goes
-    up, we are getting more product from the same running cost.  If it drops,
-    something is reducing yield — a degraded target, beam losses, or a
-    process issue.
+    The cyclotron generates a beam at the source.  Not all of it arrives at
+    the target — some is scattered or absorbed on the way.  This KPI tracks
+    how large that loss is.  A drop in efficiency means the beam is losing
+    more current between source and target than usual.
 
-How to read the chart:
-    Each bar is the average efficiency across all productions in that week.
-    A green bar means this week was at or above the 10-week average.
-    A red bar means it was below.  An isolated red bar is not a concern; two
-    or more consecutive red bars indicate a pattern.
+How to read the table:
+    Each cell shows the average efficiency percentage for that week.
+    A green cell means this week was at or above the 10-week average.
+    A red cell means it was below.  An isolated red cell is not a concern;
+    two or more consecutive red cells indicate a pattern.
 
 The scalar averages (right side of the table) show whether the recent dip or
 rise is a genuine trend or a short-term fluctuation.  If the 10-week average
@@ -180,20 +183,20 @@ and the 12-month average are close, performance is stable.
 3.2  Within-Spec — are productions meeting quality requirements?
 -----------------------------------------------------------------
 What it measures:
-    The percentage of completed productions where the beam current (or, for
-    some isotopes, the yield) fell within the permitted specification window.
-    100% means every production was within spec.  Lower numbers mean some
-    productions fell outside the required range.
+    The percentage of completed productions where the beam current at the
+    target (or, for some isotopes, the yield) fell within the permitted
+    specification window.  100% means every production was within spec.
+    Lower numbers mean some productions fell outside the required range.
 
 In plain language:
-    Each isotope has a defined acceptable range for its production parameters.
-    A production outside that range does not necessarily mean the product is
-    rejected, but it does indicate the process deviated from the target.
-    Consistent scores below 100% suggest a systematic issue with a particular
-    isotope or cyclotron.
+    Each isotope has a defined acceptable range for its targetstroom (beam
+    current at the target).  A production outside that range does not
+    necessarily mean the product is rejected, but it indicates the process
+    deviated from the target.  Consistent scores below 100% point to a
+    systematic issue with a particular isotope or cyclotron.
 
-How to read the chart:
-    Same bar layout as Efficiency.  A week with no data (all grey) means no
+How to read the table:
+    Same layout as Efficiency.  A week with no data (grey) means no
     productions were completed that week — normal for weeks with scheduled
     maintenance or holidays.
 
@@ -207,13 +210,13 @@ What it measures:
     percentage: 100% means the target was exactly met; above 100% means it
     was exceeded; below 100% means it fell short.
 
-    The pass threshold is 97%.  Bars at or above 97% are green; below
+    The pass threshold is 97%.  Cells at or above 97% are green; below
     97% they are red.
 
 In plain language:
-    Did the cyclotron deliver the power level that was requested?  A score
-    below 97% means the beam current was not sufficient during one or more
-    productions that week, which can affect product yield and customer orders.
+    Did the cyclotron deliver the beam current output that was ordered?
+    A score below 97% means the actual targetstroom was below the nominal
+    for one or more productions that week.
 
 Note:
     A separate, more detailed OTIF view — covering individual missed customer
@@ -228,40 +231,38 @@ A single bad week is not a crisis.  The dashboard is most useful when you
 use it to distinguish a one-off deviation from a structural decline.
 
 
-4.1  Using the bar chart and averages together
------------------------------------------------
-The 10-week bar chart shows short-term variation.  The scalar averages (10
-weeks, 3 months, 12 months) give you the bigger context.
+4.1  Using the weekly cells and averages together
+--------------------------------------------------
+The 10-week row shows short-term variation.  The scalar averages (10 weeks,
+3 months, 12 months) give you the bigger context.
 
 Read them together as follows:
 
-    SCENARIO A — One red bar, rest green, averages stable
-        A single bad week surrounded by green bars.  The averages are barely
+    SCENARIO A — One red cell, rest green, averages stable
+        A single bad week surrounded by green cells.  The averages are barely
         affected.  This is likely a one-off event (scheduled maintenance,
         a single failed production, a public holiday reducing output).
-        → No action needed unless the cause is unknown.
 
-    SCENARIO B — Two or more consecutive red bars
+    SCENARIO B — Two or more consecutive red cells
         A run of below-average weeks is a pattern, not noise.  If the
         3-month average is also dropping, the decline started before the
-        visible bars.  The production tables (Section 7) show which isotope
+        visible weeks.  The production tables (Section 7) show which isotope
         or shift is involved.
 
-    SCENARIO C — All bars green but 12-month average is higher than 10-week
+    SCENARIO C — All cells green but 12-month average is higher than 10-week
         Performance is consistently good now but was better a year ago.
-        The decline happened gradually and is not obvious from the bars
-        alone.  The difference between the 3-month and 12-month averages
-        shows the scale of it.
+        The decline happened gradually and is not obvious from the recent
+        weeks alone.  The difference between the 3-month and 12-month
+        averages shows the scale of it.
 
-    SCENARIO D — One or two very short bars with no data (grey)
+    SCENARIO D — One or two grey cells (no data)
         Weeks with no productions — typically maintenance shutdowns or
         holidays.  These are expected and do not affect the averages.
-        → No action needed.
 
 
 4.2  Signal thresholds
 -----------------------
-    Two or more consecutive red bars in any KPI   indicates a pattern,
+    Two or more consecutive red cells in any KPI  indicates a pattern,
                                                   not a one-off.
 
     10-week average more than 5% below            indicates a gradual
@@ -277,14 +278,14 @@ The three KPIs measure different aspects of the same production process.
 Looking at them side by side can pinpoint the root cause:
 
     Efficiency down, Within-spec stable
-        The cyclotron is running within spec but producing less product per
-        run.  Possible causes: target degradation, beam losses upstream of
-        the target.
+        More beam is being lost between source and target, but the
+        targetstroom still falls within spec.  Possible cause: transmission
+        losses increasing (optics, steering, vacuum).
 
     Within-spec down, Efficiency stable
-        Productions are completing at the usual yield but the beam current is
-        drifting outside the allowed range.  Possible cause: cyclotron tuning
-        issue, operator setting error.
+        Beam transmission is normal but the targetstroom is drifting outside
+        the allowed spec range.  Possible cause: cyclotron tuning or
+        operator setting.
 
     OTIF down, both others stable
         The cyclotron is running well but did not deliver the ordered current
@@ -373,7 +374,7 @@ Close the panel by clicking the X in the top-right corner.
 ==================================
 
 Further down the dashboard there is a dedicated OTIF Cyclotron section.
-This goes deeper than the OTIF KPI bar chart (Section 3.3): instead of a
+This goes deeper than the OTIF KPI table (Section 3.3): instead of a
 weekly average percentage, it shows exactly which product orders were missed,
 in which week, and why.
 
@@ -594,7 +595,7 @@ This section lists the most common situations and what they usually indicate.
 9.2  KPI concerns
 -------------------
 
-    Two or more consecutive red bars in any KPI
+    Two or more consecutive red cells in any KPI
         Indicates a pattern.  The missed-order table (Section 6) and the
         production summary tables (Section 7) show which isotope or shift
         is involved.
@@ -648,8 +649,9 @@ Print or bookmark this section for use during review meetings.
 
 10.2  KPI definitions (one line each)
 ---------------------------------------
-    Efficiency     mCi of product produced per µAh of beam charge.
-                   Higher = better yield from the same cyclotron run time.
+    Efficiency     Beam transmission efficiency: µA at target faraday as a
+                   percentage of µA at source faraday.  Higher = less beam
+                   lost between source and target.
 
     Within-spec    % of productions where beam current (or yield) was
                    within the allowed quality window.  Target: as close to
@@ -691,7 +693,7 @@ Print or bookmark this section for use during review meetings.
 
 10.6  Signal thresholds
 ------------------------
-    2+ consecutive red KPI bars          pattern; see §6 and §7 for detail.
+    2+ consecutive red KPI cells         pattern; see §6 and §7 for detail.
     OTIF < 90% in any week               significant event; see §6 reason
                                          column.
     10-week avg more than 5% below       gradual structural decline.
@@ -704,7 +706,7 @@ Print or bookmark this section for use during review meetings.
 
 10.7  Section locator
 -----------------------
-    KPI bar charts (Efficiency, Within-spec, OTIF)   Section 3
+    KPI tables (Efficiency, Within-spec, OTIF)        Section 3
     How to read trends / escalation                   Section 4
     Ploeg leaderboard and team detail                 Section 5
     Missed-order table and per-product OTIF           Section 6
