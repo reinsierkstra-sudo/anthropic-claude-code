@@ -556,3 +556,86 @@ is absent or appears very short, it may indicate a delayed or aborted run.
 This would also show up as a low OTIF score for that week.
 
 ===============================================================================
+
+9. What to Do When Something Looks Wrong
+==========================================
+
+This section covers the most common situations a manager might encounter and
+suggests the appropriate response for each.
+
+
+9.1  Dashboard issues (page / display)
+----------------------------------------
+
+    The page is not refreshing automatically
+        The dashboard refreshes every 60 seconds by default.  If it stops:
+        • Press F5 to reload manually.
+        • Check that your browser is not in an offline mode.
+        • If the file cannot be found, verify that the X: drive is mapped.
+
+    The data looks many hours old
+        Look at the timestamp shown at the top or bottom of the page.  If
+        the last-updated time is more than a few minutes ago during working
+        hours, the pipeline may have stopped.
+        → Contact the system owner to restart the pipeline.
+
+    A red banner reading "FILE TAMPERED" appears at the top of the page
+        The HTML file was edited outside the automated pipeline.  This is
+        detected by a checksum comparison and is shown as a warning.
+        → Do not edit the HTML file manually.  Report this to the system
+          owner immediately.  The banner will disappear on the next
+          automated update.
+
+    Sections are missing (e.g. leaderboard is blank, planning panel is empty)
+        The pipeline depends on several network files (Excel workbooks,
+        shared drives).  If one of those files is unavailable, the
+        corresponding section will be absent or show a warning message.
+        → Check that the W: drive is mapped.  If it is, report to the
+          system owner — the source file may have moved or been renamed.
+
+
+9.2  KPI concerns
+-------------------
+
+    Two or more consecutive red bars in any KPI
+        This is the primary signal that warrants a management conversation.
+        → Ask the production team for context.  Check the missed-order table
+          (Section 6) and the production summary tables (Section 7) to
+          identify which isotope or shift is driving the decline.
+
+    OTIF below 90% in any single week
+        A sharp single-week drop in OTIF is more serious than a gradual
+        decline.  It suggests a significant unplanned event.
+        → Request an incident summary from the production team.
+
+    Efficiency and within-spec are both low simultaneously
+        Both KPIs declining together suggests a cyclotron or process issue
+        rather than a data or scheduling problem.
+        → Escalate to the technical team.
+
+
+9.3  Ploeg / team concerns
+----------------------------
+
+    One team is consistently red for more than four weeks
+        A structural gap between one team and the others warrants
+        management attention.
+        → Review the team's per-ploeg detail panel (Section 5.5) to
+          identify which isotope or shift time is pulling the score down.
+          Consider whether training, staffing, or process support is needed.
+
+    All teams are red simultaneously
+        If every team's score drops at the same time, the cause is not
+        team-specific — it is a process or equipment issue.
+        → Do not focus on individual teams; investigate the underlying
+          production or cyclotron issue.
+
+
+9.4  Who to contact
+---------------------
+    Pipeline not running / data not updating   System owner / IT
+    KPI anomalies / production deviations      Production team lead
+    Equipment-related drops                    Technical / maintenance team
+    Supply-related misses (Bulk shortage)      Supply chain / procurement
+
+===============================================================================
