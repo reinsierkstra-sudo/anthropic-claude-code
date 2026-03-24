@@ -491,3 +491,68 @@ Close the panel with the X button.
       weeks.
 
 ===============================================================================
+
+8. The Gantt Chart
+===================
+
+The Gantt chart is a visual timeline showing cyclotron productions over the
+last several days and the coming days.  It is primarily an operational tool
+for shift leads, but managers can use it for a quick sanity-check of whether
+production is running as planned.
+
+
+8.1  What the chart shows
+--------------------------
+The chart displays three lanes, one per cyclotron position:
+
+    Kant 1      One side of the Philips cyclotron
+    Kant 2      The other side of the Philips cyclotron
+    IBA         The IBA cyclotron
+
+Each coloured block represents one production run.  The block's horizontal
+position shows when the run started and ended.  A red vertical line labelled
+"Nu" (Now) marks the current time, so you can immediately see what is
+running right now and what has recently finished.
+
+
+8.2  Colour key
+----------------
+    Blue    Ga-67   (Gallium-67)
+    Red     Rb-82   (Rubidium-82)
+    Cyan    In-111  (Indium-111)
+    Yellow  Tl-201  (Thallium-201)
+    Green   I-123   (Iodine-123)
+    Grey    Pauze   (scheduled gap / no production)
+
+
+8.3  Navigating the chart
+--------------------------
+    Scroll left/right   Use the horizontal scrollbar at the bottom of the
+                        chart to move through time.
+
+    Jump to Now         Click the "Spring naar Nu" button above the chart
+                        to centre the view on the current time.  This is
+                        the fastest way to see what is running right now.
+
+    Hover tooltip       Hovering over any production block shows a tooltip
+                        with the BO number, product name, start and end
+                        times, and duration.
+
+
+8.4  Planned vs actual
+-----------------------
+The chart merges two data sources:
+
+    Planned entries     Loaded from the cyclotron production schedule.
+                        Shown if the actual production record is not yet
+                        available.
+
+    Actual entries      Once a production is completed and recorded, the
+                        actual record replaces the planned entry.  Actual
+                        records take priority.
+
+As a manager, if you see a production block that should have started but
+is absent or appears very short, it may indicate a delayed or aborted run.
+This would also show up as a low OTIF score for that week.
+
+===============================================================================
