@@ -1,0 +1,88 @@
+Isotope Dashboard — Manager's Manual
+======================================
+
+This manual is written for managers who use the Isotope Dashboard to monitor
+cyclotron production performance.  No technical or operational knowledge is
+assumed.  The dashboard is a read-only HTML page: you cannot break anything
+by clicking on it.
+
+For technical documentation covering the internal workings of the system,
+see MANUAL.txt.
+
+-------------------------------------------------------------------------------
+
+Contents
+--------
+  1. What the dashboard tells you
+  2. The colour system
+  3. The three KPIs: Efficiency, Within-spec, OTIF
+  4. Spotting trends and raising questions
+  5. Ploeg leaderboard: team performance
+  6. OTIF Cyclotron: missed orders
+  7. Production summary tables (this week / last week)
+  8. The Gantt chart
+  9. What to do when something looks wrong
+ 10. Quick-reference card
+
+===============================================================================
+
+1. What the Dashboard Tells You
+=================================
+
+The Isotope Dashboard gives you a live view of cyclotron production performance
+across five radioisotopes:
+
+    Ga-67   Gallium-67
+    Rb-82   Rubidium-82
+    In-111  Indium-111
+    Tl-201  Thallium-201
+    I-123   Iodine-123
+
+At a glance it answers three management questions:
+
+    1. Are the cyclotrons running efficiently?
+       → Efficiency KPI and Within-spec KPI
+
+    2. Are we delivering what was ordered, on time and in full?
+       → OTIF KPI and missed-order table
+
+    3. Which shift team is performing best?
+       → Ploeg leaderboard
+
+The page refreshes automatically every 60 seconds.  You do not need to press
+F5.  The data shown is therefore never more than one minute old during normal
+operation.
+
+
+1.1  How to open the dashboard
+--------------------------------
+The dashboard is an HTML file stored on a network share.  Open it by:
+
+    • Double-clicking the shortcut on your desktop or the bureau share, or
+    • Opening the file directly from:
+          X:\Cyclotron Bureau\Productie dashboard.html
+
+If the file does not open, or if the data appears to be many hours old, check
+that your network drives (W: and X:) are mapped.  If they are mapped and the
+problem persists, contact the system owner (see Section 9).
+
+
+1.2  Two versions of the dashboard
+------------------------------------
+There are two versions of the dashboard:
+
+    Full dashboard
+        Contains all KPI charts, the Gantt chart, per-isotope detail, the
+        ploeg leaderboard, and all pop-up panels.  This is the version
+        described in this manual and is the one available on the bureau share
+        and on the local machine that runs the pipeline.
+
+    Truncated (operator) dashboard
+        A lightweight summary — KPI tables and production summary only.
+        This version is served to operator workstations on the network share
+        for fast loading.  It does not contain the leaderboard or detail
+        charts.
+
+As a manager you will normally use the full dashboard.
+
+===============================================================================
