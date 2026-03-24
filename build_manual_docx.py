@@ -257,6 +257,10 @@ H2_PATTERN     = re.compile(r'^\d+\.\d+\s+\S')      # "1.1  Something"
 H3_PATTERN     = re.compile(r'^\d+\.\d+[a-z]\s+\S') # "2.2a  Something"
 BULLET_PATTERN = re.compile(r'^[ \t]{2,}[-•]\s')
 
+# Box-drawing table: lines that start with ┌ │ ├ └ (optionally indented)
+BOX_LINE_CHARS = set('┌│├└')
+BOX_SEP_CHARS  = set('┌┬┐├┼┤└┴┘─━ ')   # chars found only on separator rows
+
 
 def _classify_lines(lines: list[str]) -> list[tuple[str, str]]:
     """
@@ -319,6 +323,12 @@ def _classify_lines(lines: list[str]) -> list[tuple[str, str]]:
         # Indented non-bullet → code / preformatted
         if line.startswith("    ") and stripped:
             result.append(("CODE", stripped))
+            i += 1
+            continue
+
+        # Box-drawing table line (starts with ┌ │ ├ └)
+        if stripped and stripped[0] in BOX_LINE_CHARS:
+            result.append(("BOXTABLE", stripped))
             i += 1
             continue
 
@@ -426,6 +436,96 @@ def _add_title_page(doc: Document, logo_bytes: bytes):
     doc.add_page_break()
 
 
+def _parse_boxtable(raw_lines: list[str]) -> list[list[str]]:
+    """
+    Convert raw box-drawing table lines into a list of logical rows,
+    where each row is a list of cell-text strings.
+
+    Separator lines (containing only ┌┬┐├┼┤└┴┘─ and spaces) are discarded.
+    Continuation rows are detected by the first raw cell starting with 2+
+    spaces (indicating it is indented / a wrapped key name fragment), or by
+    the first cell being entirely empty after stripping.
+    """
+    rows: list[list[str]] = []
+    for line in raw_lines:
+        # Separator? every non-space char is a box-drawing junction/line char.
+        if all(c in BOX_SEP_CHARS for c in line):
+            continue
+        # Split on │ — first and last parts are the outer border edges.
+        parts = line.split('│')
+        if len(parts) < 3:
+            continue
+        raw_cells  = parts[1:-1]           # preserve leading whitespace for detection
+        cells      = [p.strip() for p in raw_cells]
+        if not cells:
+            continue
+        # A continuation row has its first cell either empty or indented (2+ spaces).
+        is_continuation = (
+            rows and
+            (not cells[0] or (len(raw_cells[0]) > 1 and raw_cells[0].startswith('  ')))
+        )
+        if is_continuation:
+            # Merge into last logical row.
+            # Col 0 holds a key/identifier — join without space (it's a wrapped word).
+            # Other cols hold prose — join with a space.
+            for j, text in enumerate(cells):
+                if text and j < len(rows[-1]):
+                    sep = '' if j == 0 else ' '
+                    rows[-1][j] = (rows[-1][j] + sep + text).strip()
+        else:
+            rows.append(cells)
+    return rows
+
+
+def _render_boxtable(doc: Document, raw_lines: list[str]):
+    """Render a box-drawing table block as a proper Word table."""
+    rows = _parse_boxtable(raw_lines)
+    if not rows:
+        return
+
+    ncols = max(len(r) for r in rows)
+    tbl   = doc.add_table(rows=len(rows), cols=ncols)
+    tbl.style = "Table Grid"
+    _para_spacing(doc.paragraphs[-1] if doc.paragraphs else doc.add_paragraph(),
+                  before=Pt(6), after=Pt(6))
+
+    # Column widths: first column narrower, rest share remaining space.
+    # Total usable width ≈ 16 cm (page width minus margins).
+    PAGE_W  = Cm(16)
+    col0_w  = Cm(4.5) if ncols > 1 else PAGE_W
+    rest_w  = (PAGE_W - col0_w) // max(ncols - 1, 1)
+
+    for r_idx, row_cells in enumerate(rows):
+        tr = tbl.rows[r_idx]
+        for c_idx, cell_text in enumerate(row_cells):
+            cell = tbl.cell(r_idx, c_idx)
+            # Set column width via tcW
+            tc   = cell._tc
+            tcPr = tc.get_or_add_tcPr()
+            tcW  = OxmlElement("w:tcW")
+            width_emu = col0_w if c_idx == 0 else rest_w
+            # Convert Cm EMU → twips (1 inch = 914400 EMU = 1440 twips)
+            twips = int(width_emu * 1440 / 914400)
+            tcW.set(qn("w:w"),    str(twips))
+            tcW.set(qn("w:type"), "dxa")
+            tcPr.append(tcW)
+
+            p = cell.paragraphs[0]
+            _para_spacing(p, before=Pt(2), after=Pt(2))
+            run = p.add_run(cell_text)
+            if c_idx == 0:
+                _set_font(run, size=Pt(9), bold=True, color=PURPLE)
+            else:
+                _set_font(run, size=Pt(9), color=BLACK)
+
+    # Light purple shading on first column
+    for r_idx in range(len(rows)):
+        _shade_cell(tbl.cell(r_idx, 0), "EDE7F0")   # very light purple tint
+
+    # Space after table
+    doc.add_paragraph()
+
+
 def _render_lines(doc: Document, classified: list[tuple[str, str]]):
     """Convert classified lines into docx paragraphs."""
     in_code_block = False
@@ -498,6 +598,16 @@ def _render_lines(doc: Document, classified: list[tuple[str, str]]):
             shd.set(qn("w:color"), "auto")
             shd.set(qn("w:fill"),  "F2F2F2")
             pPr.append(shd)
+
+        # ── BOXTABLE ────────────────────────────────────────────────────────
+        elif cat == "BOXTABLE":
+            _flush_code()
+            # Collect all consecutive BOXTABLE lines then render as Word table.
+            raw_lines = [text]
+            while i + 1 < len(classified) and classified[i + 1][0] == "BOXTABLE":
+                i += 1
+                raw_lines.append(classified[i][1])
+            _render_boxtable(doc, raw_lines)
 
         # ── BLANK ───────────────────────────────────────────────────────────
         elif cat == "BLANK":
