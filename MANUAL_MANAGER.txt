@@ -16,12 +16,12 @@ Contents
   1. What the dashboard tells you
   2. The colour system
   3. The three KPIs: Efficiency, Within-spec, OTIF
-  4. Spotting trends and raising questions
+  4. Reading trends
   5. Ploeg leaderboard: team performance
   6. OTIF Cyclotron: missed orders
   7. Production summary tables (this week / last week)
   8. The Gantt chart
-  9. What to do when something looks wrong
+  9. Reference: when something looks wrong
  10. Quick-reference card
 
 ===============================================================================
@@ -64,7 +64,7 @@ The dashboard is an HTML file stored on a network share.  Open it by:
 
 If the file does not open, or if the data appears to be many hours old, check
 that your network drives (W: and X:) are mapped.  If they are mapped and the
-problem persists, contact the system owner (see Section 9).
+problem persists, contact R.A.F. Sierkstra (SIE, tel. 7062).
 
 
 1.2  Two versions of the dashboard
@@ -170,7 +170,7 @@ How to read the chart:
     Each bar is the average efficiency across all productions in that week.
     A green bar means this week was at or above the 10-week average.
     A red bar means it was below.  An isolated red bar is not a concern; two
-    or more consecutive red bars warrant a conversation with the team.
+    or more consecutive red bars indicate a pattern.
 
 The scalar averages (right side of the table) show whether the recent dip or
 rise is a genuine trend or a short-term fluctuation.  If the 10-week average
@@ -221,12 +221,11 @@ Note:
 
 ===============================================================================
 
-4. Spotting Trends and Raising Questions
-==========================================
+4. Reading Trends
+==================
 
-A single bad week is not a crisis.  The dashboard is most valuable when you
-use it to distinguish a one-off deviation from a structural decline.  This
-section explains how to do that.
+A single bad week is not a crisis.  The dashboard is most useful when you
+use it to distinguish a one-off deviation from a structural decline.
 
 
 4.1  Using the bar chart and averages together
@@ -243,18 +242,16 @@ Read them together as follows:
         → No action needed unless the cause is unknown.
 
     SCENARIO B — Two or more consecutive red bars
-        A run of below-average weeks is a pattern, not noise.  Check whether
-        the 3-month average is also dropping.  If it is, the decline started
-        before the visible bars.
-        → Discuss with the production team.  Ask for the reason codes from
-          the production tables (Section 7).
+        A run of below-average weeks is a pattern, not noise.  If the
+        3-month average is also dropping, the decline started before the
+        visible bars.  The production tables (Section 7) show which isotope
+        or shift is involved.
 
     SCENARIO C — All bars green but 12-month average is higher than 10-week
         Performance is consistently good now but was better a year ago.
-        The decline happened gradually and may not be obvious from the bars
-        alone.
-        → Compare the 3-month and 12-month averages.  A gap of more than a
-          few percent warrants investigation.
+        The decline happened gradually and is not obvious from the bars
+        alone.  The difference between the 3-month and 12-month averages
+        shows the scale of it.
 
     SCENARIO D — One or two very short bars with no data (grey)
         Weeks with no productions — typically maintenance shutdowns or
@@ -262,17 +259,16 @@ Read them together as follows:
         → No action needed.
 
 
-4.2  Suggested escalation rule
---------------------------------
-As a rule of thumb:
+4.2  Signal thresholds
+-----------------------
+    Two or more consecutive red bars in any KPI   indicates a pattern,
+                                                  not a one-off.
 
-    Two or more consecutive red bars in any KPI  →  request explanation
-                                                     from the production team.
+    10-week average more than 5% below            indicates a gradual
+    12-month average                              structural decline.
 
-    10-week average more than 5% below 12-month average  →  structural
-                                                             review needed.
-
-    OTIF below 90% in any single week  →  immediate discussion.
+    OTIF below 90% in any single week             indicates a significant
+                                                  event that week.
 
 
 4.3  Comparing KPIs to each other
@@ -305,10 +301,9 @@ Looking at them side by side can pinpoint the root cause:
 ========================================
 
 The ploeg leaderboard ranks the five shift teams by the percentage of
-productions they oversaw that were within specification.  It is one of the
-most directly actionable sections for a manager: it shows not just how the
-facility is doing overall, but which teams are driving performance and which
-may need support.
+productions they oversaw that were within specification.  It shows not just
+how the facility is doing overall, but which teams are above and which are
+below the group average.
 
 
 5.1  What is a ploeg?
@@ -481,8 +476,7 @@ Close the panel with the X button.
 7.4  What to look for as a manager
 -------------------------------------
     • A column that is mostly red in both the current and previous week
-      suggests a persistent issue with one isotope.  Take note of which
-      isotope and bring it to the production team.
+      indicates a persistent issue with that isotope.
 
     • Scattered red cells across multiple isotopes and days suggest a
       broader process or cyclotron issue rather than an isotope-specific one.
@@ -506,9 +500,9 @@ production is running as planned.
 --------------------------
 The chart displays three lanes, one per cyclotron position:
 
-    Kant 1      One side of the Philips cyclotron
-    Kant 2      The other side of the Philips cyclotron
-    IBA         The IBA cyclotron
+    Kant 1      One side of the IBA cyclotron
+    Kant 2      The other side of the IBA cyclotron
+    Philips     The Philips cyclotron
 
 Each coloured block represents one production run.  The block's horizontal
 position shows when the run started and ended.  A red vertical line labelled
@@ -561,11 +555,10 @@ This would also show up as a low OTIF score for that week.
 
 ===============================================================================
 
-9. What to Do When Something Looks Wrong
-==========================================
+9. Reference: When Something Looks Wrong
+=========================================
 
-This section covers the most common situations a manager might encounter and
-suggests the appropriate response for each.
+This section lists the most common situations and what they usually indicate.
 
 
 9.1  Dashboard issues (page / display)
@@ -579,67 +572,64 @@ suggests the appropriate response for each.
 
     The data looks many hours old
         If the values on the page appear unchanged across multiple manual
-        refreshes (F5) during working hours, the pipeline may have stopped.
-        → Contact the system owner to restart the pipeline.
+        refreshes (F5) during working hours, the pipeline has likely stopped.
+        → Contact R.A.F. Sierkstra (SIE, tel. 7062).
 
     A red banner reading "FILE TAMPERED" appears at the top of the page
         The HTML file was edited outside the automated pipeline.  This is
         detected by a checksum comparison and is shown as a warning.
-        → Do not edit the HTML file manually.  Report this to the system
-          owner immediately.  The banner will disappear on the next
-          automated update.
+        → Do not edit the HTML file manually.  Contact R.A.F. Sierkstra
+          (SIE, tel. 7062).  The banner disappears on the next automated
+          update.
 
     Sections are missing (e.g. leaderboard is blank, planning panel is empty)
         The pipeline depends on several network files (Excel workbooks,
         shared drives).  If one of those files is unavailable, the
         corresponding section will be absent or show a warning message.
-        → Check that the W: drive is mapped.  If it is, report to the
-          system owner — the source file may have moved or been renamed.
+        → Check that the W: drive is mapped.  If it is, contact
+          R.A.F. Sierkstra (SIE, tel. 7062) — the source file may have
+          moved or been renamed.
 
 
 9.2  KPI concerns
 -------------------
 
     Two or more consecutive red bars in any KPI
-        This is the primary signal that warrants a management conversation.
-        → Ask the production team for context.  Check the missed-order table
-          (Section 6) and the production summary tables (Section 7) to
-          identify which isotope or shift is driving the decline.
+        Indicates a pattern.  The missed-order table (Section 6) and the
+        production summary tables (Section 7) show which isotope or shift
+        is involved.
 
     OTIF below 90% in any single week
-        A sharp single-week drop in OTIF is more serious than a gradual
-        decline.  It suggests a significant unplanned event.
-        → Request an incident summary from the production team.
+        Indicates a significant unplanned event that week.  The reason
+        column in the missed-order table (Section 6) shows the cause.
 
     Efficiency and within-spec are both low simultaneously
-        Both KPIs declining together suggests a cyclotron or process issue
-        rather than a data or scheduling problem.
-        → Escalate to the technical team.
+        Points to a cyclotron or process issue rather than a scheduling
+        or data problem.
 
 
 9.3  Ploeg / team concerns
 ----------------------------
 
     One team is consistently red for more than four weeks
-        A structural gap between one team and the others warrants
-        management attention.
-        → Review the team's per-ploeg detail panel (Section 5.5) to
-          identify which isotope or shift time is pulling the score down.
-          Consider whether training, staffing, or process support is needed.
+        The per-ploeg detail panel (Section 5.5) shows which isotope or
+        shift time is pulling the score down.
 
     All teams are red simultaneously
-        If every team's score drops at the same time, the cause is not
-        team-specific — it is a process or equipment issue.
-        → Do not focus on individual teams; investigate the underlying
-          production or cyclotron issue.
+        When every team's score drops at the same time the cause is not
+        team-specific.  It points to a process or equipment issue.
 
 
-9.4  Who to contact
----------------------
-    Pipeline not running / data not updating   System owner / IT
-    KPI anomalies / production deviations      Production team lead
-    Equipment-related drops                    Technical / maintenance team
-    Supply-related misses (Bulk shortage)      Supply chain / procurement
+9.4  Contact
+--------------
+    Pipeline / dashboard issues (data not         R.A.F. Sierkstra
+    updating, missing sections, FILE TAMPERED)    SIE, tel. 7062
+
+    Production and equipment matters              Operators-technicians
+                                                  on shift
+
+    Supply-related misses (Bulk shortage)         Supply chain /
+                                                  procurement
 
 ===============================================================================
 
@@ -699,15 +689,17 @@ Print or bookmark this section for use during review meetings.
     Grey    Pauze (no production)
 
 
-10.6  Escalation rules of thumb
----------------------------------
-    2+ consecutive red KPI bars          → Discuss with production team.
-    OTIF < 90% in any week               → Request incident summary.
-    10-week avg more than 5% below       → Structural review needed.
-      12-month avg
-    One ploeg red for 4+ weeks           → Review team support needs.
-    All ploegen red simultaneously       → Process / equipment issue;
-                                           do not focus on individual teams.
+10.6  Signal thresholds
+------------------------
+    2+ consecutive red KPI bars          pattern; see §6 and §7 for detail.
+    OTIF < 90% in any week               significant event; see §6 reason
+                                         column.
+    10-week avg more than 5% below       gradual structural decline.
+    12-month avg
+    One ploeg red for 4+ weeks           isotope- or shift-specific issue;
+                                         see §5.5.
+    All ploegen red simultaneously       process or equipment issue,
+                                         not a team issue.
 
 
 10.7  Section locator
