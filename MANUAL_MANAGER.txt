@@ -139,3 +139,84 @@ Team (ploeg) rankings use a slightly different scale:
             a neutral result.
 
 ===============================================================================
+
+3. The Three KPIs: Efficiency, Within-Spec, OTIF
+==================================================
+
+The top section of the dashboard shows three KPI tables side by side.  Each
+covers all five isotopes combined and displays performance week by week.
+
+Each table has the same layout:
+    • A row of coloured bars, one per week, covering the last 10 weeks.
+    • Three scalar averages to the right: last 10 weeks, last 3 months,
+      last 12 months.
+    • The most recent week is on the right; older weeks are to the left.
+
+
+3.1  Efficiency — are we getting the most out of beam time?
+------------------------------------------------------------
+What it measures:
+    How much radioactive product (in millicuries) is produced for every
+    micro-ampere-hour (µAh) of beam charge delivered by the cyclotron.
+    A higher number means more product from the same amount of beam time.
+
+In plain language:
+    Think of it as miles per gallon for the cyclotron.  If the number goes
+    up, we are getting more product from the same running cost.  If it drops,
+    something is reducing yield — a degraded target, beam losses, or a
+    process issue.
+
+How to read the chart:
+    Each bar is the average efficiency across all productions in that week.
+    A green bar means this week was at or above the 10-week average.
+    A red bar means it was below.  An isolated red bar is not a concern; two
+    or more consecutive red bars warrant a conversation with the team.
+
+The scalar averages (right side of the table) show whether the recent dip or
+rise is a genuine trend or a short-term fluctuation.  If the 10-week average
+and the 12-month average are close, performance is stable.
+
+
+3.2  Within-Spec — are productions meeting quality requirements?
+-----------------------------------------------------------------
+What it measures:
+    The percentage of completed productions where the beam current (or, for
+    some isotopes, the yield) fell within the permitted specification window.
+    100% means every production was within spec.  Lower numbers mean some
+    productions fell outside the required range.
+
+In plain language:
+    Each isotope has a defined acceptable range for its production parameters.
+    A production outside that range does not necessarily mean the product is
+    rejected, but it does indicate the process deviated from the target.
+    Consistent scores below 100% suggest a systematic issue with a particular
+    isotope or cyclotron.
+
+How to read the chart:
+    Same bar layout as Efficiency.  A week with no data (all grey) means no
+    productions were completed that week — normal for weeks with scheduled
+    maintenance or holidays.
+
+
+3.3  OTIF — did we deliver the ordered beam current?
+------------------------------------------------------
+What it measures:
+    OTIF stands for On Time In Full.  Here it specifically tracks whether
+    the actual beam current delivered during each production was equal to or
+    above the nominal (ordered) target current.  The result is expressed as a
+    percentage: 100% means the target was exactly met; above 100% means it
+    was exceeded; below 100% means it fell short.
+
+    The pass threshold is 97%.  Bars at or above 97% are green; below
+    97% they are red.
+
+In plain language:
+    Did the cyclotron deliver the power level that was requested?  A score
+    below 97% means the beam current was not sufficient during one or more
+    productions that week, which can affect product yield and customer orders.
+
+Note:
+    A separate, more detailed OTIF view — covering individual missed customer
+    orders per product — is in Section 6.
+
+===============================================================================
