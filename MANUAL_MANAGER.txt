@@ -639,3 +639,82 @@ suggests the appropriate response for each.
     Supply-related misses (Bulk shortage)      Supply chain / procurement
 
 ===============================================================================
+
+10. Quick-Reference Card
+=========================
+
+Print or bookmark this section for use during review meetings.
+
+
+10.1  Colour meanings at a glance
+-----------------------------------
+    GREEN    On target or above.      No action needed.
+    RED      Below threshold.         Warrants attention or discussion.
+    GREY     No data for this period. Normal for unscheduled weeks.
+
+
+10.2  KPI definitions (one line each)
+---------------------------------------
+    Efficiency     mCi of product produced per µAh of beam charge.
+                   Higher = better yield from the same cyclotron run time.
+
+    Within-spec    % of productions where beam current (or yield) was
+                   within the allowed quality window.  Target: as close to
+                   100% as possible.
+
+    OTIF           % of productions where the delivered beam current met or
+                   exceeded the ordered level.  Pass threshold: 97%.
+
+
+10.3  KPI thresholds that trigger red
+---------------------------------------
+    Efficiency     Below the 10-week running average for that week.
+    Within-spec    Below the 10-week running average for that week.
+    OTIF           Below 97% for that week.
+    Leaderboard    More than 2 percentage points below the team average.
+
+
+10.4  Specification limits per isotope (within-spec check)
+------------------------------------------------------------
+    Ga-67   Philips cyclotron:   75 – 85 µA beam current
+            IBA cyclotron:      130 – 140 µA beam current
+    In-111  Philips cyclotron:   75 – 85 µA beam current
+            IBA cyclotron:      130 – 140 µA beam current
+    Tl-201  166 – 174 µA beam current
+    Rb-82   95 – 105% efficiency (measured vs ordered activity)
+    I-123   Output:      78 – 114.9% of expected yield
+            Beam current: 96 – 124 µA
+
+
+10.5  Gantt chart colour key
+------------------------------
+    Blue    Ga-67 (Gallium-67)
+    Red     Rb-82 (Rubidium-82)
+    Cyan    In-111 (Indium-111)
+    Yellow  Tl-201 (Thallium-201)
+    Green   I-123 (Iodine-123)
+    Grey    Pauze (no production)
+
+
+10.6  Escalation rules of thumb
+---------------------------------
+    2+ consecutive red KPI bars          → Discuss with production team.
+    OTIF < 90% in any week               → Request incident summary.
+    10-week avg more than 5% below       → Structural review needed.
+      12-month avg
+    One ploeg red for 4+ weeks           → Review team support needs.
+    All ploegen red simultaneously       → Process / equipment issue;
+                                           do not focus on individual teams.
+
+
+10.7  Section locator
+-----------------------
+    KPI bar charts (Efficiency, Within-spec, OTIF)   Section 3
+    How to read trends / escalation                   Section 4
+    Ploeg leaderboard and team detail                 Section 5
+    Missed-order table and per-product OTIF           Section 6
+    Weekly production tables                          Section 7
+    Gantt chart                                       Section 8
+    Troubleshooting                                   Section 9
+
+===============================================================================
