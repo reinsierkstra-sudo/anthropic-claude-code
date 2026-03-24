@@ -327,15 +327,15 @@ split proportionally between the two teams.
 
 5.2  The leaderboard table
 ----------------------------
-The leaderboard shows each team's within-spec percentage over the last 30
-days, ranked from best to worst.  The colour coding follows the convention
-described in Section 2.3 (green = more than 2% above average, red = more
+The leaderboard ranks each team by their within-spec percentage over the
+trailing 30 days.  The colour coding follows the convention described in
+Section 2.3 (green = more than 2% above the inter-team average, red = more
 than 2% below, black = within 2%).
 
-Below the leaderboard, three additional columns show performance over longer
-periods: last 1 month, last 3 months, and last 6 months.  Use these to tell
-apart a team that has recently improved from one that has been consistently
-strong.
+To the right of the ranking, three summary columns show performance over
+longer fixed periods: last 1 month, last 3 months, and last 6 months.  Use
+these to tell apart a team that has recently improved from one that has been
+consistently strong over time.
 
 
 5.3  The rolling-average trend chart
@@ -377,10 +377,10 @@ Close the panel by clicking the X in the top-right corner.
 6. OTIF Cyclotron: Missed Orders
 ==================================
 
-Below the main KPI tables the dashboard contains a dedicated OTIF Cyclotron
-section.  This goes deeper than the OTIF KPI bar chart (Section 3.3): instead
-of a weekly average percentage, it shows exactly which product orders were
-missed, in which week, and why.
+Further down the dashboard there is a dedicated OTIF Cyclotron section.
+This goes deeper than the OTIF KPI bar chart (Section 3.3): instead of a
+weekly average percentage, it shows exactly which product orders were missed,
+in which week, and why.
 
 
 6.1  The missed-order table
@@ -464,11 +464,12 @@ weekly averages:
         show green.  A red cell means one or both values were out of spec.
 
 
-7.3  Clicking a production cell
----------------------------------
-Clicking any coloured cell opens the Production History panel.  This shows
+7.3  Opening the Production History panel
+------------------------------------------
+Each production cell contains a BO number (batch order number) shown as a
+clickable link.  Clicking it opens the Production History panel.  This shows
 the shift-level breakdown for that specific production run: which shift was
-responsible, the exact timing, and the BO (batch order) number.
+responsible, the exact timing, and the full BO number.
 
 This is particularly useful when a production is out of spec and you want
 to know which shift team was on duty — you can then cross-reference with
@@ -517,6 +518,9 @@ running right now and what has recently finished.
 
 8.2  Colour key
 ----------------
+Note: in the Gantt chart colours identify isotopes, not performance.
+Green here means I-123, not "on target" as it does in the KPI tables.
+
     Blue    Ga-67   (Gallium-67)
     Red     Rb-82   (Rubidium-82)
     Cyan    In-111  (Indium-111)
@@ -574,9 +578,8 @@ suggests the appropriate response for each.
         • If the file cannot be found, verify that the X: drive is mapped.
 
     The data looks many hours old
-        Look at the timestamp shown at the top or bottom of the page.  If
-        the last-updated time is more than a few minutes ago during working
-        hours, the pipeline may have stopped.
+        If the values on the page appear unchanged across multiple manual
+        refreshes (F5) during working hours, the pipeline may have stopped.
         → Contact the system owner to restart the pipeline.
 
     A red banner reading "FILE TAMPERED" appears at the top of the page
