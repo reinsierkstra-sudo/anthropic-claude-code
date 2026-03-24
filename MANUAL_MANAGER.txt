@@ -373,3 +373,53 @@ isotope or by a broader pattern across all products.
 Close the panel by clicking the X in the top-right corner.
 
 ===============================================================================
+
+6. OTIF Cyclotron: Missed Orders
+==================================
+
+Below the main KPI tables the dashboard contains a dedicated OTIF Cyclotron
+section.  This goes deeper than the OTIF KPI bar chart (Section 3.3): instead
+of a weekly average percentage, it shows exactly which product orders were
+missed, in which week, and why.
+
+
+6.1  The missed-order table
+-----------------------------
+The table lists missed or incomplete orders from the OTIF tracking workbook.
+Each row contains:
+
+    Week        The ISO week in which the miss occurred (format: YYYYwWW,
+                e.g. 2024w12).
+    Product     The isotope product that was short-delivered:
+                Gallium, I-123, Indium, Krypton, Thallium, or Rubidium.
+    Count       The number of orders missed for that product in that week.
+    Reason      The categorised cause of the miss.
+
+Reason categories:
+    Production              A production-process failure internal to the site.
+    Equipment failure Petten   A mechanical or technical fault at the facility.
+    Bulk shortage           Insufficient bulk material (upstream supply issue).
+    Production Petten       A production issue specific to the Petten site.
+
+As a manager, the reason column is the most important: it tells you whether
+the miss is within your team's control (Production, Equipment failure) or
+driven by an external factor (Bulk shortage).
+
+
+6.2  Per-product KPI line charts
+----------------------------------
+Below the missed-order table there are six line charts, one per product
+(Gallium, I-123, Indium, Krypton, Thallium, Rubidium/Krypton).
+
+Each chart shows the weekly OTIF percentage for that product over up to the
+last 52 weeks.  This allows you to see whether a product has a chronic
+delivery problem or whether misses are isolated events.
+
+How to read them:
+    • A line holding steady near 100% → no structural issue.
+    • A line with recurring dips → investigate whether the dips correlate
+      with a specific reason code (see table above).
+    • A line that has dropped and stayed low → the product may have a
+      systematic supply or process problem requiring management attention.
+
+===============================================================================
