@@ -423,3 +423,71 @@ How to read them:
       systematic supply or process problem requiring management attention.
 
 ===============================================================================
+
+7. Production Summary Tables (This Week / Last Week)
+======================================================
+
+Below the KPI section the dashboard shows two production summary tables:
+one for the current week and one for the previous week.  These give you a
+row-by-row view of every completed production run, allowing you to see at
+a glance where within-spec issues occurred.
+
+
+7.1  Table layout
+------------------
+Each table has one row per production day.  The columns across the top
+represent the five isotopes: Ga-67, Rb-82, In-111, Tl-201, and I-123.
+
+Each cell in the table represents one production run on that day for that
+isotope.  A day may have zero, one, or multiple productions per isotope,
+depending on the schedule.
+
+
+7.2  Reading cell colours
+--------------------------
+Cell colours follow the same green/red convention as the rest of the
+dashboard, but they reflect individual production quality rather than
+weekly averages:
+
+    Ga-67, In-111, Tl-201
+        Green   Beam current was within the allowed specification range.
+        Red     Beam current was outside the specification range.
+
+    Rb-82
+        Each cell shows two values: the efficiency percentage and the beam
+        current in µA.  The cell is green when the efficiency (the ratio of
+        measured to ordered activity) is within specification.
+
+    I-123
+        Each cell shows the yield percentage and the output percentage.
+        Both values must be within their respective ranges for the cell to
+        show green.  A red cell means one or both values were out of spec.
+
+
+7.3  Clicking a production cell
+---------------------------------
+Clicking any coloured cell opens the Production History panel.  This shows
+the shift-level breakdown for that specific production run: which shift was
+responsible, the exact timing, and the BO (batch order) number.
+
+This is particularly useful when a production is out of spec and you want
+to know which shift team was on duty — you can then cross-reference with
+the ploeg leaderboard (Section 5).
+
+Close the panel with the X button.
+
+
+7.4  What to look for as a manager
+-------------------------------------
+    • A column that is mostly red in both the current and previous week
+      suggests a persistent issue with one isotope.  Take note of which
+      isotope and bring it to the production team.
+
+    • Scattered red cells across multiple isotopes and days suggest a
+      broader process or cyclotron issue rather than an isotope-specific one.
+
+    • A completely empty column for the week means that isotope was not
+      scheduled for production — this is normal for some products on some
+      weeks.
+
+===============================================================================
