@@ -220,3 +220,83 @@ Note:
     orders per product — is in Section 6.
 
 ===============================================================================
+
+4. Spotting Trends and Raising Questions
+==========================================
+
+A single bad week is not a crisis.  The dashboard is most valuable when you
+use it to distinguish a one-off deviation from a structural decline.  This
+section explains how to do that.
+
+
+4.1  Using the bar chart and averages together
+-----------------------------------------------
+The 10-week bar chart shows short-term variation.  The scalar averages (10
+weeks, 3 months, 12 months) give you the bigger context.
+
+Read them together as follows:
+
+    SCENARIO A — One red bar, rest green, averages stable
+        A single bad week surrounded by green bars.  The averages are barely
+        affected.  This is likely a one-off event (scheduled maintenance,
+        a single failed production, a public holiday reducing output).
+        → No action needed unless the cause is unknown.
+
+    SCENARIO B — Two or more consecutive red bars
+        A run of below-average weeks is a pattern, not noise.  Check whether
+        the 3-month average is also dropping.  If it is, the decline started
+        before the visible bars.
+        → Discuss with the production team.  Ask for the reason codes from
+          the production tables (Section 7).
+
+    SCENARIO C — All bars green but 12-month average is higher than 10-week
+        Performance is consistently good now but was better a year ago.
+        The decline happened gradually and may not be obvious from the bars
+        alone.
+        → Compare the 3-month and 12-month averages.  A gap of more than a
+          few percent warrants investigation.
+
+    SCENARIO D — One or two very short bars with no data (grey)
+        Weeks with no productions — typically maintenance shutdowns or
+        holidays.  These are expected and do not affect the averages.
+        → No action needed.
+
+
+4.2  Suggested escalation rule
+--------------------------------
+As a rule of thumb:
+
+    Two or more consecutive red bars in any KPI  →  request explanation
+                                                     from the production team.
+
+    10-week average more than 5% below 12-month average  →  structural
+                                                             review needed.
+
+    OTIF below 90% in any single week  →  immediate discussion.
+
+
+4.3  Comparing KPIs to each other
+------------------------------------
+The three KPIs measure different aspects of the same production process.
+Looking at them side by side can pinpoint the root cause:
+
+    Efficiency down, Within-spec stable
+        The cyclotron is running within spec but producing less product per
+        run.  Possible causes: target degradation, beam losses upstream of
+        the target.
+
+    Within-spec down, Efficiency stable
+        Productions are completing at the usual yield but the beam current is
+        drifting outside the allowed range.  Possible cause: cyclotron tuning
+        issue, operator setting error.
+
+    OTIF down, both others stable
+        The cyclotron is running well but did not deliver the ordered current
+        level.  Could indicate scheduling pressure or a short-notice capacity
+        reduction.
+
+    All three down simultaneously
+        A broader systemic issue — equipment fault, key staff absence, or a
+        process change that affected all parameters.
+
+===============================================================================
