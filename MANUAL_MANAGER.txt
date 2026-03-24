@@ -86,3 +86,56 @@ There are two versions of the dashboard:
 As a manager you will normally use the full dashboard.
 
 ===============================================================================
+
+2. The Colour System
+=====================
+
+The entire dashboard uses a single, consistent colour convention.  Once you
+know it, you can read any section at a glance.
+
+    GREEN   The value is on target or above.  No action required.
+
+    RED     The value is below the threshold.  Warrants attention.
+
+    GREY    No data is available for that period.  This is normal for
+            weeks that have not yet started or for isotopes not produced
+            every week.
+
+
+2.1  What "on target" means per KPI
+--------------------------------------
+Each KPI has its own threshold for what counts as green:
+
+    Efficiency      Green when the weekly average is at or above the
+                    10-week running average.  In other words, the bar is
+                    green when this week is at least as good as recent
+                    history.
+
+    Within-spec     Green when the weekly percentage is at or above the
+                    10-week running average.
+
+    OTIF            Green when the weekly score is 97% or higher.
+                    Below 97% the bar turns red regardless of history.
+
+
+2.2  Colour in the production tables
+--------------------------------------
+Individual production cells in the weekly summary tables are also coloured
+green or red.  For these cells the colour reflects whether that single
+production met the quality specification for its isotope (see Section 7).
+
+
+2.3  Colour in the leaderboard
+--------------------------------
+Team (ploeg) rankings use a slightly different scale:
+
+    GREEN   The team's score is more than 2 percentage points above the
+            average of all teams.
+
+    RED     The team's score is more than 2 percentage points below the
+            average of all teams.
+
+    BLACK   The team is within 2 percentage points of the average —
+            a neutral result.
+
+===============================================================================
