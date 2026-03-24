@@ -1,0 +1,1929 @@
+Isotope Dashboard — Technical Manual
+=====================================
+
+This manual describes the internal workings of the Isotope Dashboard in
+detail: where each piece of data comes from, what transformations are applied
+to it, and how it is shown on the dashboard.  It is intended for developers
+and advanced users who need to understand, maintain, or extend the system.
+
+For a quick-start guide (installation, paths, running the app) see README.txt.
+
+-------------------------------------------------------------------------------
+
+Contents
+--------
+  1. System overview and pipeline
+  2. Data collection — MS Access databases
+  3. Data collection — Excel files
+  4. Data collection — HTTP / JSON and static HTML
+  5. Raw database (raw.db) — schema and storage API
+  6. KPI calculations — Efficiency
+  7. KPI calculations — Within-spec
+  8. KPI calculations — OTIF (gedraaide producties)
+  9. KPI calculations — Shift and ploeg statistics
+ 10. Derived database (derived.db) — schema and KPI keys
+ 11. Dashboard rendering
+ 12. Configuration reference, deployment and troubleshooting
+
+===============================================================================
+
+1. System Overview and Pipeline
+================================
+
+1.1  Purpose
+------------
+The Isotope Dashboard is an automated production-monitoring tool for a
+cyclotron facility that produces five radioisotopes:
+
+    Ga-67   Gallium-67
+    Rb-82   Rubidium-82
+    In-111  Indium-111
+    Tl-201  Thallium-201
+    I-123   Iodine-123
+
+The dashboard answers three operational questions every minute:
+
+    1. How well did the cyclotrons perform this week and over recent weeks?
+       (Efficiency KPI, Within-spec KPI, OTIF KPI)
+    2. Which shift team is performing best?
+       (Ploeg leaderboard)
+    3. What is planned and what happened today / this week?
+       (Production tables, Gantt chart)
+
+
+1.2  The three-stage pipeline
+------------------------------
+Every 60 seconds (configurable) the application runs three stages in sequence:
+
+    ┌─────────────┐     ┌──────────────┐     ┌──────────────┐
+    │   COLLECT   │────>│   CALCULATE  │────>│    RENDER    │
+    └─────────────┘     └──────────────┘     └──────────────┘
+         │                     │                     │
+    Reads external         Reads raw.db          Reads derived.db
+    sources, writes        Computes KPIs,        Generates HTML,
+    to raw.db              writes derived.db     copies to outputs
+
+Stage 1 — Collect (run_collector.py / collector/)
+    Connects to MS Access databases, Excel files, an HTTP/JSON endpoint and
+    static HTML files.  New or changed records are upserted into raw.db
+    (SQLite).  This database is append-only and is the source of truth;
+    deleting derived.db or output files is always safe, but raw.db should
+    only be deleted deliberately.
+
+Stage 2 — Calculate (run_calculator.py / calculator/)
+    Reads all production records from raw.db, computes every KPI, and stores
+    the results as JSON values in derived.db.  Because derived.db is fully
+    regenerated on every cycle it can safely be deleted and recreated.
+
+Stage 3 — Render (run_renderer.py / renderer/)
+    Reads all KPI values from derived.db and builds two self-contained HTML
+    files (full dashboard and truncated dashboard).  Each file is written to
+    every output destination configured in settings.yaml.  A SHA-256 hash
+    check skips writes when the file has not changed, avoiding unnecessary
+    network traffic.
+
+
+1.3  Entry points
+-----------------
+There are four Python entry-point scripts in the project root.
+
+    run_all.py
+        Starts the infinite collect → calculate → render loop.
+        This is the normal production mode.  Stop with Ctrl+C.
+
+            python run_all.py
+
+    run_collector.py
+        Runs the collection stage once and exits.  Useful to verify
+        that all databases are reachable and to populate raw.db before
+        the first full run.
+
+            python run_collector.py
+
+    run_calculator.py
+        Reads raw.db and recomputes all KPIs, writing derived.db.
+        Run this after editing any file in calculator/ to test your
+        changes without waiting for new production data.
+
+            python run_calculator.py
+
+    run_renderer.py
+        Reads derived.db and regenerates both HTML files.
+        Run this after editing any file in renderer/ to preview the
+        dashboard immediately without recollecting or recalculating.
+
+            python run_renderer.py
+
+Typical development workflow:
+
+    1. python run_collector.py       (collect data once)
+    2. edit calculator/*.py
+    3. python run_calculator.py      (recalculate)
+    4. python run_renderer.py        (re-render, open output HTML in browser)
+    -- repeat steps 2-4 as needed without waiting for new data
+
+
+1.4  Project layout
+-------------------
+    isotope-dashboard/
+    │
+    ├── config/
+    │   ├── settings.yaml       All paths, thresholds, and settings
+    │   ├── loader.py           Reads settings.yaml (used by all modules)
+    │   └── spec_settings.py    Helper: colour-coding based on spec ranges
+    │
+    ├── collector/              Stage 1 — reads external sources
+    │   ├── access_reader.py    MS Access: isotope bestralingen, efficiency,
+    │   │                         storingen
+    │   ├── excel_reader.py     Excel: ploegen, planning, VSM, OTIF
+    │   ├── http_reader.py      HTTP/JSON: cyclotron production schedule
+    │   ├── html_reader.py      Static HTML: planning and productieschema
+    │   ├── raw_db.py           SQLite schema + read/write helpers (raw.db)
+    │   └── derived_db.py       SQLite schema + read/write helpers (derived.db)
+    │
+    ├── calculator/             Stage 2 — computes KPIs from raw.db
+    │   ├── efficiency.py       Cyclotron beam efficiency % + mCi/µAh
+    │   ├── within_spec.py      % productions within quality spec per week
+    │   ├── otif.py             OTIF: actual vs nominal targetstroom per week
+    │   ├── shift_stats.py      Per-shift production assignment and stats
+    │   ├── leaderboard.py      Ploeg leaderboard and rolling averages
+    │   ├── issues.py           Operator comment / issue counts
+    │   └── isotope_data.py     Shared helpers: weekly slices, monthly data
+    │
+    ├── renderer/               Stage 3 — generates HTML from derived.db
+    │   ├── assets.py           Shared CSS and JavaScript constants
+    │   ├── file_protection.py  SHA-256 hash-based skip-if-unchanged logic
+    │   ├── gantt.py            Gantt chart HTML builder
+    │   ├── tables.py           Reusable HTML table builders
+    │   ├── helpers.py          Leaderboard, shift table, chart HTML builders
+    │   ├── dashboard_full.py   Full dashboard renderer
+    │   └── dashboard_truncated.py  Truncated (operator) dashboard renderer
+    │
+    ├── data/                   Created automatically on first run
+    │   ├── raw.db              Collected records — source of truth
+    │   └── derived.db          Calculated KPIs — safe to delete
+    │
+    ├── output/                 Local copy of generated HTML files
+    │
+    ├── run_all.py              Entry point: full pipeline loop
+    ├── run_collector.py        Entry point: collect only
+    ├── run_calculator.py       Entry point: calculate only
+    ├── run_renderer.py         Entry point: render only
+    └── requirements.txt
+
+
+1.5  Data flow summary
+-----------------------
+The diagram below shows how each external source flows through the pipeline
+to the HTML output.
+
+    External source              raw.db table(s)       derived.db key(s)
+    ─────────────────────────────────────────────────────────────────────
+    bestralingen.mdb
+      Galliumbestralingen    --> gallium_data        --> efficiency_weeks
+                                                         within_spec_weeks
+                                                         otif_gedraaide_weeks
+                                                         ga_running / ga_previous
+      Rubidiumbestralingen   --> rubidium_data       --> (same KPIs)
+      Indiumbestralingen     --> indium_data         --> (same KPIs)
+      Thalliumbestralingen   --> thallium_data       --> (same KPIs)
+      Iodine 123             --> iodine_data         --> (same KPIs)
+      Galliumopbrengsten     --> gallium_opbrengsten --> gallium_eff_weeks
+      Indiumopbrengsten      --> indium_opbrengsten  --> indium_eff_weeks
+
+    ProcesGegevens.accdb
+      Output_EfficiencyTargets --> efficiency_targets --> efficiency_weeks (%)
+
+    Storingen_IBA.accdb
+      001MTO ...             --> iba_storingen       --> iba_storingen_data
+
+    Storingen_Philips.accdb
+      001MTO ...             --> philips_storingen   --> philips_storingen_data
+
+    Ploegen.xlsx             --> excel_cache         --> ploegen_data / leaderboard
+    Planning & Control.xlsm --> excel_cache         --> shift_stats / leaderboard
+    VSM targetstroom.xlsx    --> blobs (vsm)         --> vsm_data
+    OTIF week*.xlsx          --> blobs (otif)        --> otif_kpi_data / otif_table_data
+
+    productions_database.json                            NOT stored in raw.db;
+      or cyclotron.asp (HTTP)  (fetched live)        --> cyclotron_data (in memory)
+    planning.html             --> blobs              --> planning_html_content
+    productieschema.html      --> blobs              --> productieschema_html_content
+
+
+1.6  Persistence model
+-----------------------
+raw.db
+    Written by the collector. Never recalculated. Every row has an
+    AUTOINCREMENT primary key and a UNIQUE constraint on (identifier, date)
+    so re-running the collector never creates duplicate rows (INSERT OR
+    REPLACE upsert strategy). Deleting this file forces a full re-import on
+    the next collect cycle, which may take longer than usual.
+
+derived.db
+    Written by the calculator. Fully overwritten on every cycle. The entire
+    database is a single key-value table (`kpis`) where each row stores one
+    KPI as a JSON string. This design means adding a new KPI never requires
+    a schema migration.  Deleting derived.db is always safe.
+
+Excel cache (excel_cache table inside raw.db)
+    Each Excel file is compared against its stored modification time on every
+    cycle. If the mtime matches the cached value the file is not re-parsed,
+    reducing I/O on every cycle. Only when the file changes is it re-parsed
+    and the cache updated.
+
+
+1.7  Loop interval and error handling
+--------------------------------------
+The loop interval defaults to 60 seconds and is set in settings.yaml:
+
+    loop_interval_seconds: 60
+
+If any stage raises an unhandled exception the error is printed and the loop
+continues after the normal sleep interval. This means a temporary network
+failure (e.g. a UNC path becoming unreachable) only causes one missed update,
+not a crash. Individual extraction functions also catch their own exceptions
+and return empty lists rather than propagating, so a single failed database
+does not block the others.
+
+===============================================================================
+
+2. Data Collection — MS Access Databases
+==========================================
+
+Source file:  collector/access_reader.py
+Writes to:    data/raw.db
+
+All MS Access databases are opened as read-only connections via pyodbc using
+the "Microsoft Access Driver (*.mdb, *.accdb)" ODBC driver.  The connection
+string is built in connect_access() and looks like:
+
+    DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=<path>;ReadOnly=1;
+
+If the connection fails (wrong path, driver missing, network unavailable) the
+function prints an error and returns None.  Callers that receive None return
+an empty list, so a single unavailable database does not block the others.
+
+
+2.1  Incremental import
+------------------------
+To avoid re-reading the entire history every 60 seconds, each isotope
+extraction function accepts an optional since_date parameter.  When provided,
+the SQL query adds a WHERE clause that limits results to records on or after
+that date:
+
+    WHERE [EOB datum] >= #MM/DD/YYYY#
+
+Note the MS Access date-literal format: month/day/year surrounded by # signs,
+which differs from the ISO format used everywhere else in the codebase.
+
+The since_date value is determined by the caller (run_collector.py): it reads
+the most recent date already stored in raw.db for each isotope table and passes
+it as since_date, so only new or recently updated records are fetched.  On the
+very first run (empty raw.db) since_date is None and the full history is loaded.
+
+
+2.2  bestralingen.mdb — main production database
+--------------------------------------------------
+Path setting:  paths.bestralingen_db
+
+This is the primary source of production records.  It contains one Access
+table per isotope.  All five tables are queried by extract_gallium_data(),
+extract_rubidium_data(), extract_indium_data(), extract_thallium_data(), and
+extract_iodine_data().
+
+──────────────────────────────────────────────────────────────────────────────
+2.2a  Galliumbestralingen  →  raw.db: gallium_data
+──────────────────────────────────────────────────────────────────────────────
+
+Columns read from Access:
+
+    [EOB datum]               Date of end-of-bombardment (the production date).
+    [Targetstroom]            Beam current at the target in µA.
+    [BO nummer]               Production order number (used as the record
+                              identifier for deduplication).
+    [Cyclotron]               Text field: "Philips" or empty for Philips
+                              cyclotron productions; any other value signals IBA.
+    [Duur]                    Bombardment duration in HH.MM format (see 2.6).
+    [EOBhrmin]                End-of-bombardment time as HH.MM or HH:MM (see 2.7).
+    [Target nr + Opmerking]   Free-text operator remarks.
+    [IBA Bestralingspositie]  IBA beam position string (e.g. "IBA 2.1", "IBA 1.2").
+
+Cyclotron determination for Gallium:
+    - If [Cyclotron] == "Philips" or [IBA Bestralingspositie] is empty
+      → cyclotron = "Philips"
+    - Otherwise → cyclotron = the full IBA position string (e.g. "IBA 2.1").
+      This distinction matters for within-spec checking, where Philips and IBA
+      have different targetstroom ranges (75–85 µA vs 130–140 µA).
+
+Stored in raw.db as:
+    date, targetstroom, identifier (BO nummer), cyclotron, duur, eobhrmin,
+    opmerking
+
+──────────────────────────────────────────────────────────────────────────────
+2.2b  Rubidiumbestralingen  →  raw.db: rubidium_data
+──────────────────────────────────────────────────────────────────────────────
+
+Columns read from Access:
+
+    [EOB datum]                    Production date.
+    [Activiteit MBq]               Measured activity at end of bombardment (MBq).
+    [Benodigde activiteit volgens BO]  Required activity per order (mCi).
+    [BO nummer]                    Production order identifier.
+    [stroom]                       Beam current in µA (equivalent of targetstroom).
+    [duur]                         Bombardment duration in HH.MM format.
+    [EOB tijd]                     End-of-bombardment time.
+    [Opmerking]                    Operator remarks.
+
+Derived field computed during extraction:
+    efficiency = (Activiteit MBq / (Benodigde activiteit mCi × 37)) × 100
+
+    The factor 37 converts mCi to MBq (1 mCi = 37 MBq), allowing the
+    measured activity to be compared against the ordered activity as a
+    percentage.  If either value is missing or the ordered activity is zero,
+    efficiency is stored as None.
+
+Cyclotron: Rubidium is always produced on Kant 2 of the Philips cyclotron.
+    cyclotron is hardcoded to 'P2'.
+
+Stored in raw.db as:
+    date, value1 (Activiteit MBq), value2 (Benodigde activiteit mCi),
+    efficiency (computed %), identifier (BO nummer), cyclotron ('P2'),
+    stroom, duur, eob_tijd, opmerking
+
+──────────────────────────────────────────────────────────────────────────────
+2.2c  Indiumbestralingen  →  raw.db: indium_data
+──────────────────────────────────────────────────────────────────────────────
+
+Columns read from Access:
+
+    [EOB datum]            Production date.
+    [Targetstroom]         Beam current at the target in µA.
+    [BO nummer]            Production order identifier.
+    [Bestralingspositie]   Beam position: "Philips", "IBA 2.1", "IBA 1.2", etc.
+    [Duur]                 Bombardment duration in HH.MM format.
+    [EOBhrmin]             End-of-bombardment time.
+    [Opmerking]            Operator remarks.
+
+Cyclotron determination for Indium:
+    The full [Bestralingspositie] value is stored as both cyclotron and
+    bestralingspositie.  The Gantt chart renderer later calls
+    map_cyclotron_name() to convert this to a short display name.
+    The within-spec calculator checks whether cyclotron starts with "IBA"
+    (case-insensitive) to apply IBA vs Philips thresholds.
+
+Stored in raw.db as:
+    date, targetstroom, identifier (BO nummer), cyclotron (bestralingspositie),
+    bestralingspositie, duur, eobhrmin, opmerking
+
+──────────────────────────────────────────────────────────────────────────────
+2.2d  Thalliumbestralingen  →  raw.db: thallium_data
+──────────────────────────────────────────────────────────────────────────────
+
+Columns read from Access:
+
+    [EOB datum]      Production date.
+    [Targetstroom]   Beam current in µA.
+    [BO nummer]      Production order identifier.
+    [Duur]           Bombardment duration in HH.MM format.
+    [EOB tijd]       End-of-bombardment time.
+    [Opmerking]      Operator remarks.
+
+Cyclotron / kant determination for Thallium:
+    Thallium has no explicit cyclotron column.  Instead, the first digit of
+    the BO number determines which side (kant) of the Philips cyclotron was
+    used:
+
+        BO starts with '1'  →  kant = '1.2',  cyclotron = 'P1'
+        BO starts with '2'  →  kant = '2.1',  cyclotron = 'P2'
+        anything else       →  kant = 'Unknown', cyclotron = 'P1' (default)
+
+Stored in raw.db as:
+    date, targetstroom, identifier (BO nummer), cyclotron, kant, duur,
+    eob_tijd, opmerking
+
+──────────────────────────────────────────────────────────────────────────────
+2.2e  Iodine 123  →  raw.db: iodine_data
+──────────────────────────────────────────────────────────────────────────────
+
+Iodine-123 is structurally different from the other isotopes.  Its production
+involves a multi-day growth period, so the date field is the growth end date
+([BO ingroei tot datum]) rather than an EOB date.  The table also contains
+more measurement columns.
+
+Columns read from Access:
+
+    [BO ingroei tot datum]              Growth end date (used as the record date).
+    [*Meting D1 opbrengst I-123]        Activity measured in the product fraction (MBq).
+    [*Meting Waste]                     Activity measured in the waste fraction (MBq).
+    [*verwacht opbrengst I-123 bij 120 uAh]  Expected yield at 120 µAh (MBq).
+    [BO nummer]                         Production order identifier.
+    [BO Targetstroom]                   Planned (nominal) beam current per order (µA).
+    [@Gemiddelde targetstroom]          Actual average beam current during bombardment (µA).
+    [@Totale dosis]                     Total beam dose delivered (µAh).
+    [@Stop datum bestraling]            Date bombardment ended.
+    [@Stop tijd bestraling]             Time bombardment ended.
+    [BO starttijd bestraling]           Time bombardment started.
+    [@Totale bestralingstijd]           Total bombardment duration (hours).
+    [@Totale storingstijd]              Total downtime during bombardment (hours).
+    [@Opmerkingen tijdens bestraling]   Operator remarks.
+
+Two percentages are computed during extraction:
+
+    yield_percent  = Meting D1 / (Meting D1 + Meting Waste) × 100
+        The fraction of total measured activity that ended up in the product.
+        A higher yield means less activity was lost to the waste stream.
+
+    output_percent = (Meting D1 + Meting Waste) × 75 / verwacht opbrengst
+        How much of the expected output was actually produced, expressed as a
+        percentage.  The factor 75 converts from µAh-normalised expected yield
+        to the actual dose delivered.  Both output_percent and targetstroom
+        (the actual average beam current) must fall within their respective
+        spec ranges for a production to count as within-spec.
+
+Cyclotron: Iodine is always produced on Kant 1 of the Philips cyclotron.
+    cyclotron is hardcoded to 'P1'.
+
+Stored in raw.db as:
+    date, value1 (meting_d1), value2 (meting_waste), efficiency (= yield_percent),
+    yield_percent, output_percent, identifier (BO nummer), cyclotron ('P1'),
+    bo_targetstroom, targetstroom (actual), totale_dosis, meting_d1,
+    meting_waste, verwacht, stop_datum, stop_tijd, start_tijd,
+    totale_bestralingstijd, totale_storingstijd, opmerking
+
+──────────────────────────────────────────────────────────────────────────────
+2.2f  Galliumopbrengsten / Indiumopbrengsten  →  raw.db: gallium_opbrengsten /
+      indium_opbrengsten
+──────────────────────────────────────────────────────────────────────────────
+
+Both tables have the same structure.  They record daily post-separation yield
+totals for Gallium and Indium respectively.
+
+Columns read from Access:
+
+    [Datum Tweede Scheiding]   Date of the second separation step.
+    [Opbrengst (MBq)]          Total yield for that day in MBq.
+
+These records are used only to compute per-isotope production efficiency
+(mCi/µAh).  The opbrengst value on the day immediately after an EOB date is
+matched to that production run (bisect_right lookup on sorted dates).
+
+Stored in raw.db as:  date, opbrengst_mbq
+
+
+2.3  ProcesGegevens.accdb — efficiency targets
+------------------------------------------------
+Path setting:  paths.proces_db
+
+Table read:  Output_EfficiencyTargets
+
+Columns:
+
+    [Datum]               Date of the measurement.
+    [Efficiency targets]  Beam transmission efficiency as a decimal fraction
+                          (0.0–1.0).  The value 0.72 means 72% efficiency.
+
+The collector filters out rows where the efficiency is NULL or zero.
+Stored values are multiplied by 100 in the calculator to yield percentages.
+
+Stored in raw.db as:  date, efficiency (the raw 0–1 decimal)
+
+
+2.4  Storingen_IBA.accdb — IBA cyclotron downtime
+---------------------------------------------------
+Path setting:  paths.storingen_iba_db
+
+Table read:  001MTO Niet opgeloste storingen voor onderhoudsplanning
+
+Because this table's column names can vary slightly between database versions,
+the extractor uses a dynamic column-name lookup rather than fixed positional
+indices.  It searches the column name list for names containing 'storingsnummer',
+'datum', and exactly matching 'storing'.
+
+Columns captured:
+
+    storingsnummer   Unique fault-report number.
+    datum            Date of the fault (formatted as YYYY-MM-DD on storage).
+    storing          Description of the fault.
+
+Stored in raw.db as:  storingsnummer, datum, storing
+Unique constraint:  (storingsnummer, datum)
+
+
+2.5  Storingen_Philips.accdb — Philips cyclotron downtime
+----------------------------------------------------------
+Path setting:  paths.storingen_philips_db
+
+Table read:  001MTO Niet opgeloste storingen voor onderhoudsplanning
+
+Same structure as the IBA storingen table.  This database uses fixed column
+names (Storingsnummer, Datum, Storing) so positional access is used directly.
+
+Stored in raw.db as:  storingsnummer, datum, storing
+Unique constraint:  (storingsnummer, datum)
+
+Currently the storingen data is collected and stored but is not yet displayed
+in the dashboard HTML.  The tables are available in raw.db for future use.
+
+
+2.6  Duration parsing — the HH.MM format
+-----------------------------------------
+Access stores bombardment durations in a non-standard HH.MM format where the
+decimal part represents minutes, not fractions of an hour.
+
+    9.05  →  9 hours 5 minutes  →  9.0833 decimal hours
+    12.30 →  12 hours 30 minutes → 12.5 decimal hours
+    10.45 →  10 hours 45 minutes → 10.75 decimal hours
+
+The critical rule: a stored value of 10.3 means 10:30 (10 hours 30 minutes),
+NOT 10 hours and 0.3 of an hour (10:18).  The minute string is left-justified
+and padded to two characters ('3' → '30') before division by 60.
+
+The parse_time_duration() function in access_reader.py handles this format as
+well as the HH:MM colon-separated variant and plain integer hours.  It is also
+used by the calculator when computing µAh (beam current × hours).
+
+
+2.7  EOBhrmin parsing — end-of-bombardment time
+-------------------------------------------------
+The EOBhrmin field in Galliumbestralingen and Indiumbestralingen stores the
+end-of-bombardment time.  It can arrive in any of four formats:
+
+    - A Python time object (from pyodbc's native time parsing)
+    - A float using the same HH.MM encoding as duration (e.g. 14.35 = 14:35)
+    - A colon-separated string ('14:35')
+    - A compact integer string ('1435' or '435')
+
+The parse_eobhrmin() function normalises all of these to a (hours, minutes)
+tuple, or None if parsing fails.  Values outside the valid ranges (0–23 hours,
+0–59 minutes) are rejected and return None.
+
+===============================================================================
+
+3. Data Collection — Excel Files
+==================================
+
+Source file:  collector/excel_reader.py
+Writes to:    data/raw.db  (excel_cache table and blobs table)
+
+Excel files are parsed with openpyxl.  Because the planning file is an
+.xlsm macro-enabled workbook, every file is first saved to a temporary .xlsx
+copy (which strips VBA macros) before being read, then the temp file is
+deleted in a finally block.  This prevents openpyxl from choking on macro
+content.
+
+
+3.1  Mtime-based SQLite cache
+------------------------------
+Re-parsing a large Excel file on every 60-second cycle would be wasteful.
+Instead, each loader follows this pattern before doing any file I/O:
+
+    1. Read the file's current modification time with os.path.getmtime().
+    2. Look up the stored mtime in the excel_cache table of raw.db.
+    3. If the two values match (within 0.001 s), deserialise and return the
+       cached JSON data immediately — no file parsing.
+    4. If they differ (file was updated), parse the file, store the new
+       result back into excel_cache with the new mtime, and return the data.
+
+The cache is keyed by a logical name ('ploegen', 'vsm', 'planning', 'otif').
+Each entry stores: cache_key, mtime (REAL), data_json (TEXT), saved_at (TEXT).
+
+
+3.2  Ploegen.xlsx  →  raw.db: excel_cache ('ploegen')
+-------------------------------------------------------
+Path setting:  paths.ploegen_excel
+Loader:        load_ploegen_definitions(excel_path, sqlite_conn)
+
+This file defines the shift teams (ploegen) and their members.
+
+Layout:
+    Columns L–P  (5 columns, one per ploeg)
+        Each column contains the names of all members of that team,
+        starting from row 1.  Reading stops at the first empty cell.
+    Cell Q1
+        The ploegenwissel date — the date of the most recent team rotation.
+        Used as a cutoff: only planning data from Q1 onwards is used when
+        assigning productions to shift teams.
+
+Parsing logic:
+    For each column L through P the loader reads every non-empty cell from
+    row 1 downward.  It builds an index keyed by the first two uppercase
+    characters of each member name (e.g. "Re" for "Reinder").  This two-
+    letter abbreviation is the same format used in the planning file so the
+    two can be cross-referenced.
+
+    Each member maps to a dict:
+        ploeg_number  (1–5, corresponding to column order L–P)
+        ploeg_name    (all members joined by ", ")
+        members       (list of all member name strings)
+
+Returned as:  (ploegen_data dict, ploegenwissel_date)
+Stored in:    excel_cache table under key 'ploegen'
+
+
+3.3  Planning & Control Cyclotron.xlsm  →  raw.db: excel_cache ('planning')
+-----------------------------------------------------------------------------
+Path setting:  paths.planning_excel
+Loader:        load_planning_data(excel_path, sqlite_conn)
+
+This macro-enabled workbook contains the daily shift roster: which person
+leads each of the three daily shifts on each calendar day.
+
+Sheet read:  Verlof  (starting at row 7, column B)
+
+Layout per row:
+    B         Date of the shift day.
+    F, G, H, I    Ochtenddienst (morning shift, 07:00–15:00): the first
+                  non-empty cell in this range is taken as the shift lead.
+    J, K, L, M    Middagdienst (afternoon shift, 15:00–23:00): first
+                  non-empty cell.
+    Q, R, S, T    Nachtdienst (night shift, 23:00–07:00): first non-empty cell.
+
+The loader reads rows 7 through 5000, stopping when it encounters an empty
+date cell.  Each date maps to a dict:
+
+    {
+        'ochtenddienst': <name or None>,
+        'middagdienst':  <name or None>,
+        'nachtdienst':   <name or None>,
+    }
+
+The name strings are the same format as member names in Ploegen.xlsx
+(first two characters are the ploeg lookup key).
+
+Returned as:  dict keyed by datetime.date
+Stored in:    excel_cache table under key 'planning'
+              (date keys are serialised to ISO strings for JSON storage)
+
+
+3.4  VSM targetstroom Excel  →  raw.db: blobs ('vsm')
+------------------------------------------------------
+Path setting:  paths.vsm_excel
+Loader:        load_vsm_data(excel_path, sqlite_conn)
+
+The VSM (Value Stream Management) daily management sheet tracks actual beam
+currents per isotope group each day and computes an OTIF percentage.
+
+Sheet:  active sheet (first sheet)
+
+Layout:
+    Row 1     Header row (A = date, B–K = isotope columns, M = OTIF)
+    Rows 2+   One row per production day.
+
+Columns B–K map to isotope groups:
+    B–F  Tl1–Tl5    (five Thallium channels)
+    G    Ga          (Gallium)
+    H    In          (Indium)
+    I–J  Rb1–Rb2     (two Rubidium channels)
+    K    I123         (Iodine-123)
+
+OTIF% computation per row:
+    For each isotope group the average of non-null values is divided by the
+    group's nominal target current to give a group OTIF percentage:
+
+        Thallium  nominal: 170.0 µA
+        Gallium   nominal:  80.0 µA
+        Indium    nominal:  80.0 µA
+        Rubidium  nominal:  70.0 µA  (applied to each Rb channel separately)
+        Iodine    nominal: 100.0 µA
+
+    The row OTIF% is the simple average of all active group percentages
+    (groups with at least one non-null value contribute; empty groups are
+    excluded from the average).
+
+    A week-average OTIF is also computed across all parsed rows with a
+    non-null OTIF value.
+
+Returned as:
+    {
+        'rows':          [ {date, tl1..tl5, ga, in_, rb1, rb2, i123, otif}, ... ],
+        'week_avg_otif': float or None
+    }
+Stored in:    blobs table under key 'vsm'
+
+
+3.5  OTIF week*.xlsx  →  raw.db: blobs ('otif')
+-------------------------------------------------
+Path setting:  (hardcoded search in X:\Cyclotron Bureau\OTIF\)
+Loader:        load_otif_data(sqlite_conn)
+
+The OTIF tracking workbook is found by a glob search for
+"X:\Cyclotron Bureau\OTIF\OTIF week*.xlsx".  The first match is used.
+If no file is found the function returns ([], {}) and prints a warning.
+
+Two sheets are parsed:
+
+────────────────────────────────────────────────────
+Sheet: "7 KPI Week" — weekly OTIF KPI per isotope
+────────────────────────────────────────────────────
+Columns read (0-indexed):
+    A (0)   Week label, format "YYYYwWW" (e.g. "2024W03").
+    G (6)   Gallium OTIF %
+    H (7)   I-123 OTIF %
+    J (9)   Indium OTIF %
+    K (10)  Thallium OTIF %
+    L (11)  Rubidium/Krypton OTIF %
+
+Values are stored as decimals 0–1 in the sheet; the loader normalises them
+to 0–100 percentages.  Only the last 52 weeks are kept (older rows are
+discarded).  Rows are sorted by (year, ISO week) before storage.
+
+────────────────────────────────────────────────────
+Sheet: "1Log" — individual missed-order records
+────────────────────────────────────────────────────
+Data starts at row 3 (row 2 is the header).
+Columns read (0-indexed):
+    D (3)   Week label
+    G (6)   Missed-order count
+    I (8)   Product name
+    K (10)  Reason code
+
+Rows are filtered to only include known products and reasons:
+
+    Products:  Gallium, I-123, Indium, Krypton, Thallium
+    Reasons:   Production, Equipment failure Petten,
+               Bulk shortage, Production Petten
+
+The result is a nested dict:
+    { product: { week_label: missed_count } }
+
+Returned as:  (otif_kpi_data list, otif_table_data dict)
+Stored in:    blobs table under key 'otif'
+
+===============================================================================
+4. Data Collection — HTTP/JSON & HTML
+=======================================
+
+Source files:  collector/http_reader.py
+               collector/html_reader.py
+Writes to:     data/raw.db  (blobs table)
+
+4.1  Cyclotron production planning  (http_reader.py)
+-----------------------------------------------------
+Config key:  urls.cyclotron_planning
+             http://pett-webw02p/procdashboard/cyclotron.asp
+
+Entry point:  fetch_cyclotron_data(url: str) -> list
+
+This function uses a two-source strategy with automatic fallback:
+
+PRIMARY SOURCE — shared JSON database on the network:
+    Path:  \\pett-fs01p\nucleair\Isotopen productie\Cyclotron formulieren\
+           productions_database.json
+    Maintained externally by Productieplanning.py.
+    If the file exists and contains a non-empty 'productions' dict, the
+    values are returned directly as a list.  No HTTP request is made.
+
+FALLBACK SOURCE — live ASP page:
+    Used only when the JSON file is absent or unreadable.
+    requests.get(url, verify=False, timeout=10)
+    SSL verification is disabled because the server uses a self-signed cert.
+    The raw HTML is passed to parse_cyclotron_data().
+
+Error handling:
+    Both sources are wrapped in try/except Exception blocks.  Failures
+    print a [WARNING] message and fall through to the next source.
+    If both sources fail the function returns an empty list; the renderer
+    will continue with whatever historical data is already available.
+    There is no retry loop.
+
+NOTE: cyclotron planning data is NOT stored in raw.db.  It is fetched
+fresh during each rendering cycle and merged in memory with historical
+bestralingen records before the Gantt chart is assembled.
+
+
+4.2  HTML parsing of the cyclotron ASP page  (http_reader.py)
+--------------------------------------------------------------
+Function:  parse_cyclotron_data(html_content: str) -> list
+
+Parses <table id="custom_table"> using BeautifulSoup('html.parser').
+
+Row filtering rules:
+    • Rows whose only content is a cyclotron identifier ('P1', 'P2', 'P0')
+      are treated as group headers and skipped.
+    • Rows containing a cell with a colspan attribute and empty text are
+      informational spacers and are skipped.
+    • Only rows whose first text cell equals 'P1', 'P2', or 'P0' and that
+      have at least 11 remaining cells are processed.
+
+Column mapping (0-indexed after the cyclotron identifier cell):
+    0   cyclotron   Cyclotron identifier ('P1', 'P2', 'P0')
+    1   bonr        BO (batch order) number
+    2   order       Order number
+    3   product     Product name (e.g. 'Tl-201', 'I-123', 'Pauze')
+    4   startDate   Start date, format DD.MM
+    5   startTime   Start time, format HH:MM
+    6   endDate     End date, format DD.MM
+    7   endTime     End time, format HH:MM
+    8   duration    Duration string (hours.minutes)
+    9   activity    Activity (MBq)
+   10   totalActivity  Total activity (MBq)
+    –   type        Derived: 'Pauze' if 'Pauze' in product, else 'Data'
+
+After parsing, rows are deduplicated by bonr (first occurrence wins).
+Only rows with type 'Data' or 'Pauze' are retained.
+
+
+4.3  Static HTML files  (html_reader.py)
+-----------------------------------------
+Two functions load pre-rendered or externally generated HTML fragments that
+are embedded verbatim into the dashboard:
+
+    load_planning_html(path: str) -> str | None
+        Reads the planning overview HTML file from disk.
+        Returns the file contents as a string, or None on any read error.
+
+    load_productieschema_html(path: str) -> str | None
+        Reads the production schema HTML file from disk.
+        Returns the file contents as a string, or None on any read error.
+
+Both files are stored in raw.db (blobs table) under keys 'planning_html'
+and 'productieschema_html' respectively so that the renderer can retrieve
+them from the database without knowing their file paths.
+
+===============================================================================
+5. Raw Database (raw.db) — Schema & Storage API
+=================================================
+
+File:  data/raw.db   (SQLite 3)
+API:   collector/raw_db.py
+
+All tables are created (if they do not already exist) by connect(db_path).
+Columns that were added to tables after the initial schema are applied with
+ALTER TABLE … ADD COLUMN; the call is silently ignored if the column already
+exists, so the migration is safe to re-run.
+
+
+5.1  Isotope production tables
+--------------------------------
+One table per isotope, all with the same structure:
+
+    CREATE TABLE IF NOT EXISTS <table> (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        <columns>,
+        UNIQUE(identifier, date)
+    )
+
+identifier is a BO number string; date is a TEXT in 'YYYY-MM-DD' format.
+The composite UNIQUE constraint means each BO/date pair can only appear once.
+SQLite implicitly creates a covering index on (identifier, date).
+
+Table-specific columns:
+┌────────────────┬──────────────────────────────────────────────────────────┐
+│ iodine_data    │ date, value1, value2, efficiency, efficiency_raw,        │
+│                │ identifier, bo_targetstroom, targetstroom, yield_percent,│
+│                │ output_percent, cyclotron, totale_dosis, meting_d1,      │
+│                │ meting_waste, verwacht, stop_datum, stop_tijd,           │
+│                │ start_tijd, totale_bestralingstijd, totale_storingstijd, │
+│                │ opmerking, extracted_at                                  │
+├────────────────┼──────────────────────────────────────────────────────────┤
+│ rubidium_data  │ date, value1, value2, efficiency, identifier, cyclotron, │
+│                │ stroom, duur, eob_tijd, opmerking, extracted_at          │
+├────────────────┼──────────────────────────────────────────────────────────┤
+│ gallium_data   │ date, targetstroom, identifier, cyclotron, duur,         │
+│                │ eobhrmin, opmerking, extracted_at                        │
+├────────────────┼──────────────────────────────────────────────────────────┤
+│ indium_data    │ date, targetstroom, identifier, cyclotron,               │
+│                │ bestralingspositie, duur, eobhrmin, opmerking,           │
+│                │ extracted_at                                             │
+├────────────────┼──────────────────────────────────────────────────────────┤
+│ thallium_data  │ date, targetstroom, identifier, cyclotron, kant, duur,   │
+│                │ eob_tijd, opmerking, extracted_at                        │
+└────────────────┴──────────────────────────────────────────────────────────┘
+
+Write function:  store(conn, table_name, data, *extra_col_names)
+    data is a list of dicts.  For each row:
+      1. The date field is normalised to 'YYYY-MM-DD'.
+      2. SELECT checks whether (identifier, date) already exists.
+      3. If it does  → UPDATE all non-key columns.
+      4. If it does not → INSERT full row.
+    extracted_at is set to the current UTC ISO timestamp automatically.
+    stop_datum, stop_tijd, and start_tijd in iodine_data are always cast to
+    str to avoid type mismatches from the Access driver.
+
+
+5.2  Auxiliary date-keyed tables
+----------------------------------
+    UNIQUE(date)   — one row per calendar day.
+
+    gallium_opbrengsten   (date, opbrengst_mbq, extracted_at)
+    indium_opbrengsten    (date, opbrengst_mbq, extracted_at)
+    efficiency_targets    (date, efficiency, extracted_at)
+
+Write function:  store_opbrengsten(conn, table_name, data)
+    Uses INSERT OR REPLACE (SQLite upsert on the UNIQUE date column).
+    date is normalised to 'YYYY-MM-DD' before insert.
+
+
+5.3  Storingen (downtime) tables
+----------------------------------
+    UNIQUE(storingsnummer, datum)   — one row per incident/date pair.
+
+    iba_storingen      (storingsnummer, datum, storing, extracted_at)
+    philips_storingen  (storingsnummer, datum, storing, extracted_at)
+
+Write function:  store_storingen(conn, table_name, data)
+    Uses INSERT OR REPLACE on the composite unique key.
+
+
+5.4  Blob store  (blobs table)
+--------------------------------
+    CREATE TABLE IF NOT EXISTS blobs (
+        key        TEXT PRIMARY KEY,
+        value_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+
+Used for large structured objects that do not fit the relational schema.
+
+    store_blob(conn, key, value)
+        Serialises value with json.dumps(default=str) and upserts the
+        row.  updated_at is set to the current ISO timestamp.
+
+    load_blob(conn, key, default=None)
+        Returns the deserialised Python object, or default if the key is
+        absent or the JSON is malformed.
+
+Keys stored at runtime:
+    'ploegen'           — ploeg definitions dict from Ploegen.xlsx
+    'planning'          — shift roster dict from Planning .xlsm
+    'vsm'               — VSM targetstroom rows + week_avg_otif
+    'otif'              — tuple (otif_kpi_data, otif_table_data)
+    'planning_html'     — raw HTML fragment for the planning panel
+    'productieschema_html' — raw HTML fragment for the productieschema panel
+
+
+5.5  Excel cache  (excel_cache table)
+----------------------------------------
+    CREATE TABLE IF NOT EXISTS excel_cache (
+        cache_key TEXT PRIMARY KEY,
+        mtime     REAL NOT NULL,
+        data_json TEXT NOT NULL,
+        saved_at  TEXT NOT NULL
+    )
+
+cache_key is a logical name ('ploegen', 'vsm', 'planning', 'otif').
+mtime is the os.path.getmtime() float of the Excel file at parse time.
+data_json holds the full parsed result as JSON.
+Loader functions check mtime before re-parsing; if the stored mtime
+matches the current file mtime (within 0.001 s) the cached data is used.
+
+
+5.6  Production comments table
+--------------------------------
+    CREATE TABLE IF NOT EXISTS production_comments (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        isotope_type     TEXT,
+        production_date  TEXT,
+        bo_number        TEXT,
+        comment_type     TEXT,
+        created_at       TEXT,
+        UNIQUE(isotope_type, production_date, bo_number)
+    )
+
+Stores user-entered annotations attached to individual productions.
+Not populated by the automated collector; written by the web UI layer.
+
+
+5.7  Query helpers
+--------------------
+    get_max_date(conn, table_name) -> str | None
+        Returns SELECT MAX(date) for incremental Access queries.
+        Returns None if the table is empty or does not exist.
+
+    load_table(conn, table_name) -> list of dicts
+        Returns every row in a table as a list of dicts.
+        Returns [] if the table does not exist.
+
+===============================================================================
+6. KPI Calculations — Efficiency
+==================================
+
+Source file:  calculator/efficiency.py
+Reads from:   data/raw.db
+Writes to:    data/derived.db
+
+Efficiency measures how much isotope activity is produced per unit of
+cyclotron beam charge delivered.  The unit is mCi per µAh (micro-ampere-
+hour).  Each isotope uses a slightly different formula because the available
+raw data columns differ.
+
+
+6.1  Week definition
+---------------------
+All "weekly" views use a Friday–Thursday week:
+    Week N opens on Friday and closes on Thursday.
+    The week label used in derived.db is the ISO week number of that Thursday.
+A helper get_last_friday() returns the most recent Friday strictly before
+today (if today is Friday the previous Friday is returned, so the current
+partial week is not contaminated).
+
+
+6.2  Per-isotope efficiency formulas
+--------------------------------------
+Gallium (gallium_data × gallium_opbrengsten):
+    µAh = targetstroom × (duur_hours)
+    efficiency = (opbrengst_mbq / 37) / µAh        [mCi/µAh]
+    Join on date.  Skip rows where targetstroom or duur is None.
+
+Indium (indium_data × indium_opbrengsten):
+    Same formula as Gallium.
+    Join on date.  Skip rows where targetstroom or duur is None.
+
+Rubidium (rubidium_data):
+    Only productions with 3 ≤ duration ≤ 6 hours are used.
+    µAh = stroom × duur_hours
+    efficiency = (value1 / 37) / µAh               [mCi/µAh]
+    Skip rows where stroom or duur is None or µAh ≤ 0.
+
+Iodine (iodine_data):
+    Only productions where beam_hours = totale_dosis / targetstroom ≥ 10
+    are used.
+    efficiency = ((meting_d1 + meting_waste) / 37) / totale_dosis  [mCi/µAh]
+    totale_dosis is the total beam charge in µAh from the Access record.
+    Skip rows where targetstroom, totale_dosis, meting_d1, or meting_waste
+    is None.
+
+Duration parsing:
+    The duur column is stored in "HH.MM" format (not decimal hours).
+    Conversion: hours = int(duur)  +  (duur % 1 * 100) / 60
+    Example: 9.05 → 9 hours 5 minutes → 9.0833 hours.
+    Values outside valid ranges (0–23 h, 0–59 min) are rejected.
+
+
+6.3  Outlier filtering
+------------------------
+After collecting all data points for a time window the loader computes the
+mean and standard deviation.  Points more than 2 standard deviations from
+the mean are excluded before the final average is reported.  Individual
+scatter-plot points are returned unfiltered so the user can see outliers
+on the chart.
+
+
+6.4  Time windows produced
+----------------------------
+get_efficiency_weeks()
+    Last 10 complete Friday–Thursday weeks.
+    Each week: efficiency average, week_number, friday date, color.
+    color = green (#3BB143) if week avg ≥ overall 10-week avg, else red.
+
+get_efficiency_last_year_average()
+    Trailing 365 days from today.
+    Returns single float: mean efficiency (after outlier removal).
+
+get_efficiency_last_3months_average()
+    Trailing 90 days from today.
+    Returns single float.
+
+get_efficiency_past_year()
+    All individual data points in the past 365 days.
+    Used for the scatter / trend chart.
+
+get_efficiency_all_time()
+    All data grouped by calendar quarter.
+    Q1 = months 1–3, Q2 = 4–6, Q3 = 7–9, Q4 = 10–12.
+    Returns list of {year, quarter, average_efficiency} dicts.
+
+===============================================================================
+7. KPI Calculations — Within-Spec
+===================================
+
+Source file:  calculator/within_spec.py
+              config/spec_settings.py
+Reads from:   data/raw.db
+Writes to:    data/derived.db
+
+Within-spec measures what fraction of completed productions had a beam
+current (targetstroom) or efficiency value inside the product specification
+window.  The result is expressed as a percentage 0–100.
+
+
+7.1  Specification limits  (spec_settings.py)
+----------------------------------------------
+Limits differ per isotope and, for some isotopes, per cyclotron type:
+
+    Gallium
+        Philips cyclotron:  75 ≤ targetstroom ≤ 85 µA
+        IBA cyclotron:     130 ≤ targetstroom ≤ 140 µA
+        Cyclotron type determined from the cyclotron column of gallium_data.
+
+    Indium
+        Philips cyclotron:  75 ≤ targetstroom ≤ 85 µA
+        IBA cyclotron:     130 ≤ targetstroom ≤ 140 µA
+
+    Thallium
+        166 ≤ targetstroom ≤ 174 µA  (no cyclotron variants)
+
+    Rubidium
+        95 ≤ efficiency ≤ 105 %
+
+    Iodine  (both conditions must be satisfied)
+         78 ≤ output_percent  ≤ 114.9 %
+         96 ≤ targetstroom    ≤ 124 µA
+
+Rows where the tested metric is None are excluded from the count entirely
+(neither numerator nor denominator).
+
+
+7.2  Calculation per week
+--------------------------
+For each Friday–Thursday week:
+    within_spec  = count of qualifying productions where metric is in spec
+    total        = count of qualifying productions in that week
+    percentage   = (within_spec / total) × 100  if total > 0 else None
+
+Weeks with total = 0 are omitted from trend lines but may still appear
+as grey bars in the chart (color = #aaa).
+
+
+7.3  Time windows produced
+----------------------------
+Within-spec uses the same four time windows as efficiency:
+    Last 10 weeks  — bar chart, one bar per week
+    Last 365 days  — scalar average
+    Last 90 days   — scalar average
+    All-time       — grouped by ISO quarter (weeks 1–13, 14–26, 27–39, 40–52)
+
+Color coding:
+    green (#3BB143) if week percentage ≥ overall 10-week average
+    red   (#FF2400) if below
+    grey  (#aaa)    if no data
+
+===============================================================================
+8. KPI Calculations — OTIF (Gedraaide Producties)
+===================================================
+
+Source file:  calculator/otif.py
+              config/spec_settings.py
+Reads from:   data/raw.db
+Writes to:    data/derived.db
+
+OTIF (On Time In Full) here measures whether the actual beam current
+delivered was equal to or above the nominal target current for each
+isotope.  A score > 100 % means the production exceeded the nominal.
+The 97 % threshold is used as the pass/fail boundary for colour coding.
+
+
+8.1  Nominal target currents
+------------------------------
+Each isotope has a single nominal value derived from the midpoint of its
+Philips-cyclotron specification:
+
+    Gallium   Philips nominal: 80 µA   IBA nominal: 135 µA
+    Indium    Philips nominal: 80 µA   IBA nominal: 135 µA
+    Thallium  nominal: 170 µA
+    Rubidium  nominal: 70 µA  (fixed, not derived from spec window)
+    Iodine    nominal: bo_targetstroom (the customer-ordered target current)
+
+For Gallium and Indium the appropriate nominal is chosen by reading the
+cyclotron column of the data row and checking whether it indicates a
+Philips or IBA machine.
+
+
+8.2  Per-production OTIF score
+--------------------------------
+    score = (actual_targetstroom / nominal) × 100
+
+If actual_targetstroom is None the production is assigned 0 %.
+Iodine uses bo_targetstroom as the denominator if it is non-null, otherwise
+the default nominal of 100 µA.
+
+
+8.3  Weekly OTIF aggregation
+------------------------------
+Within each Friday–Thursday week all qualifying productions are scored and
+the simple mean of scores is taken as the weekly OTIF percentage.
+
+Time windows produced:
+    Last 10 weeks  — bar chart
+    Last 365 days  — scalar average
+    Last 90 days   — scalar average
+
+Color coding (97 % threshold):
+    green (#3BB143) if weekly OTIF ≥ 97 %
+    red   (#FF2400) if below 97 %
+
+The separate OTIF data from the OTIF week Excel workbook (Section 3.5) is
+also surfaced on the dashboard as a per-product weekly table, but that data
+is loaded from the blobs table (key 'otif') rather than recalculated here.
+
+===============================================================================
+9. KPI Calculations — Shift & Ploeg Statistics
+================================================
+
+Source files:  calculator/shift_stats.py
+               calculator/leaderboard.py
+Reads from:    data/raw.db  (isotope tables + blobs 'ploegen' + blobs 'planning')
+Writes to:     data/derived.db
+
+Shift and ploeg KPIs attribute production quality to the shift team that
+operated the cyclotron during each production run.
+
+
+9.1  Shift definitions
+-----------------------
+Three shifts per calendar day (Dutch names):
+    Ochtenddienst   07:00 – 15:00
+    Middagdienst    15:00 – 23:00
+    Nachtdienst     23:00 – 07:00 (next calendar day)
+
+A production that spans multiple shifts is split proportionally:
+
+    proportion = shift_overlap_hours / total_production_hours
+
+The proportional share is applied to both the total count and the
+in-spec count for that shift, so a production lasting 8 hours that
+spans 4 h of ochtenddienst and 4 h of middagdienst contributes 0.5 to
+each shift.
+
+
+9.2  Production time reconstruction
+--------------------------------------
+Each isotope record contains:
+    duur          production duration (HH.MM format, see §6.2)
+    eob_tijd or eobhrmin   end-of-beam time (HH:MM string)
+
+The start time is reconstructed as:
+    start_datetime = eob_datetime − duration
+
+For Iodine the stop_datum and stop_tijd columns are used together to form
+the end datetime, and totale_bestralingstijd + totale_storingstijd form the
+total elapsed time.
+
+The parse_time() helper (utils/time_utils.py) converts HH:MM strings to
+(hours, minutes) tuples; invalid strings return None and the production
+is skipped.
+
+
+9.3  Ploeg assignment
+----------------------
+The planning Excel (loaded via blobs key 'planning') maps each calendar
+date and shift name to a shift-lead person name.
+
+The ploegen Excel (loaded via blobs key 'ploegen') maps the first two
+uppercase characters of each member name to a ploeg number (1–5) and
+team name.
+
+For each production–shift overlap:
+    1. Look up planning_data[date][shift_name] → lead_person string
+    2. Take lead_person[:2].upper() as the lookup key
+    3. Look up ploegen_data[key] → ploeg_number, ploeg_name
+    4. Add the proportional production hours and in-spec status to that
+       ploeg's running totals.
+
+Productions for dates before ploegenwissel_date (the team rotation date
+stored in cell Q1 of Ploegen.xlsx) use historical planning data; only
+data from Q1 onwards is trusted for the current team composition.
+
+
+9.4  Leaderboard (leaderboard.py)
+-----------------------------------
+Entry point:  calculate_ploeg_leaderboard(raw_conn, n_days=30)
+
+For the trailing n_days the function collects all proportional
+shift–ploeg contributions and computes per-ploeg:
+
+    percentage = (in_spec_hours / total_hours) × 100
+
+Results are sorted by percentage descending, then by total_hours descending
+as a tie-breaker.
+
+Rolling averages (calculate_ploeg_rolling_averages):
+    A 30-day sliding window is computed for every day in the past 6 months.
+    This produces a time series of daily percentage values per ploeg used
+    to draw trend lines on the leaderboard chart.
+
+Fixed period summaries (calculate_ploeg_statistics):
+    Separate averages are computed for the last 1 month, 3 months, and
+    6 months to display alongside the leaderboard table.
+
+Monthly winner (calculate_last_month_winner):
+    The ploeg with the highest percentage in the last completed calendar
+    month is identified and stored for display in the header banner.
+
+Production details (collect_ploeg_production_details):
+    For each ploeg the last 6 months of individual productions are
+    collected with their shift proportions and in-spec flags.  This feeds
+    the per-ploeg detail drill-down panel on the dashboard.
+
+Color coding for leaderboard ranks:
+    > 2 % above the inter-ploeg average → green
+    > 2 % below the inter-ploeg average → red
+    within ± 2 %                        → black (neutral)
+
+===============================================================================
+10. Derived Database (derived.db) — Schema & KPI Keys
+=======================================================
+
+File:  data/derived.db   (SQLite 3)
+API:   collector/derived_db.py
+Populated by:  run_calculator.py
+
+derived.db uses a single key-value table to store all computed KPI results.
+This design means the schema never needs to change when new KPIs are added.
+
+
+10.1  Table schema
+--------------------
+    CREATE TABLE IF NOT EXISTS kpis (
+        key         TEXT PRIMARY KEY,
+        value       TEXT NOT NULL,
+        computed_at TEXT NOT NULL
+    )
+
+key         Logical KPI name string (see §10.3).
+value       JSON-serialised Python object.
+computed_at ISO timestamp set at the moment save_kpis() is called.
+
+One implicit index exists on the PRIMARY KEY column.
+
+
+10.2  Serialisation helpers
+-----------------------------
+_DateEncoder (json.JSONEncoder subclass)
+    Converts datetime.date / datetime.datetime objects to ISO strings.
+    Converts defaultdict to plain dict.
+
+_prepare_keys(obj)
+    Recursively converts date/datetime keys in nested dicts to ISO strings
+    before serialisation.  This handles the case where dict keys are dates.
+
+_encode(value) → str
+    Applies _prepare_keys then json.dumps with _DateEncoder.
+
+_decode(text) → object
+    json.loads wrapper.  Dates come back as ISO strings; callers are
+    responsible for converting them if needed.
+
+
+10.3  Public API
+-----------------
+connect(db_path) → sqlite3.Connection
+    Creates parent directory if absent, creates the kpis table, returns
+    the open connection.
+
+save_kpis(conn, data: dict) → None
+    Iterates through all items in data.  Each value is encoded with
+    _encode().  Failures per-key are logged and skipped (the pipeline
+    does not abort).  All successful rows are upserted in one batch with
+    INSERT OR REPLACE.
+
+load_kpis(conn) → dict
+    SELECT key, value FROM kpis, deserialise each value with _decode().
+    Failures per-key are logged and skipped.
+    Returns a flat dict of all stored KPIs.
+
+
+10.4  Key inventory
+---------------------
+The following keys are written by run_calculator.py and read by
+run_renderer.py.
+
+Aggregate KPIs (all-isotope combined):
+    efficiency_weeks              list — 10 weekly efficiency averages
+    efficiency_average            float — 10-week average
+    efficiency_last_year_avg      float — 365-day average
+    efficiency_last_3months_avg   float — 90-day average
+    efficiency_past_year          list — individual data points (365 days)
+    efficiency_all_time           list — quarterly averages
+
+    within_spec_weeks             list — 10 weekly percentages
+    within_spec_average           float
+    within_spec_last_year_avg     float
+    within_spec_last_3months_avg  float
+    within_spec_past_year         list
+    within_spec_all_time          list
+
+    otif_gedraaide_weeks          list — 10 weekly OTIF percentages
+    otif_gedraaide_average        float
+    otif_gedraaide_last_year_avg  float
+    otif_gedraaide_last_3months_avg float
+
+Issue tracking:
+    issue_counts                  dict: {this_week, last_week, all_time}
+    isotope_issues                dict keyed by isotope name
+
+Per-isotope cyclotron efficiency (mCi/µAh):
+    gallium_eff_weeks / gallium_eff_avg / gallium_eff_all_time /
+    gallium_eff_year / gallium_eff_3months
+    (same five keys for indium_, rubidium_, iodine_)
+
+Per-isotope production data:
+    ga_running / ga_monthly / ga_previous
+    rb_running / rb_monthly / rb_previous
+    in_running / in_monthly / in_previous
+    tl_running / tl_monthly_12 / tl_monthly_21 / tl_previous
+    io_running / io_monthly / io_previous
+
+Shift (ploeg) KPIs:
+    this_week_friday              date — Friday opening the current week
+    last_week_friday              date — Friday opening the previous week
+    shift_stats_this_week         dict: date → shift_name → {total, in_spec}
+    shift_stats_last_week         dict: same structure for prior week
+    ploeg_6month                  dict: ploeg stats for last 6 months
+    ploeg_3month                  dict: last 3 months
+    ploeg_monthly                 dict: last 1 month
+    ploeg_rolling                 dict: daily rolling 30-day values per ploeg
+    leaderboard                   list: ranked ploeg entries
+    monthly_winner                the winning ploeg for the last full month
+    ploeg_production_details      dict: per-ploeg production list (6 months)
+    production_history            dict: per-BO-number lookup
+
+Pass-through data (loaded from raw.db, stored unchanged):
+    ploegen_data                  dict — ploeg membership from Ploegen.xlsx
+    iba_storingen_data            dict — IBA equipment downtime records
+    philips_storingen_data        dict — Philips equipment downtime records
+    otif_kpi_data                 list — weekly OTIF % per isotope
+    otif_table_data               dict — missed-order counts per product/week
+    vsm_data                      list — VSM targetstroom rows + week_avg_otif
+    planning_html_content         str | None — planning HTML fragment
+    productieschema_html_content  str | None — productieschema HTML fragment
+    tampering_warning             None (reserved for future integrity checks)
+
+
+10.5  Calculation order (run_calculator.py)
+--------------------------------------------
+The calculator orchestrator runs in this sequence:
+
+    1. Load all raw isotope tables and auxiliary data from raw.db.
+    2. Calculate aggregate efficiency KPIs.
+    3. Calculate aggregate within-spec KPIs.
+    4. Calculate aggregate OTIF (gedraaide producties) KPIs.
+    5. Calculate issue counts.
+    6. Calculate per-isotope cyclotron efficiency.
+    7. Collect per-isotope running/previous/monthly production data.
+    8. Calculate this-week and last-week shift statistics.
+    9. Calculate all-time shift statistics (180-day lookback or since
+       ploegenwissel_date, whichever is more recent).
+   10. Calculate ploeg leaderboard, rolling averages, monthly winner,
+       and per-ploeg production details.
+   11. Append pass-through data directly to the results dict.
+   12. Call save_kpis(derived_conn, results) to write everything at once.
+
+Each numbered step is wrapped in try/except; a failure inserts a safe
+default value for that key and the pipeline continues.
+
+===============================================================================
+11. Dashboard Rendering
+========================
+
+Source files:  run_renderer.py
+               renderer/dashboard_full.py
+               renderer/dashboard_truncated.py
+               renderer/gantt.py
+               renderer/helpers.py
+               renderer/tables.py
+               renderer/assets.py
+               renderer/file_protection.py
+
+
+11.1  Entry point — run_renderer.py
+--------------------------------------
+Function:  main() → bool
+
+Sequence:
+    1. Load settings with load_settings().
+    2. Open derived.db, call load_kpis() to retrieve all computed KPIs.
+    3. Call fetch_cyclotron_data(url) for live planning entries.
+    4. Call convert_bestralingen_to_gantt_format(ga, rb, in_, tl, io) to
+       convert historical bestralingen records (last 180 days) to the same
+       dict format as planning entries.
+    5. Deduplicate: for each bonr that appears in both sets the historical
+       record replaces the planning record (actual data wins over planned).
+    6. Store the merged list in data['cyclotron_data'].
+    7. Render the full dashboard:
+           html = dashboard_full.create_html_dashboard(data)
+    8. Render the truncated dashboard:
+           short_html = dashboard_truncated.create_truncated_dashboard(data)
+    9. Write output files (see §11.6).
+
+
+11.2  Full dashboard  (dashboard_full.py)
+-------------------------------------------
+Entry point:  create_html_dashboard(data) → str
+
+Returns a single self-contained HTML string (~25 000+ lines when rendered).
+All CSS and JavaScript is embedded inline; no external files are required
+except the CDN-hosted Chart.js library.
+
+Sections included:
+    • Efficiency, within-spec, and OTIF KPI tables
+    • Gantt chart (cyclotron production timeline, §11.4)
+    • Current-week and previous-week production summary tables
+    • Per-isotope detail sections: Gallium, Rubidium, Indium, Thallium,
+      Iodine — each with an individual production record table (with
+      dropdown comment fields), a monthly average chart, and a current-
+      week chart
+    • OTIF Cyclotron section: missed-order table + six per-product KPI
+      line charts (Gallium, I-123, Indium, Krypton, Thallium, Rubidium)
+    • Per-isotope cyclotron efficiency tables (mCi/µAh)
+    • Ploeg performance tables, rolling-average charts, leaderboard
+    • Monthly winner banner
+    • Storingen tables (IBA and Philips)
+    • Seven modal dialogs (see below)
+
+Modal dialogs:
+    roosterModal           Planning HTML embedded via <iframe srcdoc>
+    productieschemaModal   Production schema HTML via <iframe srcdoc>
+    ploegModal             Per-ploeg production details (filterable by period)
+    productionHistoryModal Shift-level breakdown for a single BO number
+    sfModal                List of productions affected by a storingsnummer
+    dosisoverzichtModal    Image viewer for dosis overview PNG
+    dmVsmModal             DM VSM table (daily targetstroom + OTIF%)
+
+Templating approach:
+    No Jinja2 or template files.  Every section is built as a Python
+    f-string and concatenated.  Chart data is embedded as JSON literals
+    assigned to JavaScript variables inside <script> blocks.
+
+
+11.3  Truncated dashboard  (dashboard_truncated.py)
+-----------------------------------------------------
+Entry point:  create_truncated_dashboard(data) → str
+
+A lightweight version written to the network share (paths.output_network)
+for fast loading on shared operator workstations.  Includes:
+    • Efficiency KPI table (current 10 weeks only)
+    • Within-spec KPI table
+    • OTIF (gedraaide producties) KPI table
+    • Current-week and previous-week production summary tables
+
+Excludes all isotope detail sections, charts, OTIF cyclotron section,
+ploeg content, storingen tables, and modals.
+
+
+11.4  Gantt chart  (gantt.py)
+-------------------------------
+Entry point:  generate_gantt_chart_html(cyclotron_data) → str
+
+convert_bestralingen_to_gantt_format(ga, rb, in_, tl, io) → list
+    Converts raw bestralingen records to the planning-dict format:
+        bonr, product, cyclotron, startDate, startTime, endDate, endTime,
+        duration, type ('Data' or 'Pauze')
+    Only records from the last 180 days are included.
+    EOB time is taken from eob_tijd / eobhrmin; start time is derived
+    by subtracting the parsed duration.
+
+Gantt HTML structure:
+    <div id="ganttLabels">   — sticky left column: "Kant 1", "Kant 2",
+                               "Philips" lane labels
+    <div id="ganttWrapper">  — horizontally scrollable timeline area
+    <div id="ganttChart">    — populated by embedded JavaScript
+
+Isotope colour mapping (JavaScript):
+    GA067 / Ga-067   blue   #0000ff
+    RB081 / Rb-082   red    #FF0000
+    IN111 / In-111   cyan   #00ffff
+    TL201 / Tl-201   yellow #FFDE21
+    I123  / I-123    green  #00FF00
+    Pauze            grey   #CCCCCC
+
+JavaScript features:
+    Renders hourly time grid labels.
+    Renders production blocks with tooltips on hover.
+    Draws a red "NOW" vertical line at the current time.
+    Provides a "Spring naar Nu" (Jump to Now) button.
+    Persists horizontal scroll position in sessionStorage across the
+    60-second auto-reload.
+
+
+11.5  Helper modules
+----------------------
+renderer/helpers.py — HTML fragment builders
+    fmt_bo(bo)                    Strip trailing .0 and dashes from BO numbers.
+    fmt_date_str(d)               Format as YYYY-MM-DD.
+    fmt_targetstroom_cell(...)    Coloured <td> with clickable BO link.
+    fmt_rb_cell(...)              Rubidium cell: efficiency% + beam current µA.
+    fmt_io_cell(...)              Iodine cell: yield% / output% + beam current µA.
+    build_week_table_rows(...)    Assemble one week's production summary row.
+    fmt_kpi_table(...)            Full KPI table HTML (10 weeks + averages).
+    generate_ploegen_table_html(...)   Ploeg performance table.
+    generate_shift_tables_html(...)    Shift statistics tables.
+    generate_leaderboard_html(...)     Ranked leaderboard list.
+    generate_monthly_winner_html(...)  Champion banner.
+    generate_ploeg_rolling_charts_html(...)  Rolling-average line charts.
+
+renderer/tables.py — cell colour helpers
+    _get_targetstroom_color(ts, isotope, cyclotron)
+        Returns '#3BB143' (green) or '#FF2400' (red) based on whether ts
+        is inside the spec window for that isotope and cyclotron type.
+    _get_efficiency_color(efficiency)
+        Green if 95 ≤ efficiency ≤ 105, else red.
+    _get_rb_stroom_color(stroom)
+        Green if 67 ≤ stroom ≤ 72, else red.
+    _get_iodine_yield_color(yield_pct)
+    _get_iodine_output_color(output_pct)
+
+renderer/assets.py
+    _GANTT_CSS — complete Gantt chart CSS (injected inline into every
+                 page that contains a Gantt section).
+
+
+11.6  Output files
+--------------------
+After each render three destinations are written.  The full and truncated
+dashboards are NOT written to the same destinations:
+
+    Local filesystem (paths.output_local)   ← FULL dashboard
+        isotope_dashboard.html
+        isotope_dashboard.html.hash
+
+    Network share (paths.output_network)    ← TRUNCATED dashboard
+        isotope_dashboard.html
+        isotope_dashboard.html.hash
+
+    Bureau directory (paths.output_bureau)  ← FULL dashboard
+        Productie dashboard.html
+        Productie dashboard.html.hash
+
+The network share receives the lightweight truncated dashboard so that
+operators on shared workstations see a fast-loading summary.  The local
+and bureau copies receive the full dashboard with all charts and detail
+sections.
+
+In addition, dosisoverzicht.png is copied to each output directory so
+the image modal can display it.
+
+After writing each file the renderer:
+    1. Sets the file to read-only (removes S_IWUSR | S_IWGRP | S_IWOTH).
+    2. Computes a SHA-256 hash and saves it to the .hash file.
+
+At the start of the next render cycle the hash of the existing file is
+checked.  If it does not match (the file was manually edited) a
+tampering warning banner is rendered into the new HTML.
+
+
+11.7  Embedded HTML content
+------------------------------
+planning_html_content and productieschema_html_content are loaded from
+the blobs table of raw.db under keys 'planning_html' and
+'productieschema_html' respectively.
+
+Both are embedded in modal <iframe> elements using the srcdoc attribute:
+    content.replace('&', '&amp;').replace('"', '&quot;')
+    <iframe srcdoc="<escaped_content>"
+            sandbox="allow-scripts allow-same-origin">
+
+If the content is None or empty a warning paragraph is shown instead:
+    "⚠️ planning.html kon niet worden geladen.
+     Controleer of het W:-station beschikbaar is."
+
+
+11.8  Browser-side JavaScript
+--------------------------------
+Charts: Chart.js 3.9.1 (CDN) with chartjs-adapter-date-fns 3.0.0.
+        Chart types: bar (weekly KPI bars) and line (trend charts).
+        Reference lines added as Chart.js annotation plugin datasets
+        (dashed horizontal lines at spec limits).
+
+Auto-reload: Page reloads every 60 seconds via setTimeout, unless a
+             modal is open (checked by CSS .modal.open selector).
+
+Session persistence: Scroll positions for each section are saved in
+             sessionStorage before the reload and restored afterwards.
+
+Comment dropdowns: Each production row contains a <select> with reason
+             codes for out-of-spec deviations.  Selecting a value calls
+             saveComment(isotope, date, boNumber, commentType) which:
+               1. Saves to localStorage immediately.
+               2. POSTs to /save_comment on the local server.
+             On page load all saved comments are restored from localStorage.
+
+Modal toggles: showPloegDetails(ploegNumber), filterPloegData(period),
+             showProductionHistory(boNummer, date, isotope),
+             showSFModal(sfCode, count).
+
+===============================================================================
+12. Configuration Reference, Deployment & Troubleshooting
+===========================================================
+
+12.1  Configuration file  (config/settings.yaml)
+--------------------------------------------------
+All runtime settings live in a single YAML file loaded by config/loader.py.
+The table below lists every key, its default value, and what it controls.
+
+paths section:
+┌────────────────────────┬──────────────────────────────────────────────────┐
+│ paths.raw_db           │ data/raw.db                                      │
+│                        │ SQLite database for raw production records.      │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.derived_db       │ data/derived.db                                  │
+│                        │ SQLite database for computed KPIs.               │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.bestralingen_db  │ \\TUPETT-FI01\Data$\Malshare\Proc\Metrics\       │
+│                        │   thalliumproces\bestralingen.mdb                │
+│                        │ MS Access — primary isotope production records.  │
+│                        │ REQUIRED: pipeline aborts if unreachable.        │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.proces_db        │ W:\Maximo\ProcesGegevens.accdb                   │
+│                        │ MS Access — efficiency targets and yield data.   │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.storingen_iba_db │ \\NLPT-FILE01P\Dept$\NLCYC\Storingen IBA\        │
+│                        │   Storingen_IBA.accdb                            │
+│                        │ MS Access — IBA cyclotron downtime records.      │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.storingen_       │ \\NLPT-FILE01P\Dept$\NLCYC\Storingen Philips\    │
+│   philips_db           │   Storingen_Philips.accdb                        │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.ploegen_excel    │ C:\Users\Reinder.sierkstra\Desktop\              │
+│                        │   Dosis_overzichten\Ploegen.xlsx                 │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.planning_excel   │ W:\Afdelingsplanning Cyclotron\                  │
+│                        │   Planning & Control Cyclotron.xlsm             │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.vsm_excel        │ C:\Users\Reinder.sierkstra\OneDrive - CURIUM\   │
+│                        │   Niet onedrive spullen\Desktop\                 │
+│                        │   Targetstroom daily management VSM cyclotron   │
+│                        │   .xlsx                                          │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.planning_html    │ W:\Afdelingsplanning Cyclotron\planning.html     │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.productieschema_ │ W:\Desktop Settings\Cyclotron formulieren\       │
+│   html                 │   0 (BETA) Cyclotron productieplanning.html      │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.output_local     │ output/isotope_dashboard.html                    │
+│                        │ Local filesystem output for full dashboard.      │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.output_network   │ \\TUPETT-FI01\Data$\Malshare\Cyclotron\          │
+│                        │   Dashboard Cyclotron\isotope_dashboard.html     │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.output_bureau    │ X:\Cyclotron Bureau\Productie dashboard.html     │
+└────────────────────────┴──────────────────────────────────────────────────┘
+
+Scheduler:
+    loop_interval_seconds   60    Seconds to sleep between pipeline cycles.
+
+Specification limits (see §7 for details):
+    spec.gallium.philips.min / .max       75 / 85 µA
+    spec.gallium.iba.min / .max           130 / 140 µA
+    spec.rubidium.min / .max              95 / 105 %
+    spec.indium.philips.min / .max        75 / 85 µA
+    spec.indium.iba.min / .max            130 / 140 µA
+    spec.thallium.min / .max              166 / 174 µA
+    spec.iodine.within_spec.output.min / .max         78 / 114.9 %
+    spec.iodine.within_spec.targetstroom.min / .max   96 / 124 µA
+    spec.iodine.chart_colors.yield.min                80 %
+
+OTIF threshold:
+    otif_green_threshold    97    Weekly OTIF % at or above which the bar
+                                  is coloured green.
+
+URL:
+    urls.cyclotron_planning   http://pett-webw02p/procdashboard/cyclotron.asp
+
+
+12.2  Runtime dependencies  (requirements.txt)
+-----------------------------------------------
+    pyodbc        >=4.0   MS Access / ODBC connectivity
+    requests      >=2.28  HTTP requests (cyclotron planning page)
+    beautifulsoup4>=4.11  HTML parsing (fallback scraper)
+    lxml          >=4.9   Fast HTML parser for BeautifulSoup
+    openpyxl      >=3.0   Excel file reading (.xlsx / .xlsm)
+    pyyaml        >=6.0   YAML configuration parsing
+
+Standard library modules used (no install required):
+    sqlite3, json, os, shutil, hashlib, stat, re, statistics,
+    traceback, time, datetime, collections
+
+
+12.3  System requirements
+---------------------------
+Operating system:  Windows (required for MS Access ODBC driver and UNC
+                   network paths).
+Python:            3.9 or higher.
+ODBC driver:       Microsoft Access Database Engine 2016 Redistributable.
+                   The bitness (32 or 64-bit) MUST match the Python
+                   installation.  Mixed bitness causes a "[Microsoft]
+                   [ODBC Driver Manager] Data source name not found" error.
+Network drives:    The W: drive and X: drive must be mapped before the
+                   application starts.  UNC paths to TUPETT-FI01 and
+                   NLPT-FILE01P must be reachable.
+
+
+12.4  Deployment — running the pipeline
+-----------------------------------------
+Start the continuous loop:
+    python run_all.py
+
+The loop runs collect → calculate → render every 60 seconds (configurable)
+and prints timestamped status lines:
+
+    [2024-03-01 08:00:00] === Loop 1 ===
+    ✓ Collector finished.
+    ✓ Calculator finished.
+    ✓ Renderer finished.
+    Next update in 60 seconds.
+
+Stop with Ctrl+C.  The loop handles KeyboardInterrupt gracefully.
+
+Run individual phases for debugging:
+    python run_collector.py      — collect data only, write to raw.db
+    python run_calculator.py     — read raw.db, write KPIs to derived.db
+    python run_renderer.py       — read derived.db, write HTML files
+
+No web server is needed.  The output HTML files are static and can be opened
+directly in any browser from the network share or local output path.
+
+
+12.5  File structure
+----------------------
+    config/
+        settings.yaml          All runtime settings
+        loader.py              Config loader
+        spec_settings.py       Specification limit constants (colour coding)
+
+    collector/
+        access_reader.py       MS Access reader
+        excel_reader.py        Excel reader
+        http_reader.py         HTTP/JSON scraper
+        html_reader.py         Static HTML loader
+        raw_db.py              raw.db API
+        derived_db.py          derived.db API
+
+    calculator/
+        efficiency.py          Efficiency KPI calculations
+        within_spec.py         Within-spec KPI calculations
+        otif.py                OTIF KPI calculations
+        shift_stats.py         Shift statistics
+        leaderboard.py         Ploeg leaderboard
+        issues.py              Operator comment counts
+        isotope_data.py        Shared helper functions
+
+    renderer/
+        dashboard_full.py      Full dashboard HTML generator
+        dashboard_truncated.py Truncated dashboard HTML generator
+        gantt.py               Gantt chart builder
+        helpers.py             HTML fragment helpers
+        tables.py              Cell colour helpers
+        assets.py              Embedded CSS/JS strings
+        file_protection.py     SHA-256 + read-only protection
+
+    data/                      Created automatically at runtime
+        raw.db                 Production records (append-only)
+        derived.db             KPIs (replaced every cycle)
+
+    output/                    Created automatically at runtime
+        isotope_dashboard.html Local copy of full dashboard
+        isotope_dashboard.html.hash  SHA-256 integrity file
+
+    run_all.py                 Main loop orchestrator
+    run_collector.py           Phase 1 runner
+    run_calculator.py          Phase 2 runner
+    run_renderer.py            Phase 3 runner
+    requirements.txt           Python dependencies
+
+
+12.6  Console output conventions
+-----------------------------------
+    ✓   Successful step
+    ⚠   Non-fatal warning (pipeline continues)
+    ✗   Error (may abort pipeline depending on severity)
+    Timestamps format: [YYYY-MM-DD HH:MM:SS]
+
+
+12.7  Troubleshooting
+-----------------------
+"Could not connect to bestralingen Access database — aborting."
+    The primary MS Access database is unreachable.  Check:
+    • Network connectivity to \\TUPETT-FI01.
+    • ODBC driver installed and bitness matches Python.
+    • The .mdb file is not exclusively locked by another process.
+
+"[Microsoft][ODBC Driver Manager] Data source name not found"
+    The Access ODBC driver is not installed or the Python and driver
+    bitness do not match.  Install the matching Access Database Engine
+    Redistributable.
+
+"⚠ Could not load ploegen/planning data — skipping leaderboard"
+    The Excel files at paths.ploegen_excel or paths.planning_excel are
+    missing or the W: drive is not mapped.  The leaderboard section will
+    be absent from the dashboard until the files become available.
+
+"⚠ Could not load from JSON database"
+    The shared JSON file at \\pett-fs01p\nucleair\…\productions_database.json
+    is absent or unreadable.  The renderer will fall back to the live HTTP
+    endpoint.
+
+"⚠ planning.html kon niet worden geladen"
+    The W: drive is not mapped or the file at paths.planning_html does not
+    exist.  A warning placeholder is shown in the dashboard modal instead.
+
+"FILE TAMPERED: HTML file has been manually modified!"
+    The SHA-256 hash stored in the .hash file does not match the current
+    HTML file.  The HTML was edited outside the pipeline.  The next render
+    will regenerate the file and display the tampering warning banner.
+
+Dashboard not updating on the network share
+    • Verify that paths.output_network is accessible and writable.
+    • Check that the .hash file is writable (the pipeline must remove the
+      read-only flag before overwriting).
+    • Inspect the console for ✗ lines indicating write errors.
+
+Efficiency / within-spec values seem wrong
+    • Check that the spec limits in config/settings.yaml are correct.
+    • Verify that raw.db contains recent data: open raw.db with a SQLite
+      browser and inspect the max(date) in the relevant isotope table.
+    • Run python run_calculator.py alone and watch the ⚠ output for any
+      calculator failures.
+
+===============================================================================
