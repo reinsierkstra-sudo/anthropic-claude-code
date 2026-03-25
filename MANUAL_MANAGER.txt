@@ -19,10 +19,11 @@ Contents
   4. Reading trends
   5. The Gantt chart
   6. Production summary tables (this week / last week)
-  7. OTIF Cyclotron: missed orders
-  8. Ploeg leaderboard: team performance
-  9. Reference: when something looks wrong
- 10. Quick-reference card
+  7. Lopende storingen: active equipment faults
+  8. OTIF Cyclotron: missed orders
+  9. Ploeg leaderboard: team performance
+ 10. Reference: when something looks wrong
+ 11. Quick-reference card
 
 ===============================================================================
 
@@ -240,7 +241,7 @@ In plain language:
 
 Note:
     A separate, more detailed OTIF view — covering individual missed orders
-    per product — is in Section 7.
+    per product — is in Section 8.
 
 ===============================================================================
 
@@ -266,8 +267,8 @@ Read them together as follows:
     SCENARIO B — Two or more consecutive red values
         A run of below-average weeks is a pattern, not noise.  If the
         3-month average is also dropping, the decline started before the
-        visible weeks.  The production tables (Section 6) show which isotope
-        or shift is involved.
+        visible weeks.  The production tables (Section 6) show which isotope or shift
+        is involved.
 
     SCENARIO C — All values green but the all-time average is higher than last year
         Performance is consistently good now but was better historically.
@@ -441,7 +442,7 @@ responsible, the exact timing, and the full BO number.
 
 This is particularly useful when a production is out of spec and you want
 to know which shift team was on duty — you can then cross-reference with
-the ploeg leaderboard (Section 8).
+the ploeg leaderboard (Section 9).
 
 Close the panel with the X button.
 
@@ -460,7 +461,54 @@ Close the panel with the X button.
 
 ===============================================================================
 
-7. OTIF Cyclotron: Missed Orders
+7. Lopende Storingen: Active Equipment Faults
+===============================================
+
+Below the production summary tables the dashboard shows two fault tables,
+one for each cyclotron.  They list equipment disturbances that are currently
+open — faults that have been logged but not yet resolved.
+
+
+7.1  Lopende storingen IBA
+----------------------------
+Lists all open faults on the IBA cyclotron.  Each row contains:
+
+    Storingsnummer      The fault reference number (e.g. SF0042).
+    Datum               The date the fault was logged.
+    Verstoorde          The number of production runs that were disrupted
+    producties          by this fault.  Clicking the number opens a detail
+                        panel showing which specific productions were
+                        affected.
+    Storing             A description of the fault.
+
+The rows are sorted by number of disrupted productions (highest first),
+then by date.  An empty table means no open IBA faults are currently
+registered.
+
+
+7.2  Lopende storingen Philips
+--------------------------------
+Identical layout to the IBA table, but for the Philips cyclotron.
+
+An empty table means no open Philips faults are currently registered.
+
+
+7.3  What to look for as a manager
+-------------------------------------
+    • A fault with a high "Verstoorde producties" count has had a
+      measurable impact on output.  Cross-reference with the production
+      summary tables (Section 6) and the OTIF Cyclotron section (Section 8)
+      to see whether it caused missed orders.
+
+    • Multiple open faults on the same cyclotron at the same time indicate
+      the equipment is under sustained maintenance pressure.
+
+    • If a fault entry appears on the dashboard but is not being worked,
+      contact the shift team or R.A.F. Sierkstra (SIE, tel. 7062).
+
+===============================================================================
+
+8. OTIF Cyclotron: Missed Orders
 ==================================
 
 Further down the dashboard there is a dedicated OTIF Cyclotron section.
@@ -469,7 +517,7 @@ weekly average percentage, it shows exactly which product orders were missed,
 in which week, and why.
 
 
-7.1  The missed-order table
+8.1  The missed-order table
 -----------------------------
 The table lists missed or incomplete orders from the OTIF tracking workbook.
 Each row contains:
@@ -482,7 +530,7 @@ Each row contains:
     Reason      The recorded cause of the miss as entered in the workbook.
 
 
-7.2  Per-product KPI line charts
+8.2  Per-product KPI line charts
 ----------------------------------
 Below the missed-order table there are six line charts, one per product
 (Gallium, I-123, Indium, Krypton, Thallium, Rubidium/Krypton).
@@ -500,7 +548,7 @@ How to read them:
 
 ===============================================================================
 
-8. Ploeg Leaderboard: Team Performance
+9. Ploeg Leaderboard: Team Performance
 ========================================
 
 The ploeg leaderboard ranks the five shift teams by the percentage of
@@ -509,7 +557,7 @@ how the facility is doing overall, but which teams are above and which are
 below the group average.
 
 
-8.1  What is a ploeg?
+9.1  What is a ploeg?
 ----------------------
 The cyclotron runs 24 hours a day, seven days a week, split into three shifts:
 
@@ -523,7 +571,7 @@ the cyclotron during that run.  If a production spans two shifts, credit is
 split proportionally between the two teams.
 
 
-8.2  The leaderboard table
+9.2  The leaderboard table
 ----------------------------
 The leaderboard ranks each team by their within-spec percentage over the
 trailing 30 days.  The colour coding follows the convention described in
@@ -536,7 +584,7 @@ these to tell apart a team that has recently improved from one that has been
 consistently strong over time.
 
 
-8.3  The rolling-average trend chart
+9.3  The rolling-average trend chart
 --------------------------------------
 Below the table is a line chart showing each team's 30-day rolling average
 over the past six months.  Each team has its own coloured line.
@@ -549,7 +597,7 @@ How to read it as a manager:
       team performing notably differently — worth understanding why.
 
 
-8.4  Monthly winner banner
+9.4  Monthly winner banner
 ----------------------------
 At the top of the leaderboard section a banner highlights the team with the
 highest within-spec percentage in the most recently completed calendar month.
@@ -557,7 +605,7 @@ This is intended as a recognition signal and a quick reference for monthly
 performance reviews.
 
 
-8.5  Viewing a team's individual productions
+9.5  Viewing a team's individual productions
 ---------------------------------------------
 Clicking on a team row in the leaderboard opens a detail panel (pop-up)
 showing the individual productions attributed to that team over the selected
@@ -572,14 +620,14 @@ Close the panel by clicking the X in the top-right corner.
 
 ===============================================================================
 
-9. Reference: When Something Looks Wrong
-=========================================
+10. Reference: When Something Looks Wrong
+==========================================
 
 This section lists the most common situations and what they usually indicate.
 
 
-9.1  Dashboard issues (page / display)
-----------------------------------------
+10.1  Dashboard issues (page / display)
+-----------------------------------------
 
     The page is not refreshing automatically
         The dashboard refreshes every 60 seconds by default.  If it stops:
@@ -608,28 +656,28 @@ This section lists the most common situations and what they usually indicate.
           moved or been renamed.
 
 
-9.2  KPI concerns
--------------------
+10.2  KPI concerns
+--------------------
 
     Two or more consecutive red values in any KPI
-        Indicates a pattern.  The missed-order table (Section 7) and the
+        Indicates a pattern.  The missed-order table (Section 8) and the
         production summary tables (Section 6) show which isotope or shift
         is involved.
 
     OTIF below 90% in any single week
         Indicates a significant unplanned event that week.  The reason
-        column in the missed-order table (Section 7) shows the cause.
+        column in the missed-order table (Section 8) shows the cause.
 
     Efficiency and within-spec are both low simultaneously
         Points to a cyclotron or process issue rather than a scheduling
         or data problem.
 
 
-9.3  Ploeg / team concerns
-----------------------------
+10.3  Ploeg / team concerns
+-----------------------------
 
     One team is consistently red for more than four weeks
-        The per-ploeg detail panel (Section 8.5) shows which isotope or
+        The per-ploeg detail panel (Section 9.5) shows which isotope or
         shift time is pulling the score down.
 
     All teams are red simultaneously
@@ -637,8 +685,8 @@ This section lists the most common situations and what they usually indicate.
         team-specific.  It points to a process or equipment issue.
 
 
-9.4  Contact
---------------
+10.4  Contact
+---------------
     Pipeline / dashboard issues (data not         R.A.F. Sierkstra
     updating, missing sections, FILE TAMPERED)    SIE, tel. 7062
 
@@ -650,20 +698,20 @@ This section lists the most common situations and what they usually indicate.
 
 ===============================================================================
 
-10. Quick-Reference Card
+11. Quick-Reference Card
 =========================
 
 Print or bookmark this section for use during review meetings.
 
 
-10.1  Colour meanings at a glance
+11.1  Colour meanings at a glance
 -----------------------------------
     GREEN    On target or above.      No action needed.
     RED      Below threshold.         Warrants attention or discussion.
     GREY     No data for this period. Normal for unscheduled weeks.
 
 
-10.2  KPI definitions (one line each)
+11.2  KPI definitions (one line each)
 ---------------------------------------
     Efficiency     Beam transmission efficiency: µA at target faraday as a
                    percentage of µA at source faraday.  Higher = less beam
@@ -677,7 +725,7 @@ Print or bookmark this section for use during review meetings.
                    exceeded the ordered level.  Pass threshold: 97%.
 
 
-10.3  KPI thresholds that trigger red
+11.3  KPI thresholds that trigger red
 ---------------------------------------
     Efficiency     Below the 10-week running average for that week.
     Within-spec    Below the 10-week running average for that week.
@@ -685,7 +733,7 @@ Print or bookmark this section for use during review meetings.
     Leaderboard    More than 2 percentage points below the team average.
 
 
-10.4  Specification limits per isotope (within-spec check)
+11.4  Specification limits per isotope (within-spec check)
 ------------------------------------------------------------
     Ga-67   Philips cyclotron:   75 – 85 µA beam current
             IBA cyclotron:      130 – 140 µA beam current
@@ -697,7 +745,7 @@ Print or bookmark this section for use during review meetings.
             Beam current: 96 – 124 µA
 
 
-10.5  Gantt chart colour key
+11.5  Gantt chart colour key
 ------------------------------
     Blue    Ga-67 (Gallium-67)
     Red     Rb-81 (Rubidium-81)
@@ -707,28 +755,29 @@ Print or bookmark this section for use during review meetings.
     Grey    Pauze (no production)
 
 
-10.6  Signal thresholds
-------------------------
-    2+ consecutive red KPI values        pattern; see §6 and §7 for detail.
-    OTIF < 90% in any week               significant event; see §7 reason
+11.6  Signal thresholds
+-------------------------
+    2+ consecutive red KPI values        pattern; see §6 and §8 for detail.
+    OTIF < 90% in any week               significant event; see §8 reason
                                          column.
     All-time avg more than 5% above      gradual structural decline.
     last year avg
     One ploeg red for 4+ weeks           isotope- or shift-specific issue;
-                                         see §8.5.
+                                         see §9.5.
     All ploegen red simultaneously       process or equipment issue,
                                          not a team issue.
 
 
-10.7  Section locator
+11.7  Section locator
 -----------------------
     Navigation buttons (Dosisoverzicht, DM VSM, etc.)  Section 1.2
     KPI tables (Efficiency, Within-spec, OTIF)         Section 3
     How to read trends                                 Section 4
     Gantt chart                                        Section 5
     Weekly production tables                           Section 6
-    Missed-order table and per-product OTIF            Section 7
-    Ploeg leaderboard and team detail                  Section 8
-    Troubleshooting                                    Section 9
+    Active equipment faults (storingen)                Section 7
+    Missed-order table and per-product OTIF            Section 8
+    Ploeg leaderboard and team detail                  Section 9
+    Troubleshooting                                    Section 10
 
 ===============================================================================
