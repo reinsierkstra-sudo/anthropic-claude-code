@@ -170,12 +170,11 @@ the other.  Each covers all five isotopes combined and displays performance
 week by week.
 
 Each table has the same layout:
-    • One row of coloured cells covering the last 10 weeks, one cell per week.
-      Each cell shows the percentage value for that week.
+    • One row covering the last 10 weeks, one column per week.  Each column
+      shows the percentage value for that week in a colour (green or red).
     • Three scalar averages below: all-time average, last year average,
       last 3 months average.
     • The most recent week is on the right; older weeks are to the left.
-#coloured cells don`t exist in the html#
 
 3.1  Efficiency — how much of the beam reaches the target?
 -----------------------------------------------------------
