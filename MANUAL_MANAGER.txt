@@ -73,8 +73,8 @@ At the top of the full dashboard there are four large buttons.  Each opens a
 full-screen pop-up panel.  Close any panel with the × in the top-right corner.
 
     Dosisoverzicht
-        Shows the dosis overview image — a snapshot of the cumulative dose
-        picture for the current period. #not cumulative dose, but dose of each individual employee past 30 days and past 365 days#
+        Shows the dosis overview image — the radiation dose for each individual
+        employee over the past 30 days and past 365 days.
 
     DM VSM
         Shows the Daily Management VSM table: the daily targetstroom values
