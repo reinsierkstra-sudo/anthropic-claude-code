@@ -559,3 +559,79 @@ Hoe ze te lezen:
       een structureel aanbod- of procesprobleem dat managementaandacht vraagt.
 
 ===============================================================================
+
+9. Ploegklassement: Teamprestaties
+=====================================
+
+Het ploegklassement rangschikt de vijf ploegenteams op het percentage
+producties dat zij begeleidden dat binnen spec was.  Het toont niet alleen
+hoe de afdeling als geheel presteert, maar ook welke teams boven en welke
+onder het groepsgemiddelde zitten.
+
+
+9.1  Wat is een ploeg?
+-----------------------
+De cyclotron draait 24 uur per dag, zeven dagen per week, verdeeld in drie
+diensten:
+
+    Ochtenddienst   07:00 – 15:00
+    Middagdienst    15:00 – 23:00
+    Nachtdienst     23:00 – 07:00
+
+Vijf wisselende teams (ploegen, genummerd 1–5) dekken deze diensten op een
+roterend schema.  Elke productierun wordt toegewezen aan het ploegenteam dat
+de cyclotron tijdens die run bediende.  Als een productie twee diensten
+overspant, wordt het aandeel proportioneel verdeeld over de twee teams.
+
+
+9.2  De klassementstabel
+--------------------------
+Het klassement rangschikt elk team op hun binnen-spec-percentage over de
+afgelopen 30 dagen.  De kleurcodering volgt de conventie beschreven in
+Sectie 2.3 (groen = meer dan 2 procentpunt boven het teamgemiddelde, rood =
+meer dan 2 procentpunt eronder, zwart = binnen 2 procentpunt).
+
+Rechts van de rangschikking tonen drie samenvattingskolommen de prestaties
+over langere vaste periodes: afgelopen 1 maand, afgelopen 3 maanden en
+afgelopen 6 maanden.  Gebruik deze om een team dat recentelijk verbeterd is
+te onderscheiden van een team dat al langere tijd consistent sterk presteert.
+
+
+9.3  De trendgrafiek met voortschrijdend gemiddelde
+------------------------------------------------------
+Onder de tabel staat een lijngrafiek die het 30-daags voortschrijdend
+gemiddelde van elk team over de afgelopen zes maanden toont.  Elk team heeft
+zijn eigen gekleurde lijn.
+
+Hoe te lezen als manager:
+    • Een stijgende lijn duidt op verbetering.
+    • Een dalende lijn duidt op achteruitgang.
+    • Lijnen die dicht bij elkaar lopen duiden op consistente gelijkheid
+      tussen teams.
+    • Een lijn die ver van de rest afwijkt (omhoog of omlaag) duidt op een
+      team dat opvallend anders presteert — het is de moeite waard te
+      begrijpen waarom.
+
+
+9.4  Banner maandwinnaar
+--------------------------
+Bovenaan de klassementssectie benadrukt een banner het team met het hoogste
+binnen-spec-percentage in de meest recent afgeronde kalendermaand.  Dit is
+bedoeld als erkenningssignaal en snel naslagpunt voor maandelijkse
+prestatiebesprekingen.
+
+
+9.5  Individuele producties van een team bekijken
+---------------------------------------------------
+Klikken op een teamrij in het klassement opent een detailvenster (pop-up)
+met de individuele producties die aan dat team zijn toegewezen over de
+geselecteerde periode.  Je kunt filteren op periode (1 maand, 3 maanden,
+6 maanden) via de knoppen bovenaan het venster.
+
+Elke rij toont het isotoop, de datum, het BO-nummer en of de productie
+binnen spec was.  Zo kun je zien of de lage score van een team door één
+isotoop veroorzaakt wordt of door een breder patroon over alle producten.
+
+Sluit het venster door op de X rechtsboven te klikken.
+
+===============================================================================
