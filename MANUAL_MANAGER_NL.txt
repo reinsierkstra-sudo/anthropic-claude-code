@@ -397,3 +397,79 @@ maar ontbreekt of erg kort is, kan dat duiden op een vertraagde of afgebroken
 run.  Dit zou ook zichtbaar zijn als een lage OTIF-score voor die week.
 
 ===============================================================================
+
+6. Productieoverzichtstabellen (Deze Week / Vorige Week)
+=========================================================
+
+Onder de Gantt-grafiek toont het dashboard twee productieoverzichtstabellen:
+één voor de huidige week en één voor de vorige week.  Ze geven je een
+rij-voor-rij-overzicht van elke voltooide productierun, zodat je in één
+oogopslag kunt zien waar binnen-spec-problemen optraden.
+
+
+6.1  Tabelopbouw
+-----------------
+Elke tabel heeft één rij per productie-invoer.  De tabel heeft zes kolommen:
+
+    Gallium (µA)               Targetstroom voor Ga-67
+    Rubidium (% + µA)          Efficiëntiepercentage en bundelstroom voor Rb-81
+    Indium (µA)                Targetstroom voor In-111
+    Thallium 1.2 (µA)          Targetstroom voor Tl-201 op kant 1.2
+    Thallium 2.1 (µA)          Targetstroom voor Tl-201 op kant 2.1
+    Jodium (Yield%/Output% + µA)   Yieldpercentage, outputpercentage en
+                                   bundelstroom voor I-123
+
+Thallium is opgesplitst in twee kolommen omdat het gelijktijdig op beide
+bundelpoorten kan draaien.  Als één isotoop in een week meer producties heeft
+dan een ander, wordt de kortere kolom aangevuld met lege cellen.
+
+
+6.2  Waardekleuren lezen
+-------------------------
+Waardekleuren volgen dezelfde groen/rood-conventie als de rest van het
+dashboard, maar weerspiegelen individuele productiekwaliteit in plaats van
+wekelijkse gemiddelden:
+
+    Gallium, Indium, Thallium 1.2, Thallium 2.1
+        Groen   Targetstroom viel binnen het toegestane specificatiebereik.
+        Rood    Targetstroom viel buiten het specificatiebereik.
+
+    Rb-81
+        Elke invoer toont twee waarden: het efficiëntiepercentage en de
+        bundelstroom in µA.  De waarden zijn groen wanneer de efficiëntie
+        (de verhouding van gemeten tot bestelde activiteit) binnen spec valt.
+
+    I-123
+        Elke invoer toont het yieldpercentage en het outputpercentage.
+        Beide waarden moeten binnen hun respectieve bereiken liggen om groen
+        te worden.  Rood betekent dat één of beide waarden buiten spec waren.
+
+
+6.3  Het productiehistorievenster openen
+-----------------------------------------
+Elke productie-invoer bevat een BO-nummer (batchordernummer) als klikbare
+link.  Klikken opent het productiehistorievenster.  Dit toont de dienstopbouw
+voor die specifieke productierun: welke dienst verantwoordelijk was, de exacte
+tijden en het volledige BO-nummer.
+
+Dit is met name nuttig wanneer een productie buiten spec is en je wilt weten
+welk ploegenteam aan het werk was — je kunt dat dan kruisverwijzen met het
+ploegklassement (Sectie 9).
+
+Sluit het venster met de X-knop.
+
+
+6.4  Waar je als manager op let
+---------------------------------
+    • Een kolom die in zowel de huidige als de vorige week grotendeels rood
+      is, duidt op een aanhoudend probleem met dat isotoop.
+
+    • Verspreide rode waarden over meerdere isotopen en dagen wijzen eerder
+      op een breder proces- of cyclotronprobleem dan op een isotoopspecifiek
+      probleem.
+
+    • Een volledig lege kolom voor de week betekent dat dat isotoop die week
+      niet was ingepland voor productie — dit is normaal voor sommige
+      producten in sommige weken.
+
+===============================================================================
