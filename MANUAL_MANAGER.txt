@@ -300,7 +300,7 @@ Looking at them side by side can pinpoint the root cause:
     Efficiency down, Within-spec stable
         More beam is being lost between source and target, but the
         targetstroom still falls within spec.  Possible cause: transmission
-        losses increasing (optics, steering, vacuum). #tuning can be a cause here too#
+        losses increasing (optics, steering, vacuum, cyclotron tuning).
 
     Within-spec down, Efficiency stable
         Beam transmission is normal but the targetstroom is drifting outside
