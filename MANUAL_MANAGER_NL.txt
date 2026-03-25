@@ -518,3 +518,44 @@ geregistreerd.
       de apparatuur onder aanhoudende onderhoudsdruk staat.
 
 ===============================================================================
+
+8. OTIF Cyclotron: Gemiste Orders
+===================================
+
+Verder op het dashboard staat een aparte OTIF Cyclotron-sectie.
+Deze gaat verder dan de OTIF-KPI-tabel (Sectie 3.3): in plaats van een
+wekelijks gemiddeld percentage toont het precies welke productorders gemist
+zijn, in welke week, en waarom.
+
+
+8.1  De tabel met gemiste orders
+----------------------------------
+De tabel geeft gemiste of onvolledige orders uit het OTIF-registratieboek
+weer.  Elke rij bevat:
+
+    Week        De ISO-week waarin de misser plaatsvond (formaat: YYYYwWW,
+                bijv. 2024w12).
+    Product     Het isotoopproduct dat te weinig geleverd werd:
+                Gallium, I-123, Indium, Krypton, Thallium of Rubidium.
+    Aantal      Het aantal gemiste orders voor dat product in die week.
+    Reden       De geregistreerde oorzaak van de misser zoals ingevoerd in
+                het registratieboek.
+
+
+8.2  KPI-lijngrafieken per product
+------------------------------------
+Onder de tabel met gemiste orders staan zes lijngrafieken, één per product
+(Gallium, I-123, Indium, Krypton, Thallium, Rubidium/Krypton).
+
+Elke grafiek toont het wekelijkse OTIF-percentage voor dat product over
+maximaal de afgelopen 52 weken.  Zo kun je zien of een product een chronisch
+leveringsprobleem heeft of dat missers op zichzelf staande events zijn.
+
+Hoe ze te lezen:
+    • Een lijn die stabiel rond de 100% blijft → geen structureel probleem.
+    • Een lijn met terugkerende dalen → onderzoek of de dalen samenvallen
+      met een bepaalde redencode (zie tabel hierboven).
+    • Een lijn die gedaald is en laag blijft → het product heeft mogelijk
+      een structureel aanbod- of procesprobleem dat managementaandacht vraagt.
+
+===============================================================================
