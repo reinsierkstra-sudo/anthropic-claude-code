@@ -1,0 +1,808 @@
+Isotoop Dashboard — Handleiding voor Managers
+===============================================
+
+Deze handleiding is geschreven voor managers die het Isotoop Dashboard gebruiken
+om de cyclotronproductieprestaties te volgen.  Er wordt geen technische of
+operationele voorkennis verondersteld.  Het dashboard is een alleen-lezen
+HTML-pagina: je kunt niets kapotmaken door erop te klikken.
+
+Voor technische documentatie over de interne werking van het systeem,
+zie MANUAL.txt.
+
+-------------------------------------------------------------------------------
+
+Inhoud
+------
+  1. Wat het dashboard laat zien (incl. navigatieknoppen §1.2)
+  2. Het kleurensysteem
+  3. De drie KPI's: Efficiëntie, Binnen spec, OTIF
+  4. Trends aflezen
+  5. De Gantt-grafiek
+  6. Productieoverzichtstabellen (deze week / vorige week)
+  7. Lopende storingen
+  8. OTIF Cyclotron: gemiste orders
+  9. Ploegklassement: teamprestaties
+ 10. Naslagwerk: als er iets niet klopt
+ 11. Snelle naslagkaart
+
+===============================================================================
+
+1. Wat het Dashboard Laat Zien
+================================
+
+Het Isotoop Dashboard geeft je een actueel overzicht van de
+cyclotronproductieprestaties voor vijf radio-isotopen:
+
+    Ga-67   Gallium-67
+    Rb-81   Rubidium-81
+    In-111  Indium-111
+    Tl-201  Thallium-201
+    I-123   Jodium-123
+
+In één oogopslag beantwoordt het drie managementvragen:
+
+    1. Draaien de cyclotrons efficiënt?
+       → Efficiëntie-KPI en Binnen-spec-KPI
+
+    2. Leveren we wat besteld is, op tijd en volledig?
+       → OTIF-KPI en tabel met gemiste orders
+
+    3. Welk ploegenteam presteert het best?
+       → Ploegklassement
+
+De pagina wordt elke 60 seconden automatisch vernieuwd.  Je hoeft niet op F5
+te drukken.  De weergegeven data is daardoor nooit meer dan één minuut oud
+bij normaal gebruik.
+
+
+1.1  Het dashboard openen
+--------------------------
+Het dashboard is een HTML-bestand dat opgeslagen staat op een netwerkschijf.
+Open het via:
+
+    • Dubbelklikken op de snelkoppeling op je bureaublad of de bureauschijf, of
+    • Het bestand rechtstreeks openen via:
+          X:\Cyclotron Bureau\Productie dashboard.html
+
+Als het bestand niet opent, of als de data er erg verouderd uitziet, controleer
+dan of je netwerkschijven (W: en X:) zijn aangemeld.  Als ze zijn aangemeld en
+het probleem aanhoudt, neem dan contact op met R.A.F. Sierkstra (SIE, tel. 7062).
+
+
+1.2  De navigatieknoppen
+-------------------------
+Bovenaan het volledige dashboard staan vier grote knoppen.  Elke knop opent een
+schermvullend pop-upvenster.  Sluit een venster met het × rechtsboven.
+
+    Dosisoverzicht
+        Toont het dosisoverzichtsbeeld — de stralingsdosis per medewerker over
+        de afgelopen 30 dagen en de afgelopen 365 dagen.
+
+    DM VSM
+        Toont de Daily Management VSM-tabel: de dagelijkse targetstroomwaarden
+        en het wekelijkse OTIF-percentage per isotoopgroep.  Dit zijn dezelfde
+        gegevens als die de OTIF-gedraaide-producties-KPI-tabel voeden.
+
+    Rooster en targetvoorraad
+        Toont de plannings-HTML: het ploegenschema, geplande
+        onderhoudswerkzaamheden en het actuele overzicht van de targetvoorraad.
+
+    Productieschema
+        Toont de productieschema-HTML: het gedetailleerde productieschema voor
+        de huidige en komende periodes.
+
+
+1.3  Twee versies van het dashboard
+-------------------------------------
+Er zijn twee versies van het dashboard:
+
+    Volledig dashboard
+        Bevat alle KPI-grafieken, de Gantt-grafiek, detail per isotoop, het
+        ploegklassement en alle pop-upvensters.  Dit is de versie die in deze
+        handleiding wordt beschreven en die beschikbaar is op de bureauschijf
+        en op de lokale machine die de pipeline draait.
+
+    Verkort (operators-)dashboard
+        Een beknopt overzicht — alleen KPI-tabellen en productieoverzicht.
+        Deze versie wordt geserveerd aan operatorwerkstations op de
+        netwerkschijf.  Het bevat geen klassement of detailgrafieken —
+        gevoelige informatie op managementniveau is alleen beschikbaar in
+        het volledige dashboard.
+
+Als manager gebruik je normaal gesproken het volledige dashboard.
+
+===============================================================================
+
+2. Het Kleurensysteem
+======================
+
+Het gehele dashboard gebruikt één consistente kleurconventie.  Als je die
+eenmaal kent, kun je elke sectie in één oogopslag lezen.
+
+    GROEN   De waarde is op of boven de norm.  Geen actie vereist.
+
+    ROOD    De waarde ligt onder de drempelwaarde.  Verdient aandacht.
+
+    GRIJS   Er zijn geen gegevens beschikbaar voor die periode.  Dit is
+            normaal voor weken die nog niet begonnen zijn of voor isotopen
+            die niet elke week geproduceerd worden.
+
+
+2.1  Wat "op norm" betekent per KPI
+--------------------------------------
+Elke KPI heeft zijn eigen drempelwaarde voor wat als groen telt:
+
+    Efficiëntie     Groen wanneer het wekelijks gemiddelde op of boven het
+                    voortschrijdend gemiddelde van 10 weken ligt.  Met andere
+                    woorden: de waarde is groen als deze week minstens zo goed
+                    is als de recente geschiedenis.
+
+    Binnen spec     Groen wanneer het wekelijks percentage op of boven het
+                    voortschrijdend gemiddelde van 10 weken ligt.
+
+    OTIF            Groen wanneer de wekelijkse score 97% of hoger is.
+                    Onder de 97% wordt de waarde rood, ongeacht de
+                    geschiedenis.
+
+
+2.2  Kleur in de productietabellen
+-------------------------------------
+Individuele waarden in de wekelijkse overzichtstabellen worden ook groen of
+rood weergegeven.  De kleur van het getal geeft aan of die productie aan de
+kwaliteitsspecificatie voor dat isotoop voldeed (zie Sectie 6).
+
+2.3  Kleur in het klassement
+------------------------------
+Ploegenrangschikkingen gebruiken een iets andere schaal:
+
+    GROEN   De score van het team ligt meer dan 2 procentpunt boven het
+            gemiddelde van alle teams.
+
+    ROOD    De score van het team ligt meer dan 2 procentpunt onder het
+            gemiddelde van alle teams.
+
+    ZWART   Het team zit binnen 2 procentpunt van het gemiddelde —
+            een neutraal resultaat.
+
+===============================================================================
+
+3. De Drie KPI's: Efficiëntie, Binnen Spec, OTIF
+==================================================
+
+Het bovenste gedeelte van het dashboard toont drie KPI-tabellen, de één
+onder de ander.  Elke tabel beslaat alle vijf isotopen samen en geeft de
+prestaties week voor week weer.
+
+Elke tabel heeft dezelfde opbouw:
+    • Één rij over de laatste 10 weken, één kolom per week.  Elke kolom
+      toont de percentagewaarde voor die week in een kleur (groen of rood).
+    • Drie scalaire gemiddelden eronder: alltime-gemiddelde, gemiddelde
+      afgelopen jaar, gemiddelde afgelopen 3 maanden.
+    • De meest recente week staat rechts; oudere weken staan links.
+
+
+3.1  Efficiëntie — hoeveel van de bundel bereikt het target?
+-------------------------------------------------------------
+Wat het meet:
+    Bundeltransmissie-efficiëntie: de verhouding van µA gemeten aan de
+    targetfaraday tot µA gemeten aan de bronfaraday, uitgedrukt als
+    percentage.  Een hoger percentage betekent dat meer van de gegenereerde
+    bundel het target bereikt; er gaat minder verloren onderweg.
+
+In gewone taal:
+    De cyclotron genereert een bundel bij de bron.  Niet alles arriveert bij
+    het target — een deel wordt verstrooid of geabsorbeerd onderweg.  Deze
+    KPI volgt hoe groot dat verlies is.  Een daling in efficiëntie betekent
+    dat de bundel meer stroom verliest tussen bron en target dan gebruikelijk.
+
+Hoe de tabel te lezen:
+    Elke kolom toont de gemiddelde efficiëntieprocent voor die week.
+    Een groene waarde betekent dat deze week op of boven het
+    10-wekengemiddelde lag.  Een rode waarde betekent dat het eronder lag.
+    Eén geïsoleerde rode waarde is geen reden tot zorg; twee of meer
+    opeenvolgende rode waarden duiden op een patroon.
+
+De scalaire gemiddelden eronder geven aan of de recente daling of stijging
+een echte trend is of een kortetermijnschommeling.  Als het gemiddelde van
+het afgelopen jaar en het alltime-gemiddelde dicht bij elkaar liggen, zijn
+de prestaties stabiel.
+
+
+3.2  Slagingspercentage (% Binnen Spec) — voldoen producties aan de kwaliteitseisen?
+--------------------------------------------------------------------------------------
+Wat het meet:
+    Het percentage voltooide producties waarbij de targetstroom (of, voor
+    sommige isotopen, de yield) binnen het toegestane specificatievenster
+    viel.  100% betekent dat elke productie binnen spec was.  Lagere getallen
+    betekenen dat sommige producties buiten het vereiste bereik vielen.
+
+In gewone taal:
+    Elk isotoop heeft een gedefinieerd acceptabel bereik voor zijn
+    targetstroom.  Een productie buiten dat bereik hoeft niet te betekenen
+    dat het product wordt afgekeurd, maar het geeft aan dat het proces afweek
+    van het doel.  Consistente scores onder de 100% wijzen op een systematisch
+    probleem met een bepaald isotoop of een cyclotron.
+
+Hoe de tabel te lezen:
+    Zelfde opbouw als Efficiëntie.  Een week zonder data (grijs) betekent dat
+    er die week geen producties zijn afgerond — normaal voor weken met gepland
+    onderhoud of feestdagen.
+
+
+3.3  OTIF gedraaide producties — leverden we de bestelde targetstroom?
+-----------------------------------------------------------------------
+Wat het meet:
+    Per voltooide productie: de verhouding van de werkelijke targetstroom tot
+    de nominale (bestelde) targetstroom, uitgedrukt als percentage.  100%
+    betekent dat de nominale waarde precies gehaald is; boven 100% betekent
+    dat deze overschreden werd; onder 100% betekent dat de output tekortschoot.
+    Producties die helemaal niet uitgevoerd zijn, worden uitgesloten van
+    deze KPI.
+
+    De grenswaarde is 97%.  Waarden op of boven de 97% zijn groen;
+    daaronder zijn ze rood.
+
+In gewone taal:
+    Hebben de producties die gedraaid zijn de bestelde output gehaald?
+    Een score onder de 97% betekent dat één of meer producties die week onder
+    de bestelde targetstroom zijn gebleven.
+
+Opmerking:
+    Een apart, gedetailleerder OTIF-overzicht — met individuele gemiste
+    orders per product — staat in Sectie 8.
+
+===============================================================================
+
+4. Trends Aflezen
+==================
+
+Eén slechte week is geen crisis.  Het dashboard is het meest nuttig als je het
+gebruikt om een eenmalige afwijking te onderscheiden van een structurele daling.
+
+
+4.1  Wekelijkse waarden en gemiddelden samen gebruiken
+-------------------------------------------------------
+De rij van 10 weken toont kortetermijnvariatie.  De scalaire gemiddelden
+(alltime, afgelopen jaar, afgelopen 3 maanden) geven de bredere context.
+
+Lees ze samen als volgt:
+
+    SCENARIO A — Één rode waarde, rest groen, gemiddelden stabiel
+        Eén slechte week omringd door groene waarden.  De gemiddelden worden
+        nauwelijks beïnvloed.  Dit is waarschijnlijk een eenmalige gebeurtenis
+        (gepland onderhoud, één mislukte productie, een feestdag met minder
+        output).
+
+    SCENARIO B — Twee of meer opeenvolgende rode waarden
+        Een reeks van weken onder gemiddelde is een patroon, geen ruis.  Als
+        het 3-maandsgemiddelde ook daalt, begon de daling vóór de zichtbare
+        weken.  De productietabellen (Sectie 6) laten zien welk isotoop of
+        welke dienst betrokken is.
+
+    SCENARIO C — Alle waarden groen maar alltime-gemiddelde hoger dan afgelopen jaar
+        De prestaties zijn nu consistent goed, maar waren historisch beter.
+        De daling verliep geleidelijk en is niet duidelijk zichtbaar in de
+        recente weken.  Het verschil tussen het gemiddelde van het afgelopen
+        jaar en het gemiddelde van de afgelopen 3 maanden toont de omvang
+        ervan.
+
+    SCENARIO D — Één of twee grijze waarden (geen data)
+        Weken zonder producties — doorgaans onderhoudsstops of feestdagen.
+        Deze zijn te verwachten en beïnvloeden de gemiddelden niet.
+
+
+4.2  Signaalgrenzen
+--------------------
+    Twee of meer opeenvolgende rode waarden         duidt op een patroon,
+    in een KPI                                      niet op een eenmalige
+                                                    gebeurtenis.
+
+    Alltime-gemiddelde meer dan 5% boven            duidt op een geleidelijke
+    het gemiddelde van het afgelopen jaar           structurele daling.
+
+    OTIF onder de 90% in een enkele week            duidt op een significante
+                                                    gebeurtenis die week.
+
+
+4.3  KPI's met elkaar vergelijken
+-----------------------------------
+De drie KPI's meten verschillende aspecten van hetzelfde productieproces.
+Ze naast elkaar bekijken kan de grondoorzaak aanwijzen:
+
+    Efficiëntie daalt, Binnen spec stabiel
+        Er gaat meer bundel verloren tussen bron en target, maar de
+        targetstroom blijft binnen spec.  Mogelijke oorzaak: toenemende
+        transmissieverliezen (optiek, sturing, vacuüm, afstemming cyclotron).
+
+    Binnen spec daalt, Efficiëntie stabiel
+        De bundeltransmissie is normaal, maar de targetstroom drijft buiten
+        het toegestane specificatiebereik.  Mogelijke oorzaak: afstemming
+        cyclotron of operatorinstelling.
+
+    OTIF daalt, beide anderen stabiel
+        De cyclotron draait goed maar haalde de bestelde stroom niet.
+        Kan duiden op PROC-fouten.
+
+    Alle drie tegelijk omlaag
+        Een bredere systeemstoring — apparatuurfout of een proceswijziging
+        die alle parameters beïnvloedde.
+
+===============================================================================
+
+5. De Gantt-Grafiek
+====================
+
+De Gantt-grafiek is een visuele tijdlijn die cyclotronproducties over de
+afgelopen dagen en de komende dagen toont.  Het is in de eerste plaats een
+operationeel hulpmiddel voor diensthoofden, maar managers kunnen het gebruiken
+voor een snelle controle of de productie zoals gepland verloopt.
+
+
+5.1  Wat de grafiek toont
+--------------------------
+De grafiek toont drie rijstroken, één per cyclotronpositie:
+
+    Kant 1      Één kant van de IBA-cyclotron
+    Kant 2      De andere kant van de IBA-cyclotron
+    Philips     De Philips-cyclotron
+
+Elk gekleurd blok staat voor één productierun.  De horizontale positie van
+het blok toont wanneer de run begon en eindigde.  Een rode verticale lijn
+met het opschrift "Nu" markeert de huidige tijd, zodat je direct kunt zien
+wat er nu draait en wat er onlangs klaar is gekomen.
+
+
+5.2  Kleursleutel
+------------------
+Let op: in de Gantt-grafiek identificeren kleuren isotopen, niet prestaties.
+Groen hier betekent I-123, niet "op norm" zoals in de KPI-tabellen.
+
+    Blauw   Ga-67   (Gallium-67)
+    Rood    Rb-81   (Rubidium-81)
+    Cyaan   In-111  (Indium-111)
+    Geel    Tl-201  (Thallium-201)
+    Groen   I-123   (Jodium-123)
+    Grijs   Pauze   (geplande onderbreking / geen productie)
+
+
+5.3  Door de grafiek navigeren
+--------------------------------
+    Links/rechts scrollen   Gebruik de horizontale schuifbalk onderaan de
+                            grafiek om door de tijd te bewegen.
+
+    Spring naar Nu          Klik op de knop "Spring naar Nu" boven de grafiek
+                            om de weergave op de huidige tijd te centreren.
+                            Dit is de snelste manier om te zien wat er nu
+                            draait.
+
+    Zweeftip (tooltip)      Door over een productieblok te bewegen verschijnt
+                            een tooltip met het BO-nummer, de productnaam, de
+                            start- en eindtijd en de duur.
+
+
+5.4  Gepland versus werkelijk
+-------------------------------
+De grafiek combineert twee gegevensbronnen:
+
+    Geplande invoer     Geladen uit het cyclotronproductieschema.
+                        Getoond als de werkelijke productieregistratie
+                        nog niet beschikbaar is.
+
+    Werkelijke invoer   Zodra een productie is afgerond en geregistreerd,
+                        vervangt de werkelijke registratie de geplande.
+                        Werkelijke registraties hebben voorrang.
+
+Als manager geldt: als je een productieblok ziet dat al had moeten beginnen
+maar ontbreekt of erg kort is, kan dat duiden op een vertraagde of afgebroken
+run.  Dit zou ook zichtbaar zijn als een lage OTIF-score voor die week.
+
+===============================================================================
+
+6. Productieoverzichtstabellen (Deze Week / Vorige Week)
+=========================================================
+
+Onder de Gantt-grafiek toont het dashboard twee productieoverzichtstabellen:
+één voor de huidige week en één voor de vorige week.  Ze geven je een
+rij-voor-rij-overzicht van elke voltooide productierun, zodat je in één
+oogopslag kunt zien waar binnen-spec-problemen optraden.
+
+
+6.1  Tabelopbouw
+-----------------
+Elke tabel heeft één rij per productie-invoer.  De tabel heeft zes kolommen:
+
+    Gallium (µA)               Targetstroom voor Ga-67
+    Rubidium (% + µA)          Efficiëntiepercentage en bundelstroom voor Rb-81
+    Indium (µA)                Targetstroom voor In-111
+    Thallium 1.2 (µA)          Targetstroom voor Tl-201 op kant 1.2
+    Thallium 2.1 (µA)          Targetstroom voor Tl-201 op kant 2.1
+    Jodium (Yield%/Output% + µA)   Yieldpercentage, outputpercentage en
+                                   bundelstroom voor I-123
+
+Thallium is opgesplitst in twee kolommen omdat het gelijktijdig op beide
+bundelpoorten kan draaien.  Als één isotoop in een week meer producties heeft
+dan een ander, wordt de kortere kolom aangevuld met lege cellen.
+
+
+6.2  Waardekleuren lezen
+-------------------------
+Waardekleuren volgen dezelfde groen/rood-conventie als de rest van het
+dashboard, maar weerspiegelen individuele productiekwaliteit in plaats van
+wekelijkse gemiddelden:
+
+    Gallium, Indium, Thallium 1.2, Thallium 2.1
+        Groen   Targetstroom viel binnen het toegestane specificatiebereik.
+        Rood    Targetstroom viel buiten het specificatiebereik.
+
+    Rb-81
+        Elke invoer toont twee waarden: het efficiëntiepercentage en de
+        bundelstroom in µA.  De waarden zijn groen wanneer de efficiëntie
+        (de verhouding van gemeten tot bestelde activiteit) binnen spec valt.
+
+    I-123
+        Elke invoer toont het yieldpercentage en het outputpercentage.
+        Beide waarden moeten binnen hun respectieve bereiken liggen om groen
+        te worden.  Rood betekent dat één of beide waarden buiten spec waren.
+
+
+6.3  Het productiehistorievenster openen
+-----------------------------------------
+Elke productie-invoer bevat een BO-nummer (batchordernummer) als klikbare
+link.  Klikken opent het productiehistorievenster.  Dit toont de dienstopbouw
+voor die specifieke productierun: welke dienst verantwoordelijk was, de exacte
+tijden en het volledige BO-nummer.
+
+Dit is met name nuttig wanneer een productie buiten spec is en je wilt weten
+welk ploegenteam aan het werk was — je kunt dat dan kruisverwijzen met het
+ploegklassement (Sectie 9).
+
+Sluit het venster met de X-knop.
+
+
+6.4  Waar je als manager op let
+---------------------------------
+    • Een kolom die in zowel de huidige als de vorige week grotendeels rood
+      is, duidt op een aanhoudend probleem met dat isotoop.
+
+    • Verspreide rode waarden over meerdere isotopen en dagen wijzen eerder
+      op een breder proces- of cyclotronprobleem dan op een isotoopspecifiek
+      probleem.
+
+    • Een volledig lege kolom voor de week betekent dat dat isotoop die week
+      niet was ingepland voor productie — dit is normaal voor sommige
+      producten in sommige weken.
+
+===============================================================================
+
+7. Lopende Storingen
+=====================
+
+Onder de productieoverzichtstabellen toont het dashboard twee storingtabellen,
+één voor elke cyclotron.  Ze geven een overzicht van apparatuurverstoringen
+die momenteel open staan — storingen die geregistreerd zijn maar nog niet
+verholpen.
+
+
+7.1  Lopende storingen IBA
+----------------------------
+Geeft alle open storingen op de IBA-cyclotron weer.  Elke rij bevat:
+
+    Storingsnummer      Het referentienummer van de storing (bijv. SF0042).
+    Datum               De datum waarop de storing is geregistreerd.
+    Verstoorde          Het aantal productieruns dat door deze storing
+    producties          verstoord is.  Klikken op het getal opent een
+                        detailvenster met de getroffen producties.
+    Storing             Een omschrijving van de storing.
+
+De rijen zijn gesorteerd op aantal verstoorde producties (hoogste eerst),
+daarna op datum.  Een lege tabel betekent dat er momenteel geen open
+IBA-storingen zijn geregistreerd.
+
+
+7.2  Lopende storingen Philips
+--------------------------------
+Identieke opbouw als de IBA-tabel, maar voor de Philips-cyclotron.
+
+Een lege tabel betekent dat er momenteel geen open Philips-storingen zijn
+geregistreerd.
+
+
+7.3  Waar je als manager op let
+---------------------------------
+    • Een storing met een hoog aantal "Verstoorde producties" heeft meetbare
+      impact gehad op de output.  Vergelijk dit met de
+      productieoverzichtstabellen (Sectie 6) en de OTIF Cyclotron-sectie
+      (Sectie 8) om te zien of het geleid heeft tot gemiste orders.
+
+    • Meerdere open storingen op dezelfde cyclotron tegelijk duiden erop dat
+      de apparatuur onder aanhoudende onderhoudsdruk staat.
+
+===============================================================================
+
+8. OTIF Cyclotron: Gemiste Orders
+===================================
+
+Verder op het dashboard staat een aparte OTIF Cyclotron-sectie.
+Deze gaat verder dan de OTIF-KPI-tabel (Sectie 3.3): in plaats van een
+wekelijks gemiddeld percentage toont het precies welke productorders gemist
+zijn, in welke week, en waarom.
+
+
+8.1  De tabel met gemiste orders
+----------------------------------
+De tabel geeft gemiste of onvolledige orders uit het OTIF-registratieboek
+weer.  Elke rij bevat:
+
+    Week        De ISO-week waarin de misser plaatsvond (formaat: YYYYwWW,
+                bijv. 2024w12).
+    Product     Het isotoopproduct dat te weinig geleverd werd:
+                Gallium, I-123, Indium, Krypton, Thallium of Rubidium.
+    Aantal      Het aantal gemiste orders voor dat product in die week.
+    Reden       De geregistreerde oorzaak van de misser zoals ingevoerd in
+                het registratieboek.
+
+
+8.2  KPI-lijngrafieken per product
+------------------------------------
+Onder de tabel met gemiste orders staan zes lijngrafieken, één per product
+(Gallium, I-123, Indium, Krypton, Thallium, Rubidium/Krypton).
+
+Elke grafiek toont het wekelijkse OTIF-percentage voor dat product over
+maximaal de afgelopen 52 weken.  Zo kun je zien of een product een chronisch
+leveringsprobleem heeft of dat missers op zichzelf staande events zijn.
+
+Hoe ze te lezen:
+    • Een lijn die stabiel rond de 100% blijft → geen structureel probleem.
+    • Een lijn met terugkerende dalen → onderzoek of de dalen samenvallen
+      met een bepaalde redencode (zie tabel hierboven).
+    • Een lijn die gedaald is en laag blijft → het product heeft mogelijk
+      een structureel aanbod- of procesprobleem dat managementaandacht vraagt.
+
+===============================================================================
+
+9. Ploegklassement: Teamprestaties
+=====================================
+
+Het ploegklassement rangschikt de vijf ploegenteams op het percentage
+producties dat zij begeleidden dat binnen spec was.  Het toont niet alleen
+hoe de afdeling als geheel presteert, maar ook welke teams boven en welke
+onder het groepsgemiddelde zitten.
+
+
+9.1  Wat is een ploeg?
+-----------------------
+De cyclotron draait 24 uur per dag, zeven dagen per week, verdeeld in drie
+diensten:
+
+    Ochtenddienst   07:00 – 15:00
+    Middagdienst    15:00 – 23:00
+    Nachtdienst     23:00 – 07:00
+
+Vijf wisselende teams (ploegen, genummerd 1–5) dekken deze diensten op een
+roterend schema.  Elke productierun wordt toegewezen aan het ploegenteam dat
+de cyclotron tijdens die run bediende.  Als een productie twee diensten
+overspant, wordt het aandeel proportioneel verdeeld over de twee teams.
+
+
+9.2  De klassementstabel
+--------------------------
+Het klassement rangschikt elk team op hun binnen-spec-percentage over de
+afgelopen 30 dagen.  De kleurcodering volgt de conventie beschreven in
+Sectie 2.3 (groen = meer dan 2 procentpunt boven het teamgemiddelde, rood =
+meer dan 2 procentpunt eronder, zwart = binnen 2 procentpunt).
+
+Rechts van de rangschikking tonen drie samenvattingskolommen de prestaties
+over langere vaste periodes: afgelopen 1 maand, afgelopen 3 maanden en
+afgelopen 6 maanden.  Gebruik deze om een team dat recentelijk verbeterd is
+te onderscheiden van een team dat al langere tijd consistent sterk presteert.
+
+
+9.3  De trendgrafiek met voortschrijdend gemiddelde
+------------------------------------------------------
+Onder de tabel staat een lijngrafiek die het 30-daags voortschrijdend
+gemiddelde van elk team over de afgelopen zes maanden toont.  Elk team heeft
+zijn eigen gekleurde lijn.
+
+Hoe te lezen als manager:
+    • Een stijgende lijn duidt op verbetering.
+    • Een dalende lijn duidt op achteruitgang.
+    • Lijnen die dicht bij elkaar lopen duiden op consistente gelijkheid
+      tussen teams.
+    • Een lijn die ver van de rest afwijkt (omhoog of omlaag) duidt op een
+      team dat opvallend anders presteert — het is de moeite waard te
+      begrijpen waarom.
+
+
+9.4  Banner maandwinnaar
+--------------------------
+Bovenaan de klassementssectie benadrukt een banner het team met het hoogste
+binnen-spec-percentage in de meest recent afgeronde kalendermaand.  Dit is
+bedoeld als erkenningssignaal en snel naslagpunt voor maandelijkse
+prestatiebesprekingen.
+
+
+9.5  Individuele producties van een team bekijken
+---------------------------------------------------
+Klikken op een teamrij in het klassement opent een detailvenster (pop-up)
+met de individuele producties die aan dat team zijn toegewezen over de
+geselecteerde periode.  Je kunt filteren op periode (1 maand, 3 maanden,
+6 maanden) via de knoppen bovenaan het venster.
+
+Elke rij toont het isotoop, de datum, het BO-nummer en of de productie
+binnen spec was.  Zo kun je zien of de lage score van een team door één
+isotoop veroorzaakt wordt of door een breder patroon over alle producten.
+
+Sluit het venster door op de X rechtsboven te klikken.
+
+===============================================================================
+
+10. Naslagwerk: Als Er Iets Niet Klopt
+========================================
+
+Dit onderdeel bevat de meest voorkomende situaties en wat ze doorgaans
+aangeven.
+
+
+10.1  Dashboardproblemen (pagina / weergave)
+---------------------------------------------
+
+    De pagina wordt niet automatisch vernieuwd
+        Het dashboard wordt standaard elke 60 seconden vernieuwd.  Als dat
+        stopt:
+        • Druk op F5 om handmatig te vernieuwen.
+        • Controleer of je browser niet in offline modus staat.
+        • Als het bestand niet gevonden kan worden, controleer dan of de
+          X:-schijf is aangemeld.
+
+    De data ziet er uren oud uit
+        Als de waarden op de pagina bij meerdere handmatige vernieuwingen
+        (F5) tijdens werktijden onveranderd blijven, is de pipeline
+        waarschijnlijk gestopt.
+        → Neem contact op met R.A.F. Sierkstra (SIE, tel. 7062).
+
+    Een rode banner met "FILE TAMPERED" verschijnt bovenaan de pagina
+        Het HTML-bestand is buiten de geautomatiseerde pipeline om bewerkt.
+        Dit wordt gedetecteerd via een checksumvergelijking en getoond als
+        waarschuwing.
+        → Bewerk het HTML-bestand niet handmatig.  Neem contact op met
+          R.A.F. Sierkstra (SIE, tel. 7062).  De banner verdwijnt bij de
+          volgende geautomatiseerde update.
+
+    Secties ontbreken (bijv. klassement is leeg, planningsvenster is leeg)
+        De pipeline is afhankelijk van meerdere netwerkbestanden (Excel-
+        werkmappen, gedeelde schijven).  Als één van die bestanden niet
+        beschikbaar is, is de betreffende sectie afwezig of toont een
+        waarschuwing.
+        → Controleer of de W:-schijf is aangemeld.  Als dat zo is, neem
+          dan contact op met R.A.F. Sierkstra (SIE, tel. 7062) — het
+          bronbestand is mogelijk verplaatst of hernoemd.
+
+
+10.2  KPI-problemen
+---------------------
+
+    Twee of meer opeenvolgende rode waarden in een KPI
+        Duidt op een patroon.  De tabel met gemiste orders (Sectie 8) en de
+        productieoverzichtstabellen (Sectie 6) laten zien welk isotoop of
+        welke dienst betrokken is.
+
+    OTIF onder de 90% in een enkele week
+        Duidt op een significante onverwachte gebeurtenis die week.  De
+        redenkolom in de tabel met gemiste orders (Sectie 8) toont de
+        oorzaak.
+
+    Efficiëntie en binnen spec zijn tegelijk laag
+        Wijst eerder op een cyclotron- of procesmatig probleem dan op een
+        plannings- of dataprobleem.
+
+
+10.3  Ploeg-/teamproblemen
+----------------------------
+
+    Een team staat meer dan vier weken aaneengesloten in het rood
+        Het detailvenster per ploeg (Sectie 9.5) toont welk isotoop of
+        welke diensttijd de score omlaag trekt.
+
+    Alle teams staan tegelijk in het rood
+        Wanneer de score van elk team tegelijkertijd daalt, ligt de oorzaak
+        niet bij een specifiek team.  Het wijst op een proces- of
+        apparatuurprobleem.
+
+
+10.4  Contact
+---------------
+    Pipeline-/dashboardproblemen (data wordt niet     R.A.F. Sierkstra
+    bijgewerkt, secties ontbreken, FILE TAMPERED)     SIE, tel. 7062
+
+    Productie- en apparatuurzaken                     Operators-technici
+                                                      op dienst
+
+    Leveringsgerelateerde missers (bulktekort)        Supply chain /
+                                                      inkoop
+
+===============================================================================
+
+11. Snelle Naslagkaart
+=======================
+
+Print of bewaar dit onderdeel als bladwijzer voor gebruik tijdens
+besprekingen.
+
+
+11.1  Kleurbetekenissen in één oogopslag
+-----------------------------------------
+    GROEN    Op of boven de norm.        Geen actie nodig.
+    ROOD     Onder de drempelwaarde.     Verdient aandacht of bespreking.
+    GRIJS    Geen data voor deze periode. Normaal voor niet-ingeplande weken.
+
+
+11.2  KPI-definities (één regel per KPI)
+------------------------------------------
+    Efficiëntie    Bundeltransmissie-efficiëntie: µA op targetfaraday als
+                   percentage van µA op bronfaraday.  Hoger = minder bundel
+                   verloren tussen bron en target.
+
+    Binnen spec    % producties waarbij de bundelstroom (of yield) binnen het
+                   toegestane kwaliteitsvenster viel.  Doel: zo dicht mogelijk
+                   bij 100%.
+
+    OTIF           % producties waarbij de geleverde bundelstroom de bestelde
+                   waarde haalde of overschreed.  Grenswaarde: 97%.
+
+
+11.3  KPI-drempelwaarden die rood activeren
+---------------------------------------------
+    Efficiëntie    Onder het voortschrijdend 10-wekengemiddelde voor die week.
+    Binnen spec    Onder het voortschrijdend 10-wekengemiddelde voor die week.
+    OTIF           Onder de 97% voor die week.
+    Klassement     Meer dan 2 procentpunt onder het teamgemiddelde.
+
+
+11.4  Specificatiegrenzen per isotoop (binnen-spec-controle)
+--------------------------------------------------------------
+    Ga-67   Philips-cyclotron:   75 – 85 µA bundelstroom
+            IBA-cyclotron:      130 – 140 µA bundelstroom
+    In-111  Philips-cyclotron:   75 – 85 µA bundelstroom
+            IBA-cyclotron:      130 – 140 µA bundelstroom
+    Tl-201  166 – 174 µA bundelstroom
+    Rb-81   95 – 105% efficiëntie (gemeten versus bestelde activiteit)
+    I-123   Output:        78 – 114,9% van verwachte yield
+            Bundelstroom:  96 – 124 µA
+
+
+11.5  Kleursleutel Gantt-grafiek
+----------------------------------
+    Blauw   Ga-67 (Gallium-67)
+    Rood    Rb-81 (Rubidium-81)
+    Cyaan   In-111 (Indium-111)
+    Geel    Tl-201 (Thallium-201)
+    Groen   I-123 (Jodium-123)
+    Grijs   Pauze (geen productie)
+
+
+11.6  Signaalgrenzen
+----------------------
+    2+ opeenvolgende rode KPI-waarden     patroon; zie §6 en §8 voor detail.
+    OTIF < 90% in een week                significante gebeurtenis; zie §8
+                                          redenkolom.
+    Alltime-gemiddelde meer dan 5%        geleidelijke structurele daling.
+    boven gemiddelde afgelopen jaar
+    Één ploeg rood voor 4+ weken          isotoop- of dienstspecifiek
+                                          probleem; zie §9.5.
+    Alle ploegen tegelijk rood            proces- of apparatuurprobleem,
+                                          niet een teamprobleem.
+
+
+11.7  Sectiewijzer
+--------------------
+    Navigatieknoppen (Dosisoverzicht, DM VSM, enz.)  Sectie 1.2
+    KPI-tabellen (Efficiëntie, Binnen spec, OTIF)    Sectie 3
+    Trends aflezen                                   Sectie 4
+    Gantt-grafiek                                    Sectie 5
+    Wekelijkse productietabellen                     Sectie 6
+    Actieve storingen                                Sectie 7
+    Tabel gemiste orders en OTIF per product         Sectie 8
+    Ploegklassement en teamdetail                    Sectie 9
+    Probleemoplossing                                Sectie 10
+
+===============================================================================
