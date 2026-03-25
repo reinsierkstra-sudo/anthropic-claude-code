@@ -86,8 +86,8 @@ full-screen pop-up panel.  Close any panel with the × in the top-right corner.
         activities, and the current target stock overview.
 
     Productieschema
-        Shows the production schema HTML: the detailed production plan for
-        the current and upcoming periods. #not plan but schedule#
+        Shows the production schema HTML: the detailed production schedule
+        for the current and upcoming periods.
 
 
 1.3  Two versions of the dashboard
