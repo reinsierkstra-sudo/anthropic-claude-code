@@ -82,8 +82,8 @@ full-screen pop-up panel.  Close any panel with the × in the top-right corner.
         data that feeds the OTIF gedraaide producties KPI table.
 
     Rooster en targetvoorraad
-        Shows the planning HTML: the shift schedule and the current target
-        stock overview. #as well as planned maintenance activities#
+        Shows the planning HTML: the shift schedule, planned maintenance
+        activities, and the current target stock overview.
 
     Productieschema
         Shows the production schema HTML: the detailed production plan for
