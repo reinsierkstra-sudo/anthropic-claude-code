@@ -74,7 +74,7 @@ full-screen pop-up panel.  Close any panel with the × in the top-right corner.
 
     Dosisoverzicht
         Shows the dosis overview image — a snapshot of the cumulative dose
-        picture for the current period.
+        picture for the current period. #not cumulative dose, but dose of each individual employee past 30 days and past 365 days#
 
     DM VSM
         Shows the Daily Management VSM table: the daily targetstroom values
@@ -83,11 +83,11 @@ full-screen pop-up panel.  Close any panel with the × in the top-right corner.
 
     Rooster en targetvoorraad
         Shows the planning HTML: the shift schedule and the current target
-        stock overview.
+        stock overview. #as well as planned maintenance activities#
 
     Productieschema
         Shows the production schema HTML: the detailed production plan for
-        the current and upcoming periods.
+        the current and upcoming periods. #not plan but schedule#
 
 
 1.3  Two versions of the dashboard
@@ -104,7 +104,7 @@ There are two versions of the dashboard:
         A lightweight summary — KPI tables and production summary only.
         This version is served to operator workstations on the network share
         for fast loading.  It does not contain the leaderboard or detail
-        charts.
+        charts. #not for fast loading but to keep more sensitive info on the management lvl#
 
 As a manager you will normally use the full dashboard.
 
@@ -146,7 +146,7 @@ Each KPI has its own threshold for what counts as green:
 Individual production cells in the weekly summary tables are also coloured
 green or red.  For these cells the colour reflects whether that single
 production met the quality specification for its isotope (see Section 7).
-
+#it`s not the cell colour but the colour of the number, no cell colours are used throughout the whole HTML#
 
 2.3  Colour in the leaderboard
 --------------------------------
@@ -176,7 +176,7 @@ Each table has the same layout:
     • Three scalar averages below: all-time average, last year average,
       last 3 months average.
     • The most recent week is on the right; older weeks are to the left.
-
+#coloured cells don`t exist in the html#
 
 3.1  Efficiency — how much of the beam reaches the target?
 -----------------------------------------------------------
@@ -197,7 +197,7 @@ How to read the table:
     A green cell means this week was at or above the 10-week average.
     A red cell means it was below.  An isolated red cell is not a concern;
     two or more consecutive red cells indicate a pattern.
-
+#coloured cells don`t exist in the html#
 The scalar averages below the cells show whether the recent dip or rise is a
 genuine trend or a short-term fluctuation.  If the last year average and the
 all-time average are close, performance is stable.
@@ -235,7 +235,7 @@ What it measures:
 
     The pass threshold is 97%.  Cells at or above 97% are green; below
     97% they are red.
-
+#coloured cells don`t exist in the html#
 In plain language:
     Of the productions that ran, did the cyclotron reach the ordered output?
     A score below 97% means one or more productions that week fell short of
@@ -265,7 +265,7 @@ Read them together as follows:
         A single bad week surrounded by green cells.  The averages are barely
         affected.  This is likely a one-off event (scheduled maintenance,
         a single failed production, a public holiday reducing output).
-
+#coloured cells don`t exist in the html#
     SCENARIO B — Two or more consecutive red cells
         A run of below-average weeks is a pattern, not noise.  If the
         3-month average is also dropping, the decline started before the
@@ -303,7 +303,7 @@ Looking at them side by side can pinpoint the root cause:
     Efficiency down, Within-spec stable
         More beam is being lost between source and target, but the
         targetstroom still falls within spec.  Possible cause: transmission
-        losses increasing (optics, steering, vacuum).
+        losses increasing (optics, steering, vacuum). #tuning can be a cause here too#
 
     Within-spec down, Efficiency stable
         Beam transmission is normal but the targetstroom is drifting outside
@@ -313,11 +313,11 @@ Looking at them side by side can pinpoint the root cause:
     OTIF down, both others stable
         The cyclotron is running well but did not deliver the ordered current
         level.  Could indicate scheduling pressure or a short-notice capacity
-        reduction.
+        reduction. #could indicate PROC errors#
 
     All three down simultaneously
         A broader systemic issue — equipment fault, key staff absence, or a
-        process change that affected all parameters.
+        process change that affected all parameters. #don`t mention staff absence#
 
 ===============================================================================
 
@@ -464,7 +464,7 @@ shorter column fills with empty cells.
 Cell colours follow the same green/red convention as the rest of the
 dashboard, but they reflect individual production quality rather than
 weekly averages:
-
+#coloured cells don`t exist in the html#
     Gallium, Indium, Thallium 1.2, Thallium 2.1
         Green   Targetstroom was within the allowed specification range.
         Red     Targetstroom was outside the specification range.
@@ -736,3 +736,6 @@ Print or bookmark this section for use during review meetings.
     Troubleshooting                                   Section 9
 
 ===============================================================================
+
+
+#also check that this follows the same structure as the HTML in numbering. now it doesn`t at all#
