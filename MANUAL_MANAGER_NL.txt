@@ -328,3 +328,72 @@ Ze naast elkaar bekijken kan de grondoorzaak aanwijzen:
         die alle parameters beïnvloedde.
 
 ===============================================================================
+
+5. De Gantt-Grafiek
+====================
+
+De Gantt-grafiek is een visuele tijdlijn die cyclotronproducties over de
+afgelopen dagen en de komende dagen toont.  Het is in de eerste plaats een
+operationeel hulpmiddel voor diensthoofden, maar managers kunnen het gebruiken
+voor een snelle controle of de productie zoals gepland verloopt.
+
+
+5.1  Wat de grafiek toont
+--------------------------
+De grafiek toont drie rijstroken, één per cyclotronpositie:
+
+    Kant 1      Één kant van de IBA-cyclotron
+    Kant 2      De andere kant van de IBA-cyclotron
+    Philips     De Philips-cyclotron
+
+Elk gekleurd blok staat voor één productierun.  De horizontale positie van
+het blok toont wanneer de run begon en eindigde.  Een rode verticale lijn
+met het opschrift "Nu" markeert de huidige tijd, zodat je direct kunt zien
+wat er nu draait en wat er onlangs klaar is gekomen.
+
+
+5.2  Kleursleutel
+------------------
+Let op: in de Gantt-grafiek identificeren kleuren isotopen, niet prestaties.
+Groen hier betekent I-123, niet "op norm" zoals in de KPI-tabellen.
+
+    Blauw   Ga-67   (Gallium-67)
+    Rood    Rb-81   (Rubidium-81)
+    Cyaan   In-111  (Indium-111)
+    Geel    Tl-201  (Thallium-201)
+    Groen   I-123   (Jodium-123)
+    Grijs   Pauze   (geplande onderbreking / geen productie)
+
+
+5.3  Door de grafiek navigeren
+--------------------------------
+    Links/rechts scrollen   Gebruik de horizontale schuifbalk onderaan de
+                            grafiek om door de tijd te bewegen.
+
+    Spring naar Nu          Klik op de knop "Spring naar Nu" boven de grafiek
+                            om de weergave op de huidige tijd te centreren.
+                            Dit is de snelste manier om te zien wat er nu
+                            draait.
+
+    Zweeftip (tooltip)      Door over een productieblok te bewegen verschijnt
+                            een tooltip met het BO-nummer, de productnaam, de
+                            start- en eindtijd en de duur.
+
+
+5.4  Gepland versus werkelijk
+-------------------------------
+De grafiek combineert twee gegevensbronnen:
+
+    Geplande invoer     Geladen uit het cyclotronproductieschema.
+                        Getoond als de werkelijke productieregistratie
+                        nog niet beschikbaar is.
+
+    Werkelijke invoer   Zodra een productie is afgerond en geregistreerd,
+                        vervangt de werkelijke registratie de geplande.
+                        Werkelijke registraties hebben voorrang.
+
+Als manager geldt: als je een productieblok ziet dat al had moeten beginnen
+maar ontbreekt of erg kort is, kan dat duiden op een vertraagde of afgebroken
+run.  Dit zou ook zichtbaar zijn als een lage OTIF-score voor die week.
+
+===============================================================================
