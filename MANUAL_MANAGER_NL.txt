@@ -1,0 +1,28 @@
+Isotoop Dashboard — Handleiding voor Managers
+===============================================
+
+Deze handleiding is geschreven voor managers die het Isotoop Dashboard gebruiken
+om de cyclotronproductieprestaties te volgen.  Er wordt geen technische of
+operationele voorkennis verondersteld.  Het dashboard is een alleen-lezen
+HTML-pagina: je kunt niets kapotmaken door erop te klikken.
+
+Voor technische documentatie over de interne werking van het systeem,
+zie MANUAL.txt.
+
+-------------------------------------------------------------------------------
+
+Inhoud
+------
+  1. Wat het dashboard laat zien (incl. navigatieknoppen §1.2)
+  2. Het kleurensysteem
+  3. De drie KPI's: Efficiëntie, Binnen spec, OTIF
+  4. Trends aflezen
+  5. De Gantt-grafiek
+  6. Productieoverzichtstabellen (deze week / vorige week)
+  7. Lopende storingen
+  8. OTIF Cyclotron: gemiste orders
+  9. Ploegklassement: teamprestaties
+ 10. Naslagwerk: als er iets niet klopt
+ 11. Snelle naslagkaart
+
+===============================================================================
