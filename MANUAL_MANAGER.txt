@@ -17,10 +17,10 @@ Contents
   2. The colour system
   3. The three KPIs: Efficiency, Within-spec, OTIF
   4. Reading trends
-  5. Ploeg leaderboard: team performance
-  6. OTIF Cyclotron: missed orders
-  7. Production summary tables (this week / last week)
-  8. The Gantt chart
+  5. The Gantt chart
+  6. Production summary tables (this week / last week)
+  7. OTIF Cyclotron: missed orders
+  8. Ploeg leaderboard: team performance
   9. Reference: when something looks wrong
  10. Quick-reference card
 
@@ -240,7 +240,7 @@ In plain language:
 
 Note:
     A separate, more detailed OTIF view — covering individual missed orders
-    per product — is in Section 6.
+    per product — is in Section 7.
 
 ===============================================================================
 
@@ -266,7 +266,7 @@ Read them together as follows:
     SCENARIO B — Two or more consecutive red values
         A run of below-average weeks is a pattern, not noise.  If the
         3-month average is also dropping, the decline started before the
-        visible weeks.  The production tables (Section 7) show which isotope
+        visible weeks.  The production tables (Section 6) show which isotope
         or shift is involved.
 
     SCENARIO C — All values green but the all-time average is higher than last year
@@ -317,128 +317,84 @@ Looking at them side by side can pinpoint the root cause:
 
 ===============================================================================
 
-5. Ploeg Leaderboard: Team Performance
-========================================
+5. The Gantt Chart
+===================
 
-The ploeg leaderboard ranks the five shift teams by the percentage of
-productions they oversaw that were within specification.  It shows not just
-how the facility is doing overall, but which teams are above and which are
-below the group average.
-
-
-5.1  What is a ploeg?
-----------------------
-The cyclotron runs 24 hours a day, seven days a week, split into three shifts:
-
-    Ochtenddienst   Morning shift    07:00 – 15:00
-    Middagdienst    Afternoon shift  15:00 – 23:00
-    Nachtdienst     Night shift      23:00 – 07:00
-
-Five rotating teams (ploegen, numbered 1–5) cover these shifts on a rolling
-schedule.  Each production run is attributed to the shift team that operated
-the cyclotron during that run.  If a production spans two shifts, credit is
-split proportionally between the two teams.
+The Gantt chart is a visual timeline showing cyclotron productions over the
+last several days and the coming days.  It is primarily an operational tool
+for shift leads, but managers can use it for a quick sanity-check of whether
+production is running as planned.
 
 
-5.2  The leaderboard table
-----------------------------
-The leaderboard ranks each team by their within-spec percentage over the
-trailing 30 days.  The colour coding follows the convention described in
-Section 2.3 (green = more than 2% above the inter-team average, red = more
-than 2% below, black = within 2%).
+5.1  What the chart shows
+--------------------------
+The chart displays three lanes, one per cyclotron position:
 
-To the right of the ranking, three summary columns show performance over
-longer fixed periods: last 1 month, last 3 months, and last 6 months.  Use
-these to tell apart a team that has recently improved from one that has been
-consistently strong over time.
+    Kant 1      One side of the IBA cyclotron
+    Kant 2      The other side of the IBA cyclotron
+    Philips     The Philips cyclotron
 
-
-5.3  The rolling-average trend chart
---------------------------------------
-Below the table is a line chart showing each team's 30-day rolling average
-over the past six months.  Each team has its own coloured line.
-
-How to read it as a manager:
-    • A line trending upward indicates improving performance.
-    • A line trending downward indicates declining performance.
-    • Lines that are closely grouped indicate consistent parity between teams.
-    • A single line pulling away from the rest (up or down) indicates one
-      team performing notably differently — worth understanding why.
+Each coloured block represents one production run.  The block's horizontal
+position shows when the run started and ended.  A red vertical line labelled
+"Nu" (Now) marks the current time, so you can immediately see what is
+running right now and what has recently finished.
 
 
-5.4  Monthly winner banner
-----------------------------
-At the top of the leaderboard section a banner highlights the team with the
-highest within-spec percentage in the most recently completed calendar month.
-This is intended as a recognition signal and a quick reference for monthly
-performance reviews.
+5.2  Colour key
+----------------
+Note: in the Gantt chart colours identify isotopes, not performance.
+Green here means I-123, not "on target" as it does in the KPI tables.
+
+    Blue    Ga-67   (Gallium-67)
+    Red     Rb-81   (Rubidium-81)
+    Cyan    In-111  (Indium-111)
+    Yellow  Tl-201  (Thallium-201)
+    Green   I-123   (Iodine-123)
+    Grey    Pauze   (scheduled gap / no production)
 
 
-5.5  Viewing a team's individual productions
----------------------------------------------
-Clicking on a team row in the leaderboard opens a detail panel (pop-up)
-showing the individual productions attributed to that team over the selected
-period.  You can filter by period (1 month, 3 months, 6 months) using the
-buttons at the top of the panel.
+5.3  Navigating the chart
+--------------------------
+    Scroll left/right   Use the horizontal scrollbar at the bottom of the
+                        chart to move through time.
 
-Each row shows the isotope, date, BO number, and whether the production was
-within spec.  This lets you see whether a team's low score is driven by one
-isotope or by a broader pattern across all products.
+    Jump to Now         Click the "Spring naar Nu" button above the chart
+                        to centre the view on the current time.  This is
+                        the fastest way to see what is running right now.
 
-Close the panel by clicking the X in the top-right corner.
+    Hover tooltip       Hovering over any production block shows a tooltip
+                        with the BO number, product name, start and end
+                        times, and duration.
+
+
+5.4  Planned vs actual
+-----------------------
+The chart merges two data sources:
+
+    Planned entries     Loaded from the cyclotron production schedule.
+                        Shown if the actual production record is not yet
+                        available.
+
+    Actual entries      Once a production is completed and recorded, the
+                        actual record replaces the planned entry.  Actual
+                        records take priority.
+
+As a manager, if you see a production block that should have started but
+is absent or appears very short, it may indicate a delayed or aborted run.
+This would also show up as a low OTIF score for that week.
 
 ===============================================================================
 
-6. OTIF Cyclotron: Missed Orders
-==================================
-
-Further down the dashboard there is a dedicated OTIF Cyclotron section.
-This goes deeper than the OTIF KPI table (Section 3.3): instead of a
-weekly average percentage, it shows exactly which product orders were missed,
-in which week, and why.
-
-
-6.1  The missed-order table
------------------------------
-The table lists missed or incomplete orders from the OTIF tracking workbook.
-Each row contains:
-
-    Week        The ISO week in which the miss occurred (format: YYYYwWW,
-                e.g. 2024w12).
-    Product     The isotope product that was short-delivered:
-                Gallium, I-123, Indium, Krypton, Thallium, or Rubidium.
-    Count       The number of orders missed for that product in that week.
-    Reason      The recorded cause of the miss as entered in the workbook.
-
-
-6.2  Per-product KPI line charts
-----------------------------------
-Below the missed-order table there are six line charts, one per product
-(Gallium, I-123, Indium, Krypton, Thallium, Rubidium/Krypton).
-
-Each chart shows the weekly OTIF percentage for that product over up to the
-last 52 weeks.  This allows you to see whether a product has a chronic
-delivery problem or whether misses are isolated events.
-
-How to read them:
-    • A line holding steady near 100% → no structural issue.
-    • A line with recurring dips → investigate whether the dips correlate
-      with a specific reason code (see table above).
-    • A line that has dropped and stayed low → the product may have a
-      systematic supply or process problem requiring management attention.
-
-===============================================================================
-
-7. Production Summary Tables (This Week / Last Week)
+6. Production Summary Tables (This Week / Last Week)
 ======================================================
 
-Below the KPI section the dashboard shows two production summary tables:
+Below the Gantt chart the dashboard shows two production summary tables:
 one for the current week and one for the previous week.  These give you a
 row-by-row view of every completed production run, allowing you to see at
 a glance where within-spec issues occurred.
 
 
-7.1  Table layout
+6.1  Table layout
 ------------------
 Each table has one row per production entry.  The table has six columns:
 
@@ -455,7 +411,7 @@ beam ports.  If one isotope has more productions in a week than another, the
 shorter column fills with empty cells.
 
 
-7.2  Reading value colours
+6.2  Reading value colours
 --------------------------
 Value colours follow the same green/red convention as the rest of the
 dashboard, but they reflect individual production quality rather than
@@ -476,21 +432,21 @@ weekly averages:
         Red means one or both values were out of spec.
 
 
-7.3  Opening the Production History panel
+6.3  Opening the Production History panel
 ------------------------------------------
-Each production cell contains a BO number (batch order number) shown as a
+Each production entry contains a BO number (batch order number) shown as a
 clickable link.  Clicking it opens the Production History panel.  This shows
 the shift-level breakdown for that specific production run: which shift was
 responsible, the exact timing, and the full BO number.
 
 This is particularly useful when a production is out of spec and you want
 to know which shift team was on duty — you can then cross-reference with
-the ploeg leaderboard (Section 5).
+the ploeg leaderboard (Section 8).
 
 Close the panel with the X button.
 
 
-7.4  What to look for as a manager
+6.4  What to look for as a manager
 -------------------------------------
     • A column that is mostly red in both the current and previous week
       indicates a persistent issue with that isotope.
@@ -504,71 +460,115 @@ Close the panel with the X button.
 
 ===============================================================================
 
-8. The Gantt Chart
-===================
+7. OTIF Cyclotron: Missed Orders
+==================================
 
-The Gantt chart is a visual timeline showing cyclotron productions over the
-last several days and the coming days.  It is primarily an operational tool
-for shift leads, but managers can use it for a quick sanity-check of whether
-production is running as planned.
-
-
-8.1  What the chart shows
---------------------------
-The chart displays three lanes, one per cyclotron position:
-
-    Kant 1      One side of the IBA cyclotron
-    Kant 2      The other side of the IBA cyclotron
-    Philips     The Philips cyclotron
-
-Each coloured block represents one production run.  The block's horizontal
-position shows when the run started and ended.  A red vertical line labelled
-"Nu" (Now) marks the current time, so you can immediately see what is
-running right now and what has recently finished.
+Further down the dashboard there is a dedicated OTIF Cyclotron section.
+This goes deeper than the OTIF KPI table (Section 3.3): instead of a
+weekly average percentage, it shows exactly which product orders were missed,
+in which week, and why.
 
 
-8.2  Colour key
-----------------
-Note: in the Gantt chart colours identify isotopes, not performance.
-Green here means I-123, not "on target" as it does in the KPI tables.
+7.1  The missed-order table
+-----------------------------
+The table lists missed or incomplete orders from the OTIF tracking workbook.
+Each row contains:
 
-    Blue    Ga-67   (Gallium-67)
-    Red     Rb-81   (Rubidium-81)
-    Cyan    In-111  (Indium-111)
-    Yellow  Tl-201  (Thallium-201)
-    Green   I-123   (Iodine-123)
-    Grey    Pauze   (scheduled gap / no production)
-
-
-8.3  Navigating the chart
---------------------------
-    Scroll left/right   Use the horizontal scrollbar at the bottom of the
-                        chart to move through time.
-
-    Jump to Now         Click the "Spring naar Nu" button above the chart
-                        to centre the view on the current time.  This is
-                        the fastest way to see what is running right now.
-
-    Hover tooltip       Hovering over any production block shows a tooltip
-                        with the BO number, product name, start and end
-                        times, and duration.
+    Week        The ISO week in which the miss occurred (format: YYYYwWW,
+                e.g. 2024w12).
+    Product     The isotope product that was short-delivered:
+                Gallium, I-123, Indium, Krypton, Thallium, or Rubidium.
+    Count       The number of orders missed for that product in that week.
+    Reason      The recorded cause of the miss as entered in the workbook.
 
 
-8.4  Planned vs actual
------------------------
-The chart merges two data sources:
+7.2  Per-product KPI line charts
+----------------------------------
+Below the missed-order table there are six line charts, one per product
+(Gallium, I-123, Indium, Krypton, Thallium, Rubidium/Krypton).
 
-    Planned entries     Loaded from the cyclotron production schedule.
-                        Shown if the actual production record is not yet
-                        available.
+Each chart shows the weekly OTIF percentage for that product over up to the
+last 52 weeks.  This allows you to see whether a product has a chronic
+delivery problem or whether misses are isolated events.
 
-    Actual entries      Once a production is completed and recorded, the
-                        actual record replaces the planned entry.  Actual
-                        records take priority.
+How to read them:
+    • A line holding steady near 100% → no structural issue.
+    • A line with recurring dips → investigate whether the dips correlate
+      with a specific reason code (see table above).
+    • A line that has dropped and stayed low → the product may have a
+      systematic supply or process problem requiring management attention.
 
-As a manager, if you see a production block that should have started but
-is absent or appears very short, it may indicate a delayed or aborted run.
-This would also show up as a low OTIF score for that week.
+===============================================================================
+
+8. Ploeg Leaderboard: Team Performance
+========================================
+
+The ploeg leaderboard ranks the five shift teams by the percentage of
+productions they oversaw that were within specification.  It shows not just
+how the facility is doing overall, but which teams are above and which are
+below the group average.
+
+
+8.1  What is a ploeg?
+----------------------
+The cyclotron runs 24 hours a day, seven days a week, split into three shifts:
+
+    Ochtenddienst   Morning shift    07:00 – 15:00
+    Middagdienst    Afternoon shift  15:00 – 23:00
+    Nachtdienst     Night shift      23:00 – 07:00
+
+Five rotating teams (ploegen, numbered 1–5) cover these shifts on a rolling
+schedule.  Each production run is attributed to the shift team that operated
+the cyclotron during that run.  If a production spans two shifts, credit is
+split proportionally between the two teams.
+
+
+8.2  The leaderboard table
+----------------------------
+The leaderboard ranks each team by their within-spec percentage over the
+trailing 30 days.  The colour coding follows the convention described in
+Section 2.3 (green = more than 2% above the inter-team average, red = more
+than 2% below, black = within 2%).
+
+To the right of the ranking, three summary columns show performance over
+longer fixed periods: last 1 month, last 3 months, and last 6 months.  Use
+these to tell apart a team that has recently improved from one that has been
+consistently strong over time.
+
+
+8.3  The rolling-average trend chart
+--------------------------------------
+Below the table is a line chart showing each team's 30-day rolling average
+over the past six months.  Each team has its own coloured line.
+
+How to read it as a manager:
+    • A line trending upward indicates improving performance.
+    • A line trending downward indicates declining performance.
+    • Lines that are closely grouped indicate consistent parity between teams.
+    • A single line pulling away from the rest (up or down) indicates one
+      team performing notably differently — worth understanding why.
+
+
+8.4  Monthly winner banner
+----------------------------
+At the top of the leaderboard section a banner highlights the team with the
+highest within-spec percentage in the most recently completed calendar month.
+This is intended as a recognition signal and a quick reference for monthly
+performance reviews.
+
+
+8.5  Viewing a team's individual productions
+---------------------------------------------
+Clicking on a team row in the leaderboard opens a detail panel (pop-up)
+showing the individual productions attributed to that team over the selected
+period.  You can filter by period (1 month, 3 months, 6 months) using the
+buttons at the top of the panel.
+
+Each row shows the isotope, date, BO number, and whether the production was
+within spec.  This lets you see whether a team's low score is driven by one
+isotope or by a broader pattern across all products.
+
+Close the panel by clicking the X in the top-right corner.
 
 ===============================================================================
 
@@ -611,14 +611,14 @@ This section lists the most common situations and what they usually indicate.
 9.2  KPI concerns
 -------------------
 
-    Two or more consecutive red cells in any KPI
-        Indicates a pattern.  The missed-order table (Section 6) and the
-        production summary tables (Section 7) show which isotope or shift
+    Two or more consecutive red values in any KPI
+        Indicates a pattern.  The missed-order table (Section 7) and the
+        production summary tables (Section 6) show which isotope or shift
         is involved.
 
     OTIF below 90% in any single week
         Indicates a significant unplanned event that week.  The reason
-        column in the missed-order table (Section 6) shows the cause.
+        column in the missed-order table (Section 7) shows the cause.
 
     Efficiency and within-spec are both low simultaneously
         Points to a cyclotron or process issue rather than a scheduling
@@ -629,7 +629,7 @@ This section lists the most common situations and what they usually indicate.
 ----------------------------
 
     One team is consistently red for more than four weeks
-        The per-ploeg detail panel (Section 5.5) shows which isotope or
+        The per-ploeg detail panel (Section 8.5) shows which isotope or
         shift time is pulling the score down.
 
     All teams are red simultaneously
@@ -709,13 +709,13 @@ Print or bookmark this section for use during review meetings.
 
 10.6  Signal thresholds
 ------------------------
-    2+ consecutive red KPI cells         pattern; see §6 and §7 for detail.
-    OTIF < 90% in any week               significant event; see §6 reason
+    2+ consecutive red KPI values        pattern; see §6 and §7 for detail.
+    OTIF < 90% in any week               significant event; see §7 reason
                                          column.
     All-time avg more than 5% above      gradual structural decline.
     last year avg
     One ploeg red for 4+ weeks           isotope- or shift-specific issue;
-                                         see §5.5.
+                                         see §8.5.
     All ploegen red simultaneously       process or equipment issue,
                                          not a team issue.
 
@@ -725,13 +725,10 @@ Print or bookmark this section for use during review meetings.
     Navigation buttons (Dosisoverzicht, DM VSM, etc.)  Section 1.2
     KPI tables (Efficiency, Within-spec, OTIF)         Section 3
     How to read trends                                 Section 4
-    Ploeg leaderboard and team detail                 Section 5
-    Missed-order table and per-product OTIF           Section 6
-    Weekly production tables                          Section 7
-    Gantt chart                                       Section 8
-    Troubleshooting                                   Section 9
+    Gantt chart                                        Section 5
+    Weekly production tables                           Section 6
+    Missed-order table and per-product OTIF            Section 7
+    Ploeg leaderboard and team detail                  Section 8
+    Troubleshooting                                    Section 9
 
 ===============================================================================
-
-
-#also check that this follows the same structure as the HTML in numbering. now it doesn`t at all#
