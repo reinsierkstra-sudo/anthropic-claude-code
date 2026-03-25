@@ -473,3 +473,48 @@ Sluit het venster met de X-knop.
       producten in sommige weken.
 
 ===============================================================================
+
+7. Lopende Storingen
+=====================
+
+Onder de productieoverzichtstabellen toont het dashboard twee storingtabellen,
+één voor elke cyclotron.  Ze geven een overzicht van apparatuurverstoringen
+die momenteel open staan — storingen die geregistreerd zijn maar nog niet
+verholpen.
+
+
+7.1  Lopende storingen IBA
+----------------------------
+Geeft alle open storingen op de IBA-cyclotron weer.  Elke rij bevat:
+
+    Storingsnummer      Het referentienummer van de storing (bijv. SF0042).
+    Datum               De datum waarop de storing is geregistreerd.
+    Verstoorde          Het aantal productieruns dat door deze storing
+    producties          verstoord is.  Klikken op het getal opent een
+                        detailvenster met de getroffen producties.
+    Storing             Een omschrijving van de storing.
+
+De rijen zijn gesorteerd op aantal verstoorde producties (hoogste eerst),
+daarna op datum.  Een lege tabel betekent dat er momenteel geen open
+IBA-storingen zijn geregistreerd.
+
+
+7.2  Lopende storingen Philips
+--------------------------------
+Identieke opbouw als de IBA-tabel, maar voor de Philips-cyclotron.
+
+Een lege tabel betekent dat er momenteel geen open Philips-storingen zijn
+geregistreerd.
+
+
+7.3  Waar je als manager op let
+---------------------------------
+    • Een storing met een hoog aantal "Verstoorde producties" heeft meetbare
+      impact gehad op de output.  Vergelijk dit met de
+      productieoverzichtstabellen (Sectie 6) en de OTIF Cyclotron-sectie
+      (Sectie 8) om te zien of het geleid heeft tot gemiste orders.
+
+    • Meerdere open storingen op dezelfde cyclotron tegelijk duiden erop dat
+      de apparatuur onder aanhoudende onderhoudsdruk staat.
+
+===============================================================================
