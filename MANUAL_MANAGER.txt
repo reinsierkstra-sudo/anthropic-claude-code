@@ -503,9 +503,6 @@ An empty table means no open Philips faults are currently registered.
     • Multiple open faults on the same cyclotron at the same time indicate
       the equipment is under sustained maintenance pressure.
 
-    • If a fault entry appears on the dashboard but is not being worked,
-      contact the shift team or R.A.F. Sierkstra (SIE, tel. 7062).
-
 ===============================================================================
 
 8. OTIF Cyclotron: Missed Orders
