@@ -130,7 +130,7 @@ know it, you can read any section at a glance.
 Each KPI has its own threshold for what counts as green:
 
     Efficiency      Green when the weekly average is at or above the
-                    10-week running average.  In other words, the cell is
+                    10-week running average.  In other words, the value is
                     green when this week is at least as good as recent
                     history.
 
@@ -138,7 +138,7 @@ Each KPI has its own threshold for what counts as green:
                     10-week running average.
 
     OTIF            Green when the weekly score is 97% or higher.
-                    Below 97% the cell turns red regardless of history.
+                    Below 97% the value turns red regardless of history.
 
 
 2.2  Colour in the production tables
