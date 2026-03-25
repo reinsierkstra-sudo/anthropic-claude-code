@@ -191,12 +191,12 @@ In plain language:
     more current between source and target than usual.
 
 How to read the table:
-    Each cell shows the average efficiency percentage for that week.
-    A green cell means this week was at or above the 10-week average.
-    A red cell means it was below.  An isolated red cell is not a concern;
-    two or more consecutive red cells indicate a pattern.
-#coloured cells don`t exist in the html#
-The scalar averages below the cells show whether the recent dip or rise is a
+    Each column shows the average efficiency percentage for that week.
+    A green value means this week was at or above the 10-week average.
+    A red value means it was below.  An isolated red value is not a concern;
+    two or more consecutive red values indicate a pattern.
+
+The scalar averages below show whether the recent dip or rise is a
 genuine trend or a short-term fluctuation.  If the last year average and the
 all-time average are close, performance is stable.
 
