@@ -165,3 +165,90 @@ Ploegenrangschikkingen gebruiken een iets andere schaal:
             een neutraal resultaat.
 
 ===============================================================================
+
+3. De Drie KPI's: Efficiëntie, Binnen Spec, OTIF
+==================================================
+
+Het bovenste gedeelte van het dashboard toont drie KPI-tabellen, de één
+onder de ander.  Elke tabel beslaat alle vijf isotopen samen en geeft de
+prestaties week voor week weer.
+
+Elke tabel heeft dezelfde opbouw:
+    • Één rij over de laatste 10 weken, één kolom per week.  Elke kolom
+      toont de percentagewaarde voor die week in een kleur (groen of rood).
+    • Drie scalaire gemiddelden eronder: alltime-gemiddelde, gemiddelde
+      afgelopen jaar, gemiddelde afgelopen 3 maanden.
+    • De meest recente week staat rechts; oudere weken staan links.
+
+
+3.1  Efficiëntie — hoeveel van de bundel bereikt het target?
+-------------------------------------------------------------
+Wat het meet:
+    Bundeltransmissie-efficiëntie: de verhouding van µA gemeten aan de
+    targetfaraday tot µA gemeten aan de bronfaraday, uitgedrukt als
+    percentage.  Een hoger percentage betekent dat meer van de gegenereerde
+    bundel het target bereikt; er gaat minder verloren onderweg.
+
+In gewone taal:
+    De cyclotron genereert een bundel bij de bron.  Niet alles arriveert bij
+    het target — een deel wordt verstrooid of geabsorbeerd onderweg.  Deze
+    KPI volgt hoe groot dat verlies is.  Een daling in efficiëntie betekent
+    dat de bundel meer stroom verliest tussen bron en target dan gebruikelijk.
+
+Hoe de tabel te lezen:
+    Elke kolom toont de gemiddelde efficiëntieprocent voor die week.
+    Een groene waarde betekent dat deze week op of boven het
+    10-wekengemiddelde lag.  Een rode waarde betekent dat het eronder lag.
+    Eén geïsoleerde rode waarde is geen reden tot zorg; twee of meer
+    opeenvolgende rode waarden duiden op een patroon.
+
+De scalaire gemiddelden eronder geven aan of de recente daling of stijging
+een echte trend is of een kortetermijnschommeling.  Als het gemiddelde van
+het afgelopen jaar en het alltime-gemiddelde dicht bij elkaar liggen, zijn
+de prestaties stabiel.
+
+
+3.2  Slagingspercentage (% Binnen Spec) — voldoen producties aan de kwaliteitseisen?
+--------------------------------------------------------------------------------------
+Wat het meet:
+    Het percentage voltooide producties waarbij de targetstroom (of, voor
+    sommige isotopen, de yield) binnen het toegestane specificatievenster
+    viel.  100% betekent dat elke productie binnen spec was.  Lagere getallen
+    betekenen dat sommige producties buiten het vereiste bereik vielen.
+
+In gewone taal:
+    Elk isotoop heeft een gedefinieerd acceptabel bereik voor zijn
+    targetstroom.  Een productie buiten dat bereik hoeft niet te betekenen
+    dat het product wordt afgekeurd, maar het geeft aan dat het proces afweek
+    van het doel.  Consistente scores onder de 100% wijzen op een systematisch
+    probleem met een bepaald isotoop of een cyclotron.
+
+Hoe de tabel te lezen:
+    Zelfde opbouw als Efficiëntie.  Een week zonder data (grijs) betekent dat
+    er die week geen producties zijn afgerond — normaal voor weken met gepland
+    onderhoud of feestdagen.
+
+
+3.3  OTIF gedraaide producties — leverden we de bestelde targetstroom?
+-----------------------------------------------------------------------
+Wat het meet:
+    Per voltooide productie: de verhouding van de werkelijke targetstroom tot
+    de nominale (bestelde) targetstroom, uitgedrukt als percentage.  100%
+    betekent dat de nominale waarde precies gehaald is; boven 100% betekent
+    dat deze overschreden werd; onder 100% betekent dat de output tekortschoot.
+    Producties die helemaal niet uitgevoerd zijn, worden uitgesloten van
+    deze KPI.
+
+    De grenswaarde is 97%.  Waarden op of boven de 97% zijn groen;
+    daaronder zijn ze rood.
+
+In gewone taal:
+    Hebben de producties die gedraaid zijn de bestelde output gehaald?
+    Een score onder de 97% betekent dat één of meer producties die week onder
+    de bestelde targetstroom zijn gebleven.
+
+Opmerking:
+    Een apart, gedetailleerder OTIF-overzicht — met individuele gemiste
+    orders per product — staat in Sectie 8.
+
+===============================================================================
