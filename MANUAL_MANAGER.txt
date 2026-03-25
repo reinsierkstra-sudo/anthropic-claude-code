@@ -33,7 +33,7 @@ The Isotope Dashboard gives you a live view of cyclotron production performance
 across five radioisotopes:
 
     Ga-67   Gallium-67
-    Rb-82   Rubidium-82
+    Rb-81   Rubidium-81
     In-111  Indium-111
     Tl-201  Thallium-201
     I-123   Iodine-123
@@ -447,7 +447,7 @@ a glance where within-spec issues occurred.
 Each table has one row per production entry.  The table has six columns:
 
     Gallium (µA)              Targetstroom for Ga-67
-    Rubidium (% + µA)         Efficiency percentage and beam current for Rb-82
+    Rubidium (% + µA)         Efficiency percentage and beam current for Rb-81
     Indium (µA)               Targetstroom for In-111
     Thallium 1.2 (µA)         Targetstroom for Tl-201 on kant 1.2
     Thallium 2.1 (µA)         Targetstroom for Tl-201 on kant 2.1
@@ -469,7 +469,7 @@ weekly averages:
         Green   Targetstroom was within the allowed specification range.
         Red     Targetstroom was outside the specification range.
 
-    Rb-82
+    Rb-81
         Each cell shows two values: the efficiency percentage and the beam
         current in µA.  The cell is green when the efficiency (the ratio of
         measured to ordered activity) is within specification.
@@ -537,7 +537,7 @@ Note: in the Gantt chart colours identify isotopes, not performance.
 Green here means I-123, not "on target" as it does in the KPI tables.
 
     Blue    Ga-67   (Gallium-67)
-    Red     Rb-82   (Rubidium-82)
+    Red     Rb-81   (Rubidium-81)
     Cyan    In-111  (Indium-111)
     Yellow  Tl-201  (Thallium-201)
     Green   I-123   (Iodine-123)
@@ -696,7 +696,7 @@ Print or bookmark this section for use during review meetings.
     In-111  Philips cyclotron:   75 – 85 µA beam current
             IBA cyclotron:      130 – 140 µA beam current
     Tl-201  166 – 174 µA beam current
-    Rb-82   95 – 105% efficiency (measured vs ordered activity)
+    Rb-81   95 – 105% efficiency (measured vs ordered activity)
     I-123   Output:      78 – 114.9% of expected yield
             Beam current: 96 – 124 µA
 
@@ -704,7 +704,7 @@ Print or bookmark this section for use during review meetings.
 10.5  Gantt chart colour key
 ------------------------------
     Blue    Ga-67 (Gallium-67)
-    Red     Rb-82 (Rubidium-82)
+    Red     Rb-81 (Rubidium-81)
     Cyan    In-111 (Indium-111)
     Yellow  Tl-201 (Thallium-201)
     Green   I-123 (Iodine-123)

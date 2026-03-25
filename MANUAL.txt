@@ -36,7 +36,7 @@ The Isotope Dashboard is an automated production-monitoring tool for a
 cyclotron facility that produces five radioisotopes:
 
     Ga-67   Gallium-67
-    Rb-82   Rubidium-82
+    Rb-81   Rubidium-81
     In-111  Indium-111
     Tl-201  Thallium-201
     I-123   Iodine-123
@@ -1572,7 +1572,7 @@ Gantt HTML structure:
 
 Isotope colour mapping (JavaScript):
     GA067 / Ga-067   blue   #0000ff
-    RB081 / Rb-082   red    #FF0000
+    RB081 / Rb-081   red    #FF0000
     IN111 / In-111   cyan   #00ffff
     TL201 / Tl-201   yellow #FFDE21
     I123  / I-123    green  #00FF00

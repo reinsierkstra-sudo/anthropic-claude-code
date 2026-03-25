@@ -2,7 +2,7 @@ Isotope Dashboard
 =================
 
 Automated production dashboard for Cyclotron isotope productions:
-Ga-67 (Gallium), Rb-82 (Rubidium), In-111 (Indium), Tl-201 (Thallium), I-123 (Iodine).
+Ga-67 (Gallium), Rb-81 (Rubidium), In-111 (Indium), Tl-201 (Thallium), I-123 (Iodine).
 
 Every 60 seconds the application collects raw data from MS Access databases, Excel
 files and an HTTP endpoint, calculates KPIs, and writes HTML dashboards to one or
@@ -291,8 +291,8 @@ The application reads from five types of source:
 7d. Production efficiency (mCi/uAh)
 
     Per-isotope yield: how much activity (mCi) was produced per unit of beam
-    charge (micro-ampere-hour). Calculated separately for Ga-67, In-111, Rb-82,
-    and I-123. Rb-82 uses only runs between 3 and 6 beam-hours; I-123 uses only
+    charge (micro-ampere-hour). Calculated separately for Ga-67, In-111, Rb-81,
+    and I-123. Rb-81 uses only runs between 3 and 6 beam-hours; I-123 uses only
     runs >= 10 beam-hours, to exclude outlier short runs.
 
 7e. Shift / ploeg leaderboard
@@ -389,7 +389,7 @@ otif_green_threshold:
 data/raw.db -- source of truth, never recalculated.
 
     gallium_data       One row per Ga-67 production run.
-    rubidium_data      One row per Rb-82 production run.
+    rubidium_data      One row per Rb-81 production run.
     indium_data        One row per In-111 production run.
     thallium_data      One row per Tl-201 production run.
     iodine_data        One row per I-123 production run.

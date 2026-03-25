@@ -1597,7 +1597,7 @@ def create_html_dashboard(data: dict) -> str:
 
     <!-- RUBIDIUM SECTION -->
     <div class="isotope-section">
-        <h2>Rubidium (Rb-82)</h2>
+        <h2>Rubidium (Rb-81)</h2>
         <div class="section">
             <h3>Lopende week</h3>
             <table>
