@@ -495,7 +495,7 @@ Close the panel with the X button.
     • A column that is mostly red in both the current and previous week
       indicates a persistent issue with that isotope.
 
-    • Scattered red cells across multiple isotopes and days suggest a
+    • Scattered red values across multiple isotopes and days suggest a
       broader process or cyclotron issue rather than an isotope-specific one.
 
     • A completely empty column for the week means that isotope was not
