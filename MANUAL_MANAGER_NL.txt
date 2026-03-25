@@ -252,3 +252,79 @@ Opmerking:
     orders per product — staat in Sectie 8.
 
 ===============================================================================
+
+4. Trends Aflezen
+==================
+
+Eén slechte week is geen crisis.  Het dashboard is het meest nuttig als je het
+gebruikt om een eenmalige afwijking te onderscheiden van een structurele daling.
+
+
+4.1  Wekelijkse waarden en gemiddelden samen gebruiken
+-------------------------------------------------------
+De rij van 10 weken toont kortetermijnvariatie.  De scalaire gemiddelden
+(alltime, afgelopen jaar, afgelopen 3 maanden) geven de bredere context.
+
+Lees ze samen als volgt:
+
+    SCENARIO A — Één rode waarde, rest groen, gemiddelden stabiel
+        Eén slechte week omringd door groene waarden.  De gemiddelden worden
+        nauwelijks beïnvloed.  Dit is waarschijnlijk een eenmalige gebeurtenis
+        (gepland onderhoud, één mislukte productie, een feestdag met minder
+        output).
+
+    SCENARIO B — Twee of meer opeenvolgende rode waarden
+        Een reeks van weken onder gemiddelde is een patroon, geen ruis.  Als
+        het 3-maandsgemiddelde ook daalt, begon de daling vóór de zichtbare
+        weken.  De productietabellen (Sectie 6) laten zien welk isotoop of
+        welke dienst betrokken is.
+
+    SCENARIO C — Alle waarden groen maar alltime-gemiddelde hoger dan afgelopen jaar
+        De prestaties zijn nu consistent goed, maar waren historisch beter.
+        De daling verliep geleidelijk en is niet duidelijk zichtbaar in de
+        recente weken.  Het verschil tussen het gemiddelde van het afgelopen
+        jaar en het gemiddelde van de afgelopen 3 maanden toont de omvang
+        ervan.
+
+    SCENARIO D — Één of twee grijze waarden (geen data)
+        Weken zonder producties — doorgaans onderhoudsstops of feestdagen.
+        Deze zijn te verwachten en beïnvloeden de gemiddelden niet.
+
+
+4.2  Signaalgrenzen
+--------------------
+    Twee of meer opeenvolgende rode waarden         duidt op een patroon,
+    in een KPI                                      niet op een eenmalige
+                                                    gebeurtenis.
+
+    Alltime-gemiddelde meer dan 5% boven            duidt op een geleidelijke
+    het gemiddelde van het afgelopen jaar           structurele daling.
+
+    OTIF onder de 90% in een enkele week            duidt op een significante
+                                                    gebeurtenis die week.
+
+
+4.3  KPI's met elkaar vergelijken
+-----------------------------------
+De drie KPI's meten verschillende aspecten van hetzelfde productieproces.
+Ze naast elkaar bekijken kan de grondoorzaak aanwijzen:
+
+    Efficiëntie daalt, Binnen spec stabiel
+        Er gaat meer bundel verloren tussen bron en target, maar de
+        targetstroom blijft binnen spec.  Mogelijke oorzaak: toenemende
+        transmissieverliezen (optiek, sturing, vacuüm, afstemming cyclotron).
+
+    Binnen spec daalt, Efficiëntie stabiel
+        De bundeltransmissie is normaal, maar de targetstroom drijft buiten
+        het toegestane specificatiebereik.  Mogelijke oorzaak: afstemming
+        cyclotron of operatorinstelling.
+
+    OTIF daalt, beide anderen stabiel
+        De cyclotron draait goed maar haalde de bestelde stroom niet.
+        Kan duiden op PROC-fouten.
+
+    Alle drie tegelijk omlaag
+        Een bredere systeemstoring — apparatuurfout of een proceswijziging
+        die alle parameters beïnvloedde.
+
+===============================================================================
