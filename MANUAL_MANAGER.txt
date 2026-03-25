@@ -251,10 +251,10 @@ A single bad week is not a crisis.  The dashboard is most useful when you
 use it to distinguish a one-off deviation from a structural decline.
 
 
-4.1  Using the weekly cells and averages together
+4.1  Using the weekly values and averages together
 --------------------------------------------------
-The 10-week row shows short-term variation.  The scalar averages (10 weeks,
-3 months, 12 months) give you the bigger context.
+The 10-week row shows short-term variation.  The scalar averages (all-time,
+last year, last 3 months) give you the bigger context.
 
 Read them together as follows:
 
