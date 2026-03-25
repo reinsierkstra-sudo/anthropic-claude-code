@@ -143,10 +143,9 @@ Each KPI has its own threshold for what counts as green:
 
 2.2  Colour in the production tables
 --------------------------------------
-Individual production cells in the weekly summary tables are also coloured
-green or red.  For these cells the colour reflects whether that single
-production met the quality specification for its isotope (see Section 7).
-#it`s not the cell colour but the colour of the number, no cell colours are used throughout the whole HTML#
+Individual values in the weekly summary tables are also shown in green or red.
+The colour of the number reflects whether that single production met the
+quality specification for its isotope (see Section 7).
 
 2.3  Colour in the leaderboard
 --------------------------------
