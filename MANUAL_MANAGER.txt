@@ -309,8 +309,7 @@ Looking at them side by side can pinpoint the root cause:
 
     OTIF down, both others stable
         The cyclotron is running well but did not deliver the ordered current
-        level.  Could indicate scheduling pressure or a short-notice capacity
-        reduction. #could indicate PROC errors#
+        level.  Could indicate PROC errors.
 
     All three down simultaneously
         A broader systemic issue — equipment fault, key staff absence, or a
