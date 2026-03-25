@@ -721,3 +721,88 @@ aangeven.
                                                       inkoop
 
 ===============================================================================
+
+11. Snelle Naslagkaart
+=======================
+
+Print of bewaar dit onderdeel als bladwijzer voor gebruik tijdens
+besprekingen.
+
+
+11.1  Kleurbetekenissen in één oogopslag
+-----------------------------------------
+    GROEN    Op of boven de norm.        Geen actie nodig.
+    ROOD     Onder de drempelwaarde.     Verdient aandacht of bespreking.
+    GRIJS    Geen data voor deze periode. Normaal voor niet-ingeplande weken.
+
+
+11.2  KPI-definities (één regel per KPI)
+------------------------------------------
+    Efficiëntie    Bundeltransmissie-efficiëntie: µA op targetfaraday als
+                   percentage van µA op bronfaraday.  Hoger = minder bundel
+                   verloren tussen bron en target.
+
+    Binnen spec    % producties waarbij de bundelstroom (of yield) binnen het
+                   toegestane kwaliteitsvenster viel.  Doel: zo dicht mogelijk
+                   bij 100%.
+
+    OTIF           % producties waarbij de geleverde bundelstroom de bestelde
+                   waarde haalde of overschreed.  Grenswaarde: 97%.
+
+
+11.3  KPI-drempelwaarden die rood activeren
+---------------------------------------------
+    Efficiëntie    Onder het voortschrijdend 10-wekengemiddelde voor die week.
+    Binnen spec    Onder het voortschrijdend 10-wekengemiddelde voor die week.
+    OTIF           Onder de 97% voor die week.
+    Klassement     Meer dan 2 procentpunt onder het teamgemiddelde.
+
+
+11.4  Specificatiegrenzen per isotoop (binnen-spec-controle)
+--------------------------------------------------------------
+    Ga-67   Philips-cyclotron:   75 – 85 µA bundelstroom
+            IBA-cyclotron:      130 – 140 µA bundelstroom
+    In-111  Philips-cyclotron:   75 – 85 µA bundelstroom
+            IBA-cyclotron:      130 – 140 µA bundelstroom
+    Tl-201  166 – 174 µA bundelstroom
+    Rb-81   95 – 105% efficiëntie (gemeten versus bestelde activiteit)
+    I-123   Output:        78 – 114,9% van verwachte yield
+            Bundelstroom:  96 – 124 µA
+
+
+11.5  Kleursleutel Gantt-grafiek
+----------------------------------
+    Blauw   Ga-67 (Gallium-67)
+    Rood    Rb-81 (Rubidium-81)
+    Cyaan   In-111 (Indium-111)
+    Geel    Tl-201 (Thallium-201)
+    Groen   I-123 (Jodium-123)
+    Grijs   Pauze (geen productie)
+
+
+11.6  Signaalgrenzen
+----------------------
+    2+ opeenvolgende rode KPI-waarden     patroon; zie §6 en §8 voor detail.
+    OTIF < 90% in een week                significante gebeurtenis; zie §8
+                                          redenkolom.
+    Alltime-gemiddelde meer dan 5%        geleidelijke structurele daling.
+    boven gemiddelde afgelopen jaar
+    Één ploeg rood voor 4+ weken          isotoop- of dienstspecifiek
+                                          probleem; zie §9.5.
+    Alle ploegen tegelijk rood            proces- of apparatuurprobleem,
+                                          niet een teamprobleem.
+
+
+11.7  Sectiewijzer
+--------------------
+    Navigatieknoppen (Dosisoverzicht, DM VSM, enz.)  Sectie 1.2
+    KPI-tabellen (Efficiëntie, Binnen spec, OTIF)    Sectie 3
+    Trends aflezen                                   Sectie 4
+    Gantt-grafiek                                    Sectie 5
+    Wekelijkse productietabellen                     Sectie 6
+    Actieve storingen                                Sectie 7
+    Tabel gemiste orders en OTIF per product         Sectie 8
+    Ploegklassement en teamdetail                    Sectie 9
+    Probleemoplossing                                Sectie 10
+
+===============================================================================
