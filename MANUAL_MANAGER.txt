@@ -258,32 +258,32 @@ last year, last 3 months) give you the bigger context.
 
 Read them together as follows:
 
-    SCENARIO A — One red cell, rest green, averages stable
-        A single bad week surrounded by green cells.  The averages are barely
+    SCENARIO A — One red value, rest green, averages stable
+        A single bad week surrounded by green values.  The averages are barely
         affected.  This is likely a one-off event (scheduled maintenance,
         a single failed production, a public holiday reducing output).
-#coloured cells don`t exist in the html#
-    SCENARIO B — Two or more consecutive red cells
+
+    SCENARIO B — Two or more consecutive red values
         A run of below-average weeks is a pattern, not noise.  If the
         3-month average is also dropping, the decline started before the
         visible weeks.  The production tables (Section 7) show which isotope
         or shift is involved.
 
-    SCENARIO C — All cells green but the all-time average is higher than last year
+    SCENARIO C — All values green but the all-time average is higher than last year
         Performance is consistently good now but was better historically.
         The decline happened gradually and is not obvious from the recent
         weeks alone.  The difference between the last year and last 3 months
         averages shows the scale of it.
 
-    SCENARIO D — One or two grey cells (no data)
+    SCENARIO D — One or two grey values (no data)
         Weeks with no productions — typically maintenance shutdowns or
         holidays.  These are expected and do not affect the averages.
 
 
 4.2  Signal thresholds
 -----------------------
-    Two or more consecutive red cells in any KPI  indicates a pattern,
-                                                  not a one-off.
+    Two or more consecutive red values in any KPI  indicates a pattern,
+                                                   not a one-off.
 
     All-time average more than 5% above           indicates a gradual
     last year average                             structural decline.
