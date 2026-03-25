@@ -42,7 +42,7 @@ def _gantt_js_html(cyclotron_json: str) -> str:
             'In-111': '#00ffff',
             'RB081': '#FF0000',
             'Rb-081': '#FF0000',
-            'Rb-82': '#FF0000',
+            'Rb-81': '#FF0000',
             'I123': '#00FF00',
             'I-123': '#00FF00',
             'Pauze': '#CCCCCC'
