@@ -112,3 +112,56 @@ Er zijn twee versies van het dashboard:
 Als manager gebruik je normaal gesproken het volledige dashboard.
 
 ===============================================================================
+
+2. Het Kleurensysteem
+======================
+
+Het gehele dashboard gebruikt één consistente kleurconventie.  Als je die
+eenmaal kent, kun je elke sectie in één oogopslag lezen.
+
+    GROEN   De waarde is op of boven de norm.  Geen actie vereist.
+
+    ROOD    De waarde ligt onder de drempelwaarde.  Verdient aandacht.
+
+    GRIJS   Er zijn geen gegevens beschikbaar voor die periode.  Dit is
+            normaal voor weken die nog niet begonnen zijn of voor isotopen
+            die niet elke week geproduceerd worden.
+
+
+2.1  Wat "op norm" betekent per KPI
+--------------------------------------
+Elke KPI heeft zijn eigen drempelwaarde voor wat als groen telt:
+
+    Efficiëntie     Groen wanneer het wekelijks gemiddelde op of boven het
+                    voortschrijdend gemiddelde van 10 weken ligt.  Met andere
+                    woorden: de waarde is groen als deze week minstens zo goed
+                    is als de recente geschiedenis.
+
+    Binnen spec     Groen wanneer het wekelijks percentage op of boven het
+                    voortschrijdend gemiddelde van 10 weken ligt.
+
+    OTIF            Groen wanneer de wekelijkse score 97% of hoger is.
+                    Onder de 97% wordt de waarde rood, ongeacht de
+                    geschiedenis.
+
+
+2.2  Kleur in de productietabellen
+-------------------------------------
+Individuele waarden in de wekelijkse overzichtstabellen worden ook groen of
+rood weergegeven.  De kleur van het getal geeft aan of die productie aan de
+kwaliteitsspecificatie voor dat isotoop voldeed (zie Sectie 6).
+
+2.3  Kleur in het klassement
+------------------------------
+Ploegenrangschikkingen gebruiken een iets andere schaal:
+
+    GROEN   De score van het team ligt meer dan 2 procentpunt boven het
+            gemiddelde van alle teams.
+
+    ROOD    De score van het team ligt meer dan 2 procentpunt onder het
+            gemiddelde van alle teams.
+
+    ZWART   Het team zit binnen 2 procentpunt van het gemiddelde —
+            een neutraal resultaat.
+
+===============================================================================
