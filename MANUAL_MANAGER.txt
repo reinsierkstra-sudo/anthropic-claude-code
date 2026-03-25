@@ -231,9 +231,8 @@ What it measures:
     100% means the output fell short.  Productions that were not carried out
     at all are excluded from this KPI.
 
-    The pass threshold is 97%.  Cells at or above 97% are green; below
+    The pass threshold is 97%.  Values at or above 97% are green; below
     97% they are red.
-#coloured cells don`t exist in the html#
 In plain language:
     Of the productions that ran, did the cyclotron reach the ordered output?
     A score below 97% means one or more productions that week fell short of
