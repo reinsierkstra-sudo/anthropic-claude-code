@@ -102,9 +102,9 @@ There are two versions of the dashboard:
 
     Truncated (operator) dashboard
         A lightweight summary — KPI tables and production summary only.
-        This version is served to operator workstations on the network share
-        for fast loading.  It does not contain the leaderboard or detail
-        charts. #not for fast loading but to keep more sensitive info on the management lvl#
+        This version is served to operator workstations on the network share.
+        It does not contain the leaderboard or detail charts — more sensitive
+        management-level information is kept in the full dashboard only.
 
 As a manager you will normally use the full dashboard.
 
