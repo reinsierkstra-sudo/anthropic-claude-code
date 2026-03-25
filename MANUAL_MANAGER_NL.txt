@@ -635,3 +635,89 @@ isotoop veroorzaakt wordt of door een breder patroon over alle producten.
 Sluit het venster door op de X rechtsboven te klikken.
 
 ===============================================================================
+
+10. Naslagwerk: Als Er Iets Niet Klopt
+========================================
+
+Dit onderdeel bevat de meest voorkomende situaties en wat ze doorgaans
+aangeven.
+
+
+10.1  Dashboardproblemen (pagina / weergave)
+---------------------------------------------
+
+    De pagina wordt niet automatisch vernieuwd
+        Het dashboard wordt standaard elke 60 seconden vernieuwd.  Als dat
+        stopt:
+        • Druk op F5 om handmatig te vernieuwen.
+        • Controleer of je browser niet in offline modus staat.
+        • Als het bestand niet gevonden kan worden, controleer dan of de
+          X:-schijf is aangemeld.
+
+    De data ziet er uren oud uit
+        Als de waarden op de pagina bij meerdere handmatige vernieuwingen
+        (F5) tijdens werktijden onveranderd blijven, is de pipeline
+        waarschijnlijk gestopt.
+        → Neem contact op met R.A.F. Sierkstra (SIE, tel. 7062).
+
+    Een rode banner met "FILE TAMPERED" verschijnt bovenaan de pagina
+        Het HTML-bestand is buiten de geautomatiseerde pipeline om bewerkt.
+        Dit wordt gedetecteerd via een checksumvergelijking en getoond als
+        waarschuwing.
+        → Bewerk het HTML-bestand niet handmatig.  Neem contact op met
+          R.A.F. Sierkstra (SIE, tel. 7062).  De banner verdwijnt bij de
+          volgende geautomatiseerde update.
+
+    Secties ontbreken (bijv. klassement is leeg, planningsvenster is leeg)
+        De pipeline is afhankelijk van meerdere netwerkbestanden (Excel-
+        werkmappen, gedeelde schijven).  Als één van die bestanden niet
+        beschikbaar is, is de betreffende sectie afwezig of toont een
+        waarschuwing.
+        → Controleer of de W:-schijf is aangemeld.  Als dat zo is, neem
+          dan contact op met R.A.F. Sierkstra (SIE, tel. 7062) — het
+          bronbestand is mogelijk verplaatst of hernoemd.
+
+
+10.2  KPI-problemen
+---------------------
+
+    Twee of meer opeenvolgende rode waarden in een KPI
+        Duidt op een patroon.  De tabel met gemiste orders (Sectie 8) en de
+        productieoverzichtstabellen (Sectie 6) laten zien welk isotoop of
+        welke dienst betrokken is.
+
+    OTIF onder de 90% in een enkele week
+        Duidt op een significante onverwachte gebeurtenis die week.  De
+        redenkolom in de tabel met gemiste orders (Sectie 8) toont de
+        oorzaak.
+
+    Efficiëntie en binnen spec zijn tegelijk laag
+        Wijst eerder op een cyclotron- of procesmatig probleem dan op een
+        plannings- of dataprobleem.
+
+
+10.3  Ploeg-/teamproblemen
+----------------------------
+
+    Een team staat meer dan vier weken aaneengesloten in het rood
+        Het detailvenster per ploeg (Sectie 9.5) toont welk isotoop of
+        welke diensttijd de score omlaag trekt.
+
+    Alle teams staan tegelijk in het rood
+        Wanneer de score van elk team tegelijkertijd daalt, ligt de oorzaak
+        niet bij een specifiek team.  Het wijst op een proces- of
+        apparatuurprobleem.
+
+
+10.4  Contact
+---------------
+    Pipeline-/dashboardproblemen (data wordt niet     R.A.F. Sierkstra
+    bijgewerkt, secties ontbreken, FILE TAMPERED)     SIE, tel. 7062
+
+    Productie- en apparatuurzaken                     Operators-technici
+                                                      op dienst
+
+    Leveringsgerelateerde missers (bulktekort)        Supply chain /
+                                                      inkoop
+
+===============================================================================
