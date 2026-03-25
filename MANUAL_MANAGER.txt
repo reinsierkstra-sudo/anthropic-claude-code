@@ -312,8 +312,8 @@ Looking at them side by side can pinpoint the root cause:
         level.  Could indicate PROC errors.
 
     All three down simultaneously
-        A broader systemic issue — equipment fault, key staff absence, or a
-        process change that affected all parameters. #don`t mention staff absence#
+        A broader systemic issue — equipment fault or a process change that
+        affected all parameters.
 
 ===============================================================================
 
