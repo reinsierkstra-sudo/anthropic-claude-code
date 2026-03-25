@@ -26,3 +26,89 @@ Inhoud
  11. Snelle naslagkaart
 
 ===============================================================================
+
+1. Wat het Dashboard Laat Zien
+================================
+
+Het Isotoop Dashboard geeft je een actueel overzicht van de
+cyclotronproductieprestaties voor vijf radio-isotopen:
+
+    Ga-67   Gallium-67
+    Rb-81   Rubidium-81
+    In-111  Indium-111
+    Tl-201  Thallium-201
+    I-123   Jodium-123
+
+In één oogopslag beantwoordt het drie managementvragen:
+
+    1. Draaien de cyclotrons efficiënt?
+       → Efficiëntie-KPI en Binnen-spec-KPI
+
+    2. Leveren we wat besteld is, op tijd en volledig?
+       → OTIF-KPI en tabel met gemiste orders
+
+    3. Welk ploegenteam presteert het best?
+       → Ploegklassement
+
+De pagina wordt elke 60 seconden automatisch vernieuwd.  Je hoeft niet op F5
+te drukken.  De weergegeven data is daardoor nooit meer dan één minuut oud
+bij normaal gebruik.
+
+
+1.1  Het dashboard openen
+--------------------------
+Het dashboard is een HTML-bestand dat opgeslagen staat op een netwerkschijf.
+Open het via:
+
+    • Dubbelklikken op de snelkoppeling op je bureaublad of de bureauschijf, of
+    • Het bestand rechtstreeks openen via:
+          X:\Cyclotron Bureau\Productie dashboard.html
+
+Als het bestand niet opent, of als de data er erg verouderd uitziet, controleer
+dan of je netwerkschijven (W: en X:) zijn aangemeld.  Als ze zijn aangemeld en
+het probleem aanhoudt, neem dan contact op met R.A.F. Sierkstra (SIE, tel. 7062).
+
+
+1.2  De navigatieknoppen
+-------------------------
+Bovenaan het volledige dashboard staan vier grote knoppen.  Elke knop opent een
+schermvullend pop-upvenster.  Sluit een venster met het × rechtsboven.
+
+    Dosisoverzicht
+        Toont het dosisoverzichtsbeeld — de stralingsdosis per medewerker over
+        de afgelopen 30 dagen en de afgelopen 365 dagen.
+
+    DM VSM
+        Toont de Daily Management VSM-tabel: de dagelijkse targetstroomwaarden
+        en het wekelijkse OTIF-percentage per isotoopgroep.  Dit zijn dezelfde
+        gegevens als die de OTIF-gedraaide-producties-KPI-tabel voeden.
+
+    Rooster en targetvoorraad
+        Toont de plannings-HTML: het ploegenschema, geplande
+        onderhoudswerkzaamheden en het actuele overzicht van de targetvoorraad.
+
+    Productieschema
+        Toont de productieschema-HTML: het gedetailleerde productieschema voor
+        de huidige en komende periodes.
+
+
+1.3  Twee versies van het dashboard
+-------------------------------------
+Er zijn twee versies van het dashboard:
+
+    Volledig dashboard
+        Bevat alle KPI-grafieken, de Gantt-grafiek, detail per isotoop, het
+        ploegklassement en alle pop-upvensters.  Dit is de versie die in deze
+        handleiding wordt beschreven en die beschikbaar is op de bureauschijf
+        en op de lokale machine die de pipeline draait.
+
+    Verkort (operators-)dashboard
+        Een beknopt overzicht — alleen KPI-tabellen en productieoverzicht.
+        Deze versie wordt geserveerd aan operatorwerkstations op de
+        netwerkschijf.  Het bevat geen klassement of detailgrafieken —
+        gevoelige informatie op managementniveau is alleen beschikbaar in
+        het volledige dashboard.
+
+Als manager gebruik je normaal gesproken het volledige dashboard.
+
+===============================================================================
