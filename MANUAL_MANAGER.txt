@@ -455,25 +455,25 @@ beam ports.  If one isotope has more productions in a week than another, the
 shorter column fills with empty cells.
 
 
-7.2  Reading cell colours
+7.2  Reading value colours
 --------------------------
-Cell colours follow the same green/red convention as the rest of the
+Value colours follow the same green/red convention as the rest of the
 dashboard, but they reflect individual production quality rather than
 weekly averages:
-#coloured cells don`t exist in the html#
+
     Gallium, Indium, Thallium 1.2, Thallium 2.1
         Green   Targetstroom was within the allowed specification range.
         Red     Targetstroom was outside the specification range.
 
     Rb-81
-        Each cell shows two values: the efficiency percentage and the beam
-        current in µA.  The cell is green when the efficiency (the ratio of
+        Each entry shows two values: the efficiency percentage and the beam
+        current in µA.  The values are green when the efficiency (the ratio of
         measured to ordered activity) is within specification.
 
     I-123
-        Each cell shows the yield percentage and the output percentage.
-        Both values must be within their respective ranges for the cell to
-        show green.  A red cell means one or both values were out of spec.
+        Each entry shows the yield percentage and the output percentage.
+        Both values must be within their respective ranges to show green.
+        Red means one or both values were out of spec.
 
 
 7.3  Opening the Production History panel
