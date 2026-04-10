@@ -240,7 +240,7 @@ def generate_ploegen_table_html(ploeg_6month: dict, ploeg_3month: dict,
     all_ploegen = sorted(set(list(ploeg_6month) + list(ploeg_3month) + list(ploeg_monthly)))
     for pn in all_ploegen:
         name = next((d['ploeg_name'] for d in ploegen_data.values()
-                     if d.get('ploeg_number') == pn), f"Ploeg {pn}")
+                     if d.get('ploeg_number') == int(pn)), f"Ploeg {pn}")
         m6s  = ploeg_6month.get(pn,  {'total': 0, 'in_spec': 0})
         m3s  = ploeg_3month.get(pn,  {'total': 0, 'in_spec': 0})
         mos  = ploeg_monthly.get(pn, {'total': 0, 'in_spec': 0})
@@ -360,7 +360,7 @@ def generate_ploeg_rolling_charts_html(ploeg_rolling: dict, ploegen_data: dict) 
 """
     for pn in sorted(ploeg_rolling):
         name = next((d['ploeg_name'] for d in ploegen_data.values()
-                     if d.get('ploeg_number') == pn), f"Ploeg {pn}")
+                     if d.get('ploeg_number') == int(pn)), f"Ploeg {pn}")
         chart_id = f"ploegRollingChart{pn}"
         html += (
             f"        <div style='margin-bottom: 60px; page-break-inside: avoid;'>"
