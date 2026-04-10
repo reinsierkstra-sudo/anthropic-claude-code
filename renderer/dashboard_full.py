@@ -132,6 +132,7 @@ _DEFAULTS: dict[str, Any] = {
     "vsm_data": None,
     "planning_html_content": None,
     "productieschema_html_content": None,
+    "dosissen_html_content": None,
     # Storingen data
     "iba_storingen_data": [],
     "philips_storingen_data": [],
@@ -251,6 +252,7 @@ def create_html_dashboard(data: dict) -> str:
     vsm_data                    = v["vsm_data"]
     planning_html_content       = v["planning_html_content"]
     productieschema_html_content = v["productieschema_html_content"]
+    dosissen_html_content        = v["dosissen_html_content"]
 
     # Instance-attribute data (passed via dict, not self.*)
     iba_storingen_data    = list(v["iba_storingen_data"])
@@ -1329,6 +1331,13 @@ def create_html_dashboard(data: dict) -> str:
     isotope_names = list(isotope_issues.keys()) if isotope_issues else []
     isotope_counts = list(isotope_issues.values()) if isotope_issues else []
 
+    # Build Dosisoverzicht srcdoc for embedding
+    if dosissen_html_content:
+        _dos_srcdoc = dosissen_html_content.replace('&', '&amp;').replace('"', '&quot;')
+        dosis_modal_content = f'<iframe srcdoc="{_dos_srcdoc}" style="width:100%;height:100%;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>'
+    else:
+        dosis_modal_content = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:18px;font-family:Arial,sans-serif;">⚠️ dosissen.html kon niet worden geladen. Controleer of het X:\\Cyclotron-station beschikbaar is.</div>'
+
     # Build Productieschema srcdoc for embedding
     if productieschema_html_content:
         _ps_srcdoc = productieschema_html_content.replace('&', '&amp;').replace('"', '&quot;')
@@ -1500,16 +1509,14 @@ def create_html_dashboard(data: dict) -> str:
         </button>
     </div>
 
-    <!-- DOSISOVERZICHT MODAL -->
-    <div id="dosisModal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8);">
-        <div style="position: relative; background-color: white; margin: 2% auto; padding: 0; width: 90%; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-            <div style="background: linear-gradient(135deg, #662678, #E40D7E); color: white; padding: 20px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center;">
-                <h2 style="margin: 0; color: white; border: none; padding: 0;">Dosisoverzicht</h2>
-                <span onclick="closeDosisModal()" style="cursor: pointer; font-size: 32px; font-weight: bold; color: white;">&times;</span>
-            </div>
-            <div style="padding: 20px; text-align: center;">
-                <img src="dosisoverzicht.png" alt="Dosisoverzicht" style="max-width: 100%; height: auto; border-radius: 5px;">
-            </div>
+    <!-- DOSISOVERZICHT MODAL (full-screen) -->
+    <div id="dosisModal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); flex-direction: column;">
+        <div style="background: linear-gradient(135deg, #662678, #E40D7E); color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+            <h2 style="margin: 0; color: white; border: none; padding: 0; font-size: 22px;">Dosisoverzicht</h2>
+            <span onclick="closeDosisModal()" style="cursor: pointer; font-size: 36px; font-weight: bold; color: white; line-height: 1;">&times;</span>
+        </div>
+        <div style="flex: 1; overflow: hidden; background: white;">
+            {dosis_modal_content}
         </div>
     </div>
 
@@ -3227,7 +3234,7 @@ def create_html_dashboard(data: dict) -> str:
 
     // Dosisoverzicht modal functions
     function openDosisModal() {{
-        document.getElementById('dosisModal').style.display = 'block';
+        document.getElementById('dosisModal').style.display = 'flex';
         localStorage.setItem('dosisModalOpen', 'true');
     }}
 
@@ -3239,7 +3246,7 @@ def create_html_dashboard(data: dict) -> str:
     // Restore modal state on page load
     window.addEventListener('load', function() {{
         if (localStorage.getItem('dosisModalOpen') === 'true') {{
-            document.getElementById('dosisModal').style.display = 'block';
+            document.getElementById('dosisModal').style.display = 'flex';
         }}
         if (localStorage.getItem('dmVsmModalOpen') === 'true') {{
             document.getElementById('dmVsmModal').style.display = 'block';

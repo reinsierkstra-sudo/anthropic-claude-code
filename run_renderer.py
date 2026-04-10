@@ -22,7 +22,6 @@ Prints ``✓`` / ``⚠`` / ``✗`` status lines for each stage.
 """
 
 import os
-import shutil
 import traceback
 from datetime import datetime
 
@@ -132,17 +131,6 @@ def main() -> bool:
     with open(local_path, "w", encoding="utf-8") as f:
         f.write(html_full)
 
-    # Copy dosisoverzicht image
-    try:
-        dosis_src   = r"X:\Cyclotron\Dashboard Cyclotron\dosisoverzicht.png"
-        dosis_local = "dosisoverzicht.png"
-        if os.path.exists(dosis_src):
-            shutil.copy(dosis_src, dosis_local)
-        else:
-            print(f"⚠ dosisoverzicht.png not found at {dosis_src}")
-    except Exception as e:
-        print(f"⚠ Could not copy dosisoverzicht.png: {e}")
-
     file_protection.set_readonly(local_path)
     file_protection.save_file_hash(local_path, local_hash_path)
     print("✓ Full dashboard written (local)")
@@ -175,11 +163,6 @@ def main() -> bool:
             file_protection.remove_readonly(bureau_path)
         with open(bureau_path, "w", encoding="utf-8") as f:
             f.write(html_full)
-        # Copy dosisoverzicht to bureau dir
-        dosis_src = r"X:\Cyclotron\Dashboard Cyclotron\dosisoverzicht.png"
-        dosis_bureau = os.path.join(bureau_dir, "dosisoverzicht.png")
-        if os.path.exists(dosis_src):
-            shutil.copy(dosis_src, dosis_bureau)
         file_protection.set_readonly(bureau_path)
         file_protection.save_file_hash(bureau_path, bureau_hash_path)
         print("✓ Full dashboard written (bureau)")

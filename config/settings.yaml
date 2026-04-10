@@ -32,6 +32,7 @@ paths:
   # HTML planning documents (embedded in dashboard)
   planning_html:        'W:\Afdelingsplanning Cyclotron\planning.html'
   productieschema_html: 'W:\Desktop Settings\Cyclotron formulieren\0 (BETA) Cyclotron productieplanning.html'
+  dosissen_html:        'X:\Cyclotron\Dashboard Cyclotron\dosissen.html'
 
   # Dashboard output destinations
   output_local:   output/isotope_dashboard.html

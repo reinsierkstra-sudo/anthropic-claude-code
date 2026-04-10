@@ -1528,7 +1528,7 @@ Modal dialogs:
     ploegModal             Per-ploeg production details (filterable by period)
     productionHistoryModal Shift-level breakdown for a single BO number
     sfModal                List of productions affected by a storingsnummer
-    dosisoverzichtModal    Image viewer for dosis overview PNG
+    dosisoverzichtModal    Dosissen HTML embedded via <iframe srcdoc>
     dmVsmModal             DM VSM table (daily targetstroom + OTIF%)
 
 Templating approach:
@@ -1641,9 +1641,6 @@ operators on shared workstations see a fast-loading summary.  The local
 and bureau copies receive the full dashboard with all charts and detail
 sections.
 
-In addition, dosisoverzicht.png is copied to each output directory so
-the image modal can display it.
-
 After writing each file the renderer:
     1. Sets the file to read-only (removes S_IWUSR | S_IWGRP | S_IWOTH).
     2. Computes a SHA-256 hash and saves it to the .hash file.
@@ -1739,6 +1736,8 @@ paths section:
 ├────────────────────────┼──────────────────────────────────────────────────┤
 │ paths.productieschema_ │ W:\Desktop Settings\Cyclotron formulieren\       │
 │   html                 │   0 (BETA) Cyclotron productieplanning.html      │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.dosissen_html    │ X:\Cyclotron\Dashboard Cyclotron\dosissen.html   │
 ├────────────────────────┼──────────────────────────────────────────────────┤
 │ paths.output_local     │ output/isotope_dashboard.html                    │
 │                        │ Local filesystem output for full dashboard.      │
