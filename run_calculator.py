@@ -70,6 +70,7 @@ def main() -> dict:
     vsm_data        = raw_db.load_blob(raw_conn, 'vsm_data',        default=[])
     planning_html   = raw_db.load_blob(raw_conn, 'planning_html',   default=None)
     prod_html       = raw_db.load_blob(raw_conn, 'productieschema_html', default=None)
+    dosissen_html   = raw_db.load_blob(raw_conn, 'dosissen_html',   default=None)
 
     # ── Load ploegen / planning ──────────────────────────────────────────────
     ploegen_data     = {}
@@ -309,6 +310,7 @@ def main() -> dict:
     results["vsm_data"]               = vsm_data
     results["planning_html_content"]         = planning_html
     results["productieschema_html_content"]  = prod_html
+    results["dosissen_html_content"]         = dosissen_html
     results["tampering_warning"]      = None
     results["ploegen_data"]           = ploegen_data
 

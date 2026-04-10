@@ -180,6 +180,17 @@ def main() -> bool:
         except Exception as e:
             print(f"⚠ Could not load productieschema HTML: {e}")
 
+    # ── Dosissen HTML ─────────────────────────────────────────────────────
+    dosissen_html_path = paths.get("dosissen_html", "")
+    if dosissen_html_path:
+        try:
+            with open(dosissen_html_path, 'r', encoding='utf-8') as fh:
+                dosissen_content = fh.read()
+            raw_db.store_blob(raw_conn, 'dosissen_html', dosissen_content)
+            print("✓ dosissen_html stored to blobs")
+        except Exception as e:
+            print(f"⚠ Could not load dosissen HTML: {e}")
+
     raw_conn.close()
     print("=" * 60)
     print("✓ Collection complete")
