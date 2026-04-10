@@ -1725,16 +1725,15 @@ paths section:
 │ paths.storingen_       │ \\NLPT-FILE01P\Dept$\NLCYC\Storingen Philips\    │
 │   philips_db           │   Storingen_Philips.accdb                        │
 ├────────────────────────┼──────────────────────────────────────────────────┤
-│ paths.ploegen_excel    │ C:\Users\Reinder.sierkstra\Desktop\              │
-│                        │   Dosis_overzichten\Ploegen.xlsx                 │
+│ paths.ploegen_excel    │ X:\Cyclotron Bureau\Programma script\            │
+│                        │   Dosiserv script\Ploegen.xlsx                   │
 ├────────────────────────┼──────────────────────────────────────────────────┤
 │ paths.planning_excel   │ W:\Afdelingsplanning Cyclotron\                  │
 │                        │   Planning & Control Cyclotron.xlsm             │
 ├────────────────────────┼──────────────────────────────────────────────────┤
-│ paths.vsm_excel        │ C:\Users\Reinder.sierkstra\OneDrive - CURIUM\   │
-│                        │   Niet onedrive spullen\Desktop\                 │
-│                        │   Targetstroom daily management VSM cyclotron   │
-│                        │   .xlsx                                          │
+│ paths.vsm_excel        │ X:\Cyclotron Bureau\Programma script\            │
+│                        │   DM VSM script\Targetstroom daily management   │
+│                        │   VSM cyclotron.xlsx                             │
 ├────────────────────────┼──────────────────────────────────────────────────┤
 │ paths.planning_html    │ W:\Afdelingsplanning Cyclotron\planning.html     │
 ├────────────────────────┼──────────────────────────────────────────────────┤
