@@ -13,9 +13,17 @@ import yaml
 # module works regardless of the current working directory.
 _CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'settings.yaml')
 
+# Project root = the folder that contains config/ (i.e. the Programma Dashboard folder).
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 def load_settings(config_path: str = _CONFIG_PATH) -> dict:
     """Load and return the full settings dict from settings.yaml.
+
+    Relative paths inside the ``paths`` section are resolved relative to the
+    project root (the folder containing ``run_all.py``), so the programme
+    finds its ``data/`` directory correctly regardless of the working directory
+    from which Python is launched.
 
     Parameters
     ----------
@@ -29,7 +37,15 @@ def load_settings(config_path: str = _CONFIG_PATH) -> dict:
         The parsed YAML document as a plain Python dict.
     """
     with open(config_path, 'r', encoding='utf-8') as fh:
-        return yaml.safe_load(fh)
+        cfg = yaml.safe_load(fh)
+
+    # Resolve relative paths in the paths section against the project root.
+    if 'paths' in cfg:
+        for key, value in cfg['paths'].items():
+            if isinstance(value, str) and not os.path.isabs(value):
+                cfg['paths'][key] = os.path.join(_PROJECT_ROOT, value)
+
+    return cfg
 
 
 def get_spec_settings(cfg: dict) -> dict:
