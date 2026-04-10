@@ -142,6 +142,8 @@ _DEFAULTS: dict[str, Any] = {
     "otif_table_data": {},
     # Ploegen definitions
     "ploegen_data": {},
+    # Script health heartbeats
+    "heartbeat_data": [],
 }
 
 
@@ -150,6 +152,67 @@ def _unpack(data: dict) -> dict:
     result = dict(_DEFAULTS)
     result.update(data)
     return result
+
+
+def _build_heartbeat_bar(heartbeat_data: list) -> str:
+    """Return the HTML for the script health status bar, or '' if no data."""
+    if not heartbeat_data:
+        return ''
+
+    now = datetime.now()
+    pills = []
+    for row in heartbeat_data:
+        script_name       = row.get('script_name', '?')
+        last_seen_str     = row.get('last_seen', '') or ''
+        status            = row.get('status', '') or ''
+        consecutive_errors = int(row.get('consecutive_errors') or 0)
+        last_message      = row.get('last_message', '') or ''
+
+        try:
+            last_seen  = datetime.fromisoformat(last_seen_str)
+            minutes_ago = (now - last_seen).total_seconds() / 60
+            stale = minutes_ago > 15
+            if minutes_ago < 1:
+                seen_label = '&lt; 1 min ago'
+            else:
+                seen_label = f'{int(minutes_ago)} min ago'
+        except Exception:
+            stale      = True
+            seen_label = last_seen_str or 'unknown'
+
+        if stale:
+            dot_color = '#e53e3e'
+        elif status == 'WARNING' or consecutive_errors >= 5:
+            dot_color = '#d69e2e'
+        else:
+            dot_color = '#38a169'
+
+        tooltip_parts = [
+            f'Last seen: {seen_label}',
+            f'Status: {status if status else "—"}',
+            f'Consecutive errors: {consecutive_errors}',
+        ]
+        if last_message:
+            tooltip_parts.append(f'Message: {last_message}')
+        # Use &#10; for newlines inside title attributes
+        tooltip = '&#10;'.join(tooltip_parts)
+
+        pills.append(
+            f'<span title="{tooltip}" style="display:inline-flex;align-items:center;gap:6px;'
+            f'background:#f5f5f5;border:1px solid #ddd;border-radius:20px;'
+            f'padding:4px 14px;font-size:13px;font-family:Arial,sans-serif;cursor:default;'
+            f'white-space:nowrap;">'
+            f'<span style="width:10px;height:10px;border-radius:50%;background:{dot_color};'
+            f'display:inline-block;flex-shrink:0;"></span>'
+            f'{script_name}</span>'
+        )
+
+    pills_html = '\n        '.join(pills)
+    return (
+        f'\n    <div style="text-align:center;margin-bottom:20px;display:flex;'
+        f'justify-content:center;gap:8px;flex-wrap:wrap;padding:6px 0;">\n        '
+        f'{pills_html}\n    </div>\n'
+    )
 
 
 def create_html_dashboard(data: dict) -> str:
@@ -261,6 +324,7 @@ def create_html_dashboard(data: dict) -> str:
     otif_kpi_data         = v["otif_kpi_data"]
     otif_table_data       = v["otif_table_data"]
     ploegen_data          = v["ploegen_data"]
+    heartbeat_data        = v["heartbeat_data"]
 
     # ------------------------------------------------------------------
     # Original method body follows — all self.* replaced with standalone
@@ -1332,6 +1396,9 @@ def create_html_dashboard(data: dict) -> str:
     isotope_names = list(isotope_issues.keys()) if isotope_issues else []
     isotope_counts = list(isotope_issues.values()) if isotope_issues else []
 
+    # Script health status bar
+    heartbeat_bar = _build_heartbeat_bar(heartbeat_data)
+
     # Build Dosisoverzicht srcdoc for embedding
     if dosissen_html_content:
         _dos_srcdoc = dosissen_html_content.replace('&', '&amp;').replace('"', '&quot;')
@@ -1494,6 +1561,7 @@ def create_html_dashboard(data: dict) -> str:
         </div>
     </div>
 
+    {heartbeat_bar}
     <!-- DOSISOVERZICHT + DM VSM BUTTONS -->
     <div style="text-align: center; margin-bottom: 30px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
         <button onclick="openDosisModal()" style="background: linear-gradient(135deg, #662678, #E40D7E); color: white; padding: 15px 30px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: transform 0.2s;">

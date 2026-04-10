@@ -13,7 +13,7 @@ zie MANUAL.txt.
 
 Inhoud
 ------
-  1. Wat het dashboard laat zien (incl. navigatieknoppen §1.2)
+  1. Wat het dashboard laat zien (incl. navigatieknoppen §1.3)
   2. Het kleurensysteem
   3. De drie KPI's: Efficiëntie, Binnen spec, OTIF
   4. Trends aflezen
@@ -69,7 +69,25 @@ dan of je netwerkschijven (W: en X:) zijn aangemeld.  Als ze zijn aangemeld en
 het probleem aanhoudt, neem dan contact op met R.A.F. Sierkstra (SIE, tel. 7062).
 
 
-1.2  De navigatieknoppen
+1.2  Scriptstatus-statusbalk
+-----------------------------
+Direct boven de navigatieknoppen staat een rij kleine statusindicatoren —
+één per achtergrondscript.  Elke indicator toont een gekleurde stip en de
+naam van het script.
+
+    🟢  Groen  — script heeft binnen de afgelopen 15 minuten gemeld en is OK
+    🟡  Geel   — script heeft gemeld maar heeft waarschuwingen of herhaalde fouten
+    🔴  Rood   — er is meer dan 15 minuten geen heartbeat ontvangen
+
+Bewegen met de muis over een indicator toont het exacte tijdstip van de
+laatste melding, de status en eventuele foutmeldingen.  Als alle indicatoren
+groen zijn, werkt de pipeline normaal.  Een rode of gele indicator dient
+gemeld te worden bij R.A.F. Sierkstra (SIE, tel. 7062).
+
+De balk is afwezig als de heartbeat-database niet bereikbaar is.
+
+
+1.3  De navigatieknoppen
 -------------------------
 Bovenaan het volledige dashboard staan vier grote knoppen.  Elke knop opent een
 schermvullend pop-upvenster.  Sluit een venster met het × rechtsboven.
@@ -94,7 +112,7 @@ schermvullend pop-upvenster.  Sluit een venster met het × rechtsboven.
         de huidige en komende periodes.
 
 
-1.3  Twee versies van het dashboard
+1.4  Twee versies van het dashboard
 -------------------------------------
 Er zijn twee versies van het dashboard:
 
@@ -797,7 +815,8 @@ besprekingen.
 
 11.7  Sectiewijzer
 --------------------
-    Navigatieknoppen (Dosisoverzicht, DM VSM, enz.)  Sectie 1.2
+    Scriptstatus-statusbalk                          Sectie 1.2
+    Navigatieknoppen (Dosisoverzicht, DM VSM, enz.)  Sectie 1.3
     KPI-tabellen (Efficiëntie, Binnen spec, OTIF)    Sectie 3
     Trends aflezen                                   Sectie 4
     Gantt-grafiek                                    Sectie 5

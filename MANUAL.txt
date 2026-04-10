@@ -209,6 +209,8 @@ to the HTML output.
       or cyclotron.asp (HTTP)  (fetched live)        --> cyclotron_data (in memory)
     planning.html             --> blobs              --> planning_html_content
     productieschema.html      --> blobs              --> productieschema_html_content
+    dosissen.html             --> blobs              --> dosissen_html_content
+    heartbeat.db              --> blobs              --> heartbeat_data
 
 
 1.6  Persistence model
@@ -826,8 +828,8 @@ Only rows with type 'Data' or 'Pauze' are retained.
 
 4.3  Static HTML files  (html_reader.py)
 -----------------------------------------
-Two functions load pre-rendered or externally generated HTML fragments that
-are embedded verbatim into the dashboard:
+Three functions load pre-rendered or externally generated HTML fragments
+that are embedded verbatim into the dashboard:
 
     load_planning_html(path: str) -> str | None
         Reads the planning overview HTML file from disk.
@@ -837,9 +839,34 @@ are embedded verbatim into the dashboard:
         Reads the production schema HTML file from disk.
         Returns the file contents as a string, or None on any read error.
 
-Both files are stored in raw.db (blobs table) under keys 'planning_html'
-and 'productieschema_html' respectively so that the renderer can retrieve
-them from the database without knowing their file paths.
+The dosissen HTML is read directly in run_collector.py (no wrapper
+function) because it requires no parsing — the raw file contents are
+stored as-is.
+
+All three files are stored in raw.db (blobs table) under keys
+'planning_html', 'productieschema_html', and 'dosissen_html' respectively.
+
+
+4.4  Script health heartbeats  (heartbeat.db)
+----------------------------------------------
+Path setting:  paths.heartbeat_db
+
+A separate SQLite database written by the scripts themselves (or an
+external watchdog) to report their current status.  The collector reads
+this database directly using sqlite3 at the end of each collection cycle.
+
+Table read:  heartbeats
+Columns:     script_name, last_seen, status, consecutive_errors,
+             last_message
+
+The entire table is stored as a JSON blob in raw.db under the key
+'heartbeat_data' and passed through to the renderer unchanged.  The
+renderer computes the 🔴/🟡/🟢 colour at render time by comparing
+last_seen against datetime.now() (see §11.9).
+
+If the database file does not exist or any read error occurs, the
+collector prints a ⚠ warning and continues — no data is stored, and
+the renderer silently omits the status bar.
 
 ===============================================================================
 5. Raw Database (raw.db) — Schema & Storage API
@@ -1507,6 +1534,7 @@ All CSS and JavaScript is embedded inline; no external files are required
 except the CDN-hosted Chart.js library.
 
 Sections included:
+    • Script health status bar (see §11.9)
     • Efficiency, within-spec, and OTIF KPI tables
     • Gantt chart (cyclotron production timeline, §11.4)
     • Current-week and previous-week production summary tables
@@ -1690,6 +1718,44 @@ Modal toggles: showPloegDetails(ploegNumber), filterPloegData(period),
              showProductionHistory(boNummer, date, isotope),
              showSFModal(sfCode, count).
 
+11.9  Script health status bar
+--------------------------------
+A horizontal row of coloured indicator pills is rendered directly above
+the navigation modal buttons on the full dashboard.  It shows the current
+health of every script that writes to the heartbeat database.
+
+Data source:
+    SQLite database at paths.heartbeat_db
+    Table: heartbeats
+    Columns read:
+        script_name        — displayed as the pill label
+        last_seen          — ISO datetime of the most recent heartbeat
+        status             — 'OK', 'WARNING', or similar string
+        consecutive_errors — integer count of consecutive failures
+        last_message       — optional detail string
+
+Colour logic (evaluated at render time against datetime.now()):
+    🔴  Red    — last_seen is more than 15 minutes ago
+    🟡  Yellow — last_seen within 15 min AND
+                 (status = 'WARNING' OR consecutive_errors >= 5)
+    🟢  Green  — last_seen within 15 min AND
+                 status = 'OK' AND consecutive_errors < 5
+
+Tooltip (shown on hover):
+    Last seen: <N> min ago
+    Status: <status>
+    Consecutive errors: <N>
+    Message: <last_message>   (omitted if empty)
+
+Failure behaviour:
+    If paths.heartbeat_db is not set, the file does not exist, the table
+    is missing, or any other read error occurs, the status bar is silently
+    omitted — no error is shown to the viewer and the dashboard renders
+    normally without it.
+
+Implementation: _build_heartbeat_bar(heartbeat_data) in dashboard_full.py.
+
+
 ===============================================================================
 12. Configuration Reference, Deployment & Troubleshooting
 ===========================================================
@@ -1738,6 +1804,11 @@ paths section:
 │   html                 │   0 (BETA) Cyclotron productieplanning.html      │
 ├────────────────────────┼──────────────────────────────────────────────────┤
 │ paths.dosissen_html    │ X:\Cyclotron\Dashboard Cyclotron\dosissen.html   │
+├────────────────────────┼──────────────────────────────────────────────────┤
+│ paths.heartbeat_db     │ X:\Cyclotron Bureau\Programma script\            │
+│                        │   heartbeat.db                                   │
+│                        │ SQLite — script health heartbeats.  Optional;    │
+│                        │   missing or unreadable DB is silently ignored.  │
 ├────────────────────────┼──────────────────────────────────────────────────┤
 │ paths.output_local     │ output/isotope_dashboard.html                    │
 │                        │ Local filesystem output for full dashboard.      │

@@ -71,6 +71,7 @@ def main() -> dict:
     planning_html   = raw_db.load_blob(raw_conn, 'planning_html',   default=None)
     prod_html       = raw_db.load_blob(raw_conn, 'productieschema_html', default=None)
     dosissen_html   = raw_db.load_blob(raw_conn, 'dosissen_html',   default=None)
+    heartbeat_data  = raw_db.load_blob(raw_conn, 'heartbeat_data',  default=[])
 
     # ── Load ploegen / planning ──────────────────────────────────────────────
     ploegen_data     = {}
@@ -311,6 +312,7 @@ def main() -> dict:
     results["planning_html_content"]         = planning_html
     results["productieschema_html_content"]  = prod_html
     results["dosissen_html_content"]         = dosissen_html
+    results["heartbeat_data"]         = heartbeat_data
     results["tampering_warning"]      = None
     results["ploegen_data"]           = ploegen_data
 
