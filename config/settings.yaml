@@ -25,9 +25,9 @@ paths:
   storingen_philips_db: '\\NLPT-FILE01P\Dept$\NLCYC\Storingen Philips\Storingen_Philips.accdb'
 
   # Excel files
-  ploegen_excel:   'C:\Users\Reinder.sierkstra\Desktop\Dosis_overzichten\Ploegen.xlsx'
+  ploegen_excel:   'X:\Cyclotron Bureau\Programma script\Dosiserv script\Ploegen.xlsx'
   planning_excel:  'W:\Afdelingsplanning Cyclotron\Planning & Control Cyclotron.xlsm'
-  vsm_excel:       'C:\Users\Reinder.sierkstra\OneDrive - CURIUM\Niet onedrive spullen\Desktop\Targetstroom daily management VSM cyclotron.xlsx'
+  vsm_excel:       'X:\Cyclotron Bureau\Programma script\DM VSM script\Targetstroom daily management VSM cyclotron.xlsx'
 
   # HTML planning documents (embedded in dashboard)
   planning_html:        'W:\Afdelingsplanning Cyclotron\planning.html'

@@ -154,9 +154,9 @@ Minimum paths to update:
       proces_db:            W:\Maximo\ProcesGegevens.accdb
       storingen_iba_db:     \\SERVER\Share\Storingen_IBA.accdb
       storingen_philips_db: \\SERVER\Share\Storingen_Philips.accdb
-      ploegen_excel:        \\SERVER\Share\Ploegen.xlsx
-      planning_excel:       \\SERVER\Share\Planning & Control Cyclotron.xlsm
-      vsm_excel:            \\SERVER\Share\Targetstroom daily management VSM cyclotron.xlsx
+      ploegen_excel:        X:\Cyclotron Bureau\Programma script\Dosiserv script\Ploegen.xlsx
+      planning_excel:       W:\Afdelingsplanning Cyclotron\Planning & Control Cyclotron.xlsm
+      vsm_excel:            X:\Cyclotron Bureau\Programma script\DM VSM script\Targetstroom daily management VSM cyclotron.xlsx
       output_local:         output\isotope_dashboard.html        # full dashboard (local)
       output_network:       \\SERVER\Share\isotope_dashboard.html # truncated (network share)
       output_bureau:        X:\Bureau\Productie dashboard.html    # full dashboard (bureau screen)
