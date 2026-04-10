@@ -16,6 +16,7 @@ Public entry point
 from __future__ import annotations
 
 import json
+import math
 import re
 from datetime import datetime
 from typing import Any
@@ -1249,9 +1250,9 @@ def create_html_dashboard(data: dict) -> str:
         running_data_yield = [round(p['yield_percent'], 2) if p.get('yield_percent') is not None else None for p in running]
         running_data_output = [round(p['output_percent'], 2) if p.get('output_percent') is not None else None for p in running]
         running_identifiers = [str(p.get('identifier', '')) if p.get('identifier') else '' for p in running]
-        monthly_max = max(monthly_data) + 5 if monthly_data else 110
         all_running = [d for d in running_data_yield + running_data_output if d is not None]
-        running_max = max(all_running) + 5 if all_running else 110
+        monthly_max = 130
+        running_max = 130
         return monthly_labels, monthly_data, running_labels, running_data_yield, running_data_output, running_identifiers, monthly_max, running_max
 
     def prepare_iodine_targetstroom_data(running):
@@ -1305,11 +1306,11 @@ def create_html_dashboard(data: dict) -> str:
     # Efficiency chart data
     eff_past_year_labels = [d['date'] for d in efficiency_past_year]
     eff_past_year_data = [round(d['efficiency'], 2) for d in efficiency_past_year]
-    eff_past_year_max = max(eff_past_year_data) + 5 if eff_past_year_data else 30
+    eff_past_year_max = math.ceil((max(eff_past_year_data) + 5) / 5) * 5 if eff_past_year_data else 30
 
     eff_all_time_labels = [d['date'] for d in efficiency_all_time]
     eff_all_time_data = [round(d['efficiency'], 2) for d in efficiency_all_time]
-    eff_all_time_max = max(eff_all_time_data) + 5 if eff_all_time_data else 30
+    eff_all_time_max = math.ceil((max(eff_all_time_data) + 5) / 5) * 5 if eff_all_time_data else 30
 
     # Within-spec chart data
     ws_past_year_labels = [d['date_str'] for d in within_spec_past_year]
@@ -2217,7 +2218,7 @@ def create_html_dashboard(data: dict) -> str:
                     beginAtZero: true,
                     min: 0,
                     max: {eff_past_year_max},
-                    ticks: {{ callback: function(value) {{ return value + '%'; }} }},
+                    ticks: {{ stepSize: 5, callback: function(value) {{ return value + '%'; }} }},
                     title: {{ display: true, text: 'Efficiency (%)' }}
                 }},
                 x: {{
@@ -2261,7 +2262,7 @@ def create_html_dashboard(data: dict) -> str:
                     beginAtZero: true,
                     min: 0,
                     max: {eff_all_time_max},
-                    ticks: {{ callback: function(value) {{ return value + '%'; }} }},
+                    ticks: {{ stepSize: 5, callback: function(value) {{ return value + '%'; }} }},
                     title: {{ display: true, text: 'Efficiency (%)' }}
                 }},
                 x: {{
