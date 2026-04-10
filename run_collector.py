@@ -191,6 +191,24 @@ def main() -> bool:
         except Exception as e:
             print(f"⚠ Could not load dosissen HTML: {e}")
 
+    # ── Heartbeat DB ──────────────────────────────────────────────────────
+    heartbeat_db_path = paths.get("heartbeat_db", "")
+    if heartbeat_db_path:
+        try:
+            import sqlite3 as _sqlite3
+            hb_conn = _sqlite3.connect(heartbeat_db_path)
+            hb_conn.row_factory = _sqlite3.Row
+            rows = hb_conn.execute(
+                "SELECT script_name, last_seen, status, consecutive_errors, last_message "
+                "FROM heartbeats"
+            ).fetchall()
+            hb_conn.close()
+            heartbeat_data = [dict(r) for r in rows]
+            raw_db.store_blob(raw_conn, 'heartbeat_data', heartbeat_data)
+            print(f"✓ heartbeat_data: {len(heartbeat_data)} scripts")
+        except Exception as e:
+            print(f"⚠ Could not read heartbeat.db: {e}")
+
     raw_conn.close()
     print("=" * 60)
     print("✓ Collection complete")

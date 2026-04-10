@@ -34,6 +34,9 @@ paths:
   productieschema_html: 'W:\Desktop Settings\Cyclotron formulieren\0 (BETA) Cyclotron productieplanning.html'
   dosissen_html:        'X:\Cyclotron\Dashboard Cyclotron\dosissen.html'
 
+  # Script health heartbeat database
+  heartbeat_db:         'X:\Cyclotron Bureau\Programma script\heartbeat.db'
+
   # Dashboard output destinations
   output_local:   output/isotope_dashboard.html
   output_network: '\\TUPETT-FI01\Data$\Malshare\Cyclotron\Dashboard Cyclotron\isotope_dashboard.html'
