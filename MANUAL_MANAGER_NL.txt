@@ -75,8 +75,10 @@ Bovenaan het volledige dashboard staan vier grote knoppen.  Elke knop opent een
 schermvullend pop-upvenster.  Sluit een venster met het × rechtsboven.
 
     Dosisoverzicht
-        Toont het dosisoverzichtsbeeld — de stralingsdosis per medewerker over
-        de afgelopen 30 dagen en de afgelopen 365 dagen.
+        Toont het dosisoverzicht — de stralingsdosis per medewerker over de
+        afgelopen 30 dagen en de afgelopen 365 dagen.  De inhoud wordt geladen
+        vanuit X:\Cyclotron\Dashboard Cyclotron\dosissen.html en weergegeven
+        als schermvullende ingesloten pagina.
 
     DM VSM
         Toont de Daily Management VSM-tabel: de dagelijkse targetstroomwaarden
