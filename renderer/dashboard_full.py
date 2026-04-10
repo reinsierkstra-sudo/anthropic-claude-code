@@ -162,16 +162,16 @@ def _build_heartbeat_bar(heartbeat_data: list) -> str:
     now = datetime.now()
     pills = []
     for row in heartbeat_data:
-        script_name       = row.get('script_name', '?')
-        last_seen_str     = row.get('last_seen', '') or ''
-        status            = row.get('status', '') or ''
+        script_name        = row.get('script_name', '?')
+        last_seen_str      = row.get('last_seen', '') or ''
+        status             = row.get('status', '') or ''
         consecutive_errors = int(row.get('consecutive_errors') or 0)
-        last_message      = row.get('last_message', '') or ''
+        last_message       = row.get('last_message', '') or ''
 
         try:
-            last_seen  = datetime.fromisoformat(last_seen_str)
+            last_seen   = datetime.fromisoformat(last_seen_str)
             minutes_ago = (now - last_seen).total_seconds() / 60
-            stale = minutes_ago > 15
+            stale       = minutes_ago > 15
             if minutes_ago < 1:
                 seen_label = '&lt; 1 min ago'
             else:
@@ -194,23 +194,24 @@ def _build_heartbeat_bar(heartbeat_data: list) -> str:
         ]
         if last_message:
             tooltip_parts.append(f'Message: {last_message}')
-        # Use &#10; for newlines inside title attributes
         tooltip = '&#10;'.join(tooltip_parts)
 
         pills.append(
-            f'<span title="{tooltip}" style="display:inline-flex;align-items:center;gap:6px;'
-            f'background:#f5f5f5;border:1px solid #ddd;border-radius:20px;'
-            f'padding:4px 14px;font-size:13px;font-family:Arial,sans-serif;cursor:default;'
+            f'<span title="{tooltip}" style="display:inline-flex;align-items:center;gap:9px;'
+            f'background:#f5f5f5;border:1px solid #ddd;border-radius:30px;'
+            f'padding:6px 21px;font-size:20px;font-family:Arial,sans-serif;cursor:default;'
             f'white-space:nowrap;">'
-            f'<span style="width:10px;height:10px;border-radius:50%;background:{dot_color};'
+            f'<span style="width:20px;height:20px;border-radius:50%;background:{dot_color};'
             f'display:inline-block;flex-shrink:0;"></span>'
             f'{script_name}</span>'
         )
 
     pills_html = '\n        '.join(pills)
     return (
-        f'\n    <div style="text-align:center;margin-bottom:20px;display:flex;'
-        f'justify-content:center;gap:8px;flex-wrap:wrap;padding:6px 0;">\n        '
+        f'\n    <p style="color:grey;font-size:13px;text-align:center;'
+        f'margin-bottom:8px;margin-top:0;">statusmonitor scripts</p>\n'
+        f'    <div style="text-align:center;margin-bottom:24px;display:flex;'
+        f'justify-content:center;gap:10px;flex-wrap:wrap;padding:6px 0;">\n        '
         f'{pills_html}\n    </div>\n'
     )
 
