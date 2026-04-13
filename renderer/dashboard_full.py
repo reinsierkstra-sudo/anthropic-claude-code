@@ -154,13 +154,53 @@ def _unpack(data: dict) -> dict:
     return result
 
 
-def _build_heartbeat_bar(heartbeat_data: list) -> str:
-    """Return the HTML for the script health status bar, or '' if no data."""
-    if not heartbeat_data:
-        return ''
+def _build_heartbeat_bar(heartbeat_data: list, generated_ts: str = '') -> str:
+    """Return the HTML for the script health status bar.
 
+    Always includes a 'Dashboard' freshness pill whose colour is set by
+    embedded JavaScript at page-load time (and updated every 30 s).  The
+    server-side colour computed here is used only as an instant fallback
+    before JS runs.
+    """
     now = datetime.now()
     pills = []
+
+    # --- Dashboard freshness pill (always present, updated live by JS) ---
+    if generated_ts:
+        try:
+            gen_dt = datetime.fromisoformat(generated_ts)
+            gen_min = (now - gen_dt).total_seconds() / 60
+            if gen_min > 10:
+                init_color = '#e53e3e'
+                init_status = 'STALE'
+            elif gen_min > 5:
+                init_color = '#d69e2e'
+                init_status = 'AGING'
+            else:
+                init_color = '#38a169'
+                init_status = 'OK'
+            init_label = f'{int(gen_min)} min ago' if gen_min >= 1 else '&lt; 1 min ago'
+        except Exception:
+            init_color = '#e53e3e'
+            init_status = 'unknown'
+            init_label = 'unknown'
+    else:
+        init_color = '#38a169'
+        init_status = 'OK'
+        init_label = '&lt; 1 min ago'
+
+    pills.append(
+        f'<span id="dashboard-freshness-pill" '
+        f'title="Generated: {generated_ts}&#10;Freshness: {init_label}&#10;Status: {init_status}" '
+        f'style="display:inline-flex;align-items:center;gap:6px;'
+        f'background:#f5f5f5;border:1px solid #ddd;border-radius:20px;'
+        f'padding:4px 14px;font-size:13px;font-family:Arial,sans-serif;cursor:default;'
+        f'white-space:nowrap;">'
+        f'<span id="dashboard-freshness-dot" style="width:10px;height:10px;border-radius:50%;'
+        f'background:{init_color};display:inline-block;flex-shrink:0;"></span>'
+        f'Dashboard</span>'
+    )
+
     for row in heartbeat_data:
         script_name       = row.get('script_name', '?')
         last_seen_str     = row.get('last_seen', '') or ''
@@ -1397,7 +1437,8 @@ def create_html_dashboard(data: dict) -> str:
     isotope_counts = list(isotope_issues.values()) if isotope_issues else []
 
     # Script health status bar
-    heartbeat_bar = _build_heartbeat_bar(heartbeat_data)
+    generated_ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    heartbeat_bar = _build_heartbeat_bar(heartbeat_data, generated_ts)
 
     # Build Dosisoverzicht srcdoc for embedding
     if dosissen_html_content:
@@ -1509,7 +1550,7 @@ def create_html_dashboard(data: dict) -> str:
     ║  - Read-only permissions                                            ║
     ║  - SHA256 integrity checking                                        ║
     ║                                                                      ║
-    ║  Last generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}                            ║
+    ║  Last generated: {generated_ts}                            ║
     ╚══════════════════════════════════════════════════════════════════════╝
     -->
     <html lang="en">
@@ -1554,7 +1595,7 @@ def create_html_dashboard(data: dict) -> str:
     <div class="header">
         <div class="header-left">
             <h1>Productie Dashboard</h1>
-            <div class="timestamp">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
+            <div class="timestamp">Generated: {generated_ts}</div>
         </div>
         <div class="header-right">
             <img src="logo.png" alt="Logo">
@@ -3483,6 +3524,7 @@ def create_html_dashboard(data: dict) -> str:
     }});
 
     <!-- __OTIF_JS__ -->
+    <!-- __DASHBOARD_FRESHNESS_JS__ -->
     </script>
 
     </body>
@@ -3491,5 +3533,35 @@ def create_html_dashboard(data: dict) -> str:
     # Inject OTIF JS and scroll/refresh JS via replace (avoids f-string brace escaping issues)
     html = html.replace('<meta http-equiv="refresh" content="60">', '')
     html = html.replace('<!-- __OTIF_JS__ -->', scroll_refresh_js + otif_charts_js)
+
+    # Inject dashboard freshness JS (checks generated timestamp in the browser,
+    # so a silently-failed generator script is always detected as stale).
+    _dashboard_freshness_js = (
+        '\n    (function() {\n'
+        f'        var generatedTs = "{generated_ts}";\n'
+        '        function updateDashboardFreshness() {\n'
+        '            var dot  = document.getElementById("dashboard-freshness-dot");\n'
+        '            var pill = document.getElementById("dashboard-freshness-pill");\n'
+        '            if (!dot || !pill) return;\n'
+        '            var generated  = new Date(generatedTs.replace(" ", "T"));\n'
+        '            var now        = new Date();\n'
+        '            var minutesAgo = (now - generated) / 60000;\n'
+        '            var color, statusText;\n'
+        '            if (minutesAgo > 10) {\n'
+        '                color = "#e53e3e"; statusText = "STALE";\n'
+        '            } else if (minutesAgo > 5) {\n'
+        '                color = "#d69e2e"; statusText = "AGING";\n'
+        '            } else {\n'
+        '                color = "#38a169"; statusText = "OK";\n'
+        '            }\n'
+        '            dot.style.background = color;\n'
+        '            var label = minutesAgo < 1 ? "< 1 min ago" : Math.floor(minutesAgo) + " min ago";\n'
+        '            pill.title = "Generated: " + generatedTs + "\\nFreshness: " + label + "\\nStatus: " + statusText;\n'
+        '        }\n'
+        '        updateDashboardFreshness();\n'
+        '        setInterval(updateDashboardFreshness, 30000);\n'
+        '    })();\n'
+    )
+    html = html.replace('<!-- __DASHBOARD_FRESHNESS_JS__ -->', _dashboard_freshness_js)
 
     return html
